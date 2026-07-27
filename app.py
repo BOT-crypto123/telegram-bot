@@ -8,6 +8,17 @@ class Handler(BaseHTTPRequestHandler):
         self.send_response(200)
         self.send_header('Content-type', 'text/html; charset=utf-8')
         self.end_headers()
+        html = """import os
+from http.server import HTTPServer, BaseHTTPRequestHandler
+import threading
+import asyncio
+from bot.main import main
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header('Content-type', 'text/html; charset=utf-8')
+        self.end_headers()
         html = """
 <!DOCTYPE html>
 <html>
@@ -62,11 +73,13 @@ update();
         self.wfile.write(html.encode('utf-8'))
 
 def run_web():
-    server = HTTPServer(('0.0.0.0', 8080), Handler)
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(('0.0.0.0', port), Handler)
     server.serve_forever()
 
 if __name__ == '__main__':
-    # Web en segundo plano
+    threading.Thread(target=run_web, daemon=True).start()
+    asyncio.run(main())
     threading.Thread(target=run_web, daemon=True).start()
     # Tu bot original
     asyncio.run(main())
