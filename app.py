@@ -20,6 +20,7 @@ body{background:#0b0e11;color:white;font-family:Arial;text-align:center;margin:0
 .card{background:#1e2329;padding:15px;border-radius:12px;margin:12px 0}
 .price{font-size:36px;color:#0ecb81;font-weight:bold}
 .live{color:#0ecb81;font-size:14px}
+iframe{border:none;border-radius:12px}
 </style>
 </head>
 <body>
@@ -29,23 +30,14 @@ body{background:#0b0e11;color:white;font-family:Arial;text-align:center;margin:0
 <div class="price" id="price">$ --</div>
 <div>El bot sigue trabajando en Telegram</div>
 </div>
+
 <div class="card">
-<div id="tradingview" style="height:500px"></div>
-<script src="https://s.tradingview.com/tv.js"></script>
-<script>
-new TradingView.widget({
-  "width": "100%",
-  "height": 500,
-  "symbol": "BINANCE:XRPUSDT",
-  "interval": "5",
-  "timezone": "America/Mexico_City",
-  "theme": "dark",
-  "style": "1",
-  "locale": "es",
-  "container_id": "tradingview"
-});
-</script>
+<div style="height:550px;">
+<iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview&symbol=BINANCE%3AXRPUSDT&interval=5&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=%5B%7B%22id%22%3A%22MASExp%40tv-basicstudies%22%2C%22inputs%22%3A%7B%22length%22%3A20%7D%7D%2C%7B%22id%22%3A%22MASExp%40tv-basicstudies%22%2C%22inputs%22%3A%7B%22length%22%3A50%7D%7D%2C%7B%22id%22%3A%22RSI%40tv-basicstudies%22%7D%5D&theme=dark&style=1&locale=es&timezone=America%2FMexico_City&withdateranges=1&hideideas=1" width="100%" height="550"></iframe>
 </div>
+<div>✅ Con EMA 20, EMA 50 y RSI</div>
+</div>
+
 <script>
 async function update(){
   try{
