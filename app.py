@@ -30,14 +30,10 @@ iframe{border:none;border-radius:12px}
 <div class="price" id="price">$ --</div>
 <div>El bot sigue trabajando en Telegram</div>
 </div>
-
 <div class="card">
-<div style="height:550px;">
 <iframe src="https://s.tradingview.com/widgetembed/?frameElementId=tradingview&symbol=BINANCE%3AXRPUSDT&interval=5&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=%5B%7B%22id%22%3A%22MASExp%40tv-basicstudies%22%2C%22inputs%22%3A%7B%22length%22%3A20%7D%7D%2C%7B%22id%22%3A%22MASExp%40tv-basicstudies%22%2C%22inputs%22%3A%7B%22length%22%3A50%7D%7D%2C%7B%22id%22%3A%22RSI%40tv-basicstudies%22%7D%5D&theme=dark&style=1&locale=es&timezone=America%2FMexico_City&withdateranges=1&hideideas=1" width="100%" height="550"></iframe>
+<div>✅ EMA 20, EMA 50 y RSI</div>
 </div>
-<div>✅ Con EMA 20, EMA 50 y RSI</div>
-</div>
-
 <script>
 async function update(){
   try{
