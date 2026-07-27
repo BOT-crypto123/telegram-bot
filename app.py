@@ -1,14 +1,4 @@
-from http.server import HTTPServer, BaseHTTPRequestHandler
-import threading
-import asyncio
-from bot.main import main
-
-class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(200)
-        self.send_header('Content-type', 'text/html; charset=utf-8')
-        self.end_headers()
-        html = """import os
+import os
 from http.server import HTTPServer, BaseHTTPRequestHandler
 import threading
 import asyncio
@@ -79,7 +69,4 @@ def run_web():
 
 if __name__ == '__main__':
     threading.Thread(target=run_web, daemon=True).start()
-    asyncio.run(main())
-    threading.Thread(target=run_web, daemon=True).start()
-    # Tu bot original
     asyncio.run(main())
