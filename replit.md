@@ -1,36 +1,37 @@
-# [Project name]
+# Telegram Bot
 
-_Replace the heading above with the project's name, and this line with one sentence describing what this app does for users._
+A Python Telegram bot built with `python-telegram-bot` v21. Responds to commands and echoes plain text messages.
 
 ## Run & Operate
 
-- `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
-- `pnpm run typecheck` — full typecheck across all packages
-- `pnpm run build` — typecheck + build all packages
-- `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
-- `pnpm --filter @workspace/db run push` — push DB schema changes (dev only)
-- Required env: `DATABASE_URL` — Postgres connection string
+- **Start the bot**: Use the "Telegram Bot" workflow (runs `python3 bot/main.py`)
+- **Required secret**: `TELEGRAM_BOT_TOKEN` — set via Replit Secrets
 
 ## Stack
 
-- pnpm workspaces, Node.js 24, TypeScript 5.9
-- API: Express 5
-- DB: PostgreSQL + Drizzle ORM
-- Validation: Zod (`zod/v4`), `drizzle-zod`
-- API codegen: Orval (from OpenAPI spec)
-- Build: esbuild (CJS bundle)
+- Python 3.13
+- [python-telegram-bot](https://python-telegram-bot.org/) v21 (async, polling mode)
 
 ## Where things live
 
-_Populate as you build — short repo map plus pointers to the source-of-truth file for DB schema, API contracts, theme files, etc._
+- `bot/main.py` — bot entry point, all handlers
+- `bot/requirements.txt` — Python dependencies (managed by uv via Replit)
 
-## Architecture decisions
+## Bot commands
 
-_Populate as you build — non-obvious choices a reader couldn't infer from the code (3-5 bullets)._
+| Command | Description |
+|---------|-------------|
+| `/start` | Welcome message |
+| `/help` | List available commands |
+| `/echo <text>` | Repeat text back |
+| `/chatid` | Show the current chat's ID |
+| _(any text)_ | Echoed back automatically |
 
-## Product
+## Adding new commands
 
-_Describe the high-level user-facing capabilities of this app once they exist._
+1. Write an `async def my_handler(update, context)` function in `bot/main.py`
+2. Register it: `app.add_handler(CommandHandler("mycommand", my_handler))`
+3. Restart the "Telegram Bot" workflow
 
 ## User preferences
 
@@ -38,8 +39,5 @@ _Populate as you build — explicit user instructions worth remembering across s
 
 ## Gotchas
 
-_Populate as you build — sharp edges, "always run X before Y" rules._
-
-## Pointers
-
-- See the `pnpm-workspace` skill for workspace structure, TypeScript setup, and package details
+- Bot uses long-polling — no webhook setup needed for development
+- `MarkdownV2` special characters (`!`, `.`, `-`, etc.) must be escaped with `\` in reply text

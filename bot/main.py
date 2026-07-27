@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
-HELP_TEXT = """
+HELP_TEXT = r"""
 *Available commands*
 
 /start — Welcome message
@@ -48,7 +48,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     user = update.effective_user
     await update.message.reply_markdown_v2(
         rf"Hi {user.mention_markdown_v2()}\! 👋"
-        "\n\nI'm your bot\. Type /help to see what I can do\."
+        "\n\nI'm your bot\\. Type /help to see what I can do\\."
     )
 
 
