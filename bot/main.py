@@ -4,85 +4,66 @@ from telegram.ext import Application, MessageHandler, filters
 
 TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
 CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
-
-# ===== MODO DEMO - DINERO FALSO =====
-BALANCE_FILE = "balance_demo.json"
-INITIAL_BALANCE = 1000.0
-
-def load_balance():
-    try:
-        with open(BALANCE_FILE, "r") as f:
-            return json.load(f)
-    except:
-        return {
-            "usd": INITIAL_BALANCE,
-            "btc": 0, "eth": 0, "xrp": 0,
-            "historial": [],
-            "inicio": str(datetime.now())
-        }
-
-def save_balance(data):
-    with open(BALANCE_FILE, "w") as f:
-        json.dump(data, f)
+BALANCE_FILE = "/tmp/balance_demo.json"
+INITIAL = 1000.0
 
 def get_price(symbol):
+    # Intenta 4 APIs, una debe jalar
     try:
         r = requests.get(f"https://api.coinbase.com/v2/prices/{symbol}-USD/spot", timeout=8)
         return float(r.json()['data']['amount'])
+    except: pass
+    try:
+        r = requests.get(f"https://api.kraken.com/0/public/Ticker?pair={symbol}USD", timeout=8)
+        key = list(r.json()['result'].keys())[0]
+        return float(r.json()['result'][key]['c'][0])
+    except: pass
+    try:
+        ids = {"BTC":"bitcoin","ETH":"ethereum","XRP":"ripple"}
+        r = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={ids[symbol]}&vs_currencies=usd", timeout=8)
+        return float(r.json()[ids[symbol]]['usd'])
+    except: pass
+    try:
+        r = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}USDT", timeout=5)
+        return float(r.json()['price'])
+    except: pass
+    return None
+
+def load_bal():
+    try:
+        with open(BALANCE_FILE, "r") as f: return json.load(f)
     except:
-        return None
+        return {"usd":INITIAL,"btc":0,"eth":0,"xrp":0,"hist":[]}
 
-def comprar(symbol, usd_amount, price):
-    bal = load_balance()
-    if bal["usd"] < usd_amount:
-        return f"❌ No alcanza, solo tienes ${bal['usd']:.2f}"
-    cantidad = usd_amount / price
-    bal["usd"] -= usd_amount
-    bal[symbol.lower()] += cantidad
-    bal["historial"].append(f"{datetime.now().strftime('%d/%m %H:%M')} COMPRA {symbol} {cantidad:.6f} a ${price:.2f}")
-    save_balance(bal)
-    return f"✅ DEMO COMPRA: ${usd_amount} de {symbol} = {cantidad:.6f} a ${price:.2f}"
+def save_bal(d):
+    with open(BALANCE_FILE,"w") as f: json.dump(d,f)
 
-def vender(symbol, cantidad, price):
-    bal = load_balance()
-    if bal[symbol.lower()] < cantidad:
-        return f"❌ No tienes suficiente {symbol}"
-    bal[symbol.lower()] -= cantidad
-    bal["usd"] += cantidad * price
-    bal["historial"].append(f"{datetime.now().strftime('%d/%m %H:%M')} VENTA {symbol} {cantidad:.6f} a ${price:.2f}")
-    save_balance(bal)
-    return f"✅ DEMO VENTA: {cantidad:.6f} {symbol} por ${cantidad*price:.2f}"
-
-async def handle_message(update, context):
+async def handle(update, context):
     text = update.message.text.lower()
-    bal = load_balance()
+    btc = get_price("BTC")
+    eth = get_price("ETH")
+    xrp = get_price("XRP")
     
-    btc = get_price("BTC") or 0
-    eth = get_price("ETH") or 0
-    xrp = get_price("XRP") or 0
+    if not btc:
+        await update.message.reply_text("Hola Rub! Estoy vivo, pero las APIs no me contestan. Intenta en 10 seg.")
+        return
+
+    bal = load_bal()
+    total = bal["usd"] + bal["btc"]*btc + bal["eth"]*eth + bal["xrp"]*(xrp or 0)
     
     if "precio" in text:
-        valor_total = bal["usd"] + bal["btc"]*btc + bal["eth"]*eth + bal["xrp"]*xrp
-        ganancia = valor_total - INITIAL_BALANCE
-        await update.message.reply_text(
-            f"🔥 PRECIOS:\nBTC: ${btc:,.0f}\nETH: ${eth:,.0f}\nXRP: ${xrp:.4f}\n\n"
-            f"💰 TU DEMO:\nUSD: ${bal['usd']:.2f}\nBTC: {bal['btc']:.6f}\nETH: {bal['eth']:.6f}\nXRP: {bal['xrp']:.2f}\n"
-            f"TOTAL: ${valor_total:.2f} ({ganancia:+.2f})"
-        )
+        await update.message.reply_text(f"🔥 PRECIOS REALES:\nBTC: ${btc:,.0f}\nETH: ${eth:,.0f}\nXRP: ${xrp:.4f}\n\n💰 TU DEMO $1000:\nUSD: ${bal['usd']:.2f}\nTotal: ${total:.2f} (Gan: ${total-INITIAL:+.2f})\n\nPon: comprar btc / balance")
     elif "comprar btc" in text:
-        await update.message.reply_text(comprar("BTC", 100, btc))
-    elif "comprar eth" in text:
-        await update.message.reply_text(comprar("ETH", 100, eth))
-    elif "comprar xrp" in text:
-        await update.message.reply_text(comprar("XRP", 100, xrp))
+        if bal["usd"]>=100:
+            bal["usd"]-=100; bal["btc"]+=100/btc; bal["hist"].append(f"Compra BTC {100/btc:.6f}"); save_bal(bal)
+            await update.message.reply_text(f"✅ DEMO: Compraste $100 de BTC = {100/btc:.6f}")
+        else: await update.message.reply_text("No te alcanza")
     elif "balance" in text or "ganancia" in text:
-        valor_total = bal["usd"] + bal["btc"]*btc + bal["eth"]*eth + bal["xrp"]*xrp
-        await update.message.reply_text(f"📊 BALANCE DEMO\nIniciaste: ${INITIAL_BALANCE}\nAhora: ${valor_total:.2f}\nGanancia: ${valor_total-INITIAL_BALANCE:+.2f}\n\nHistorial:\n" + "\n".join(bal["historial"][-5:]))
+        await update.message.reply_text(f"📊 DEMO: Iniciaste ${INITIAL}\nAhora ${total:.2f}\nGanancia ${total-INITIAL:+.2f}")
 
 async def main():
     app = Application.builder().token(TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
     await app.run_polling()
 
-if __name__ == "__main__":
-    asyncio.run(main())
+if __name__=="__main__": asyncio.run(main())
