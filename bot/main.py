@@ -1,76 +1,88 @@
-import os
-import telebot
-import requests
-import threading
-from flask import Flask
+import os, asyncio, requests, json
+from datetime import datetime
+from telegram.ext import Application, MessageHandler, filters
 
-# --- CONFIG ---
-TOKEN = os.environ.get("BOT_TOKEN")
-if not TOKEN:
-    raise Exception("Falta BOT_TOKEN en Render Environment Variables")
+TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
+CHAT_ID = os.environ.get("TELEGRAM_CHAT_ID")
 
-bot = telebot.TeleBot(TOKEN)
-app = Flask(__name__)
+# ===== MODO DEMO - DINERO FALSO =====
+BALANCE_FILE = "balance_demo.json"
+INITIAL_BALANCE = 1000.0
 
-@app.route('/')
-def home():
-    return "BOT EN LINEA - BTC Vicente Alert", 200
-
-# --- FUNCION DE PRECIO QUE SI JALA EN RENDER ---
-def get_btc_price():
+def load_balance():
     try:
-        # Intento 1: Binance
-        headers = {'User-Agent': 'Mozilla/5.0'}
-        url = "https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT"
-        r = requests.get(url, headers=headers, timeout=5)
-        if r.status_code == 200:
-            return float(r.json()['price'])
-    except Exception as e:
-        print(f"Fallo Binance: {e}")
+        with open(BALANCE_FILE, "r") as f:
+            return json.load(f)
+    except:
+        return {
+            "usd": INITIAL_BALANCE,
+            "btc": 0, "eth": 0, "xrp": 0,
+            "historial": [],
+            "inicio": str(datetime.now())
+        }
 
+def save_balance(data):
+    with open(BALANCE_FILE, "w") as f:
+        json.dump(data, f)
+
+def get_price(symbol):
     try:
-        # Intento 2: CoinGecko - este es el bueno para Render
-        url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd"
-        r = requests.get(url, timeout=10)
-        data = r.json()
-        return float(data['bitcoin']['usd'])
-    except Exception as e:
-        print(f"Fallo CoinGecko: {e}")
+        r = requests.get(f"https://api.coinbase.com/v2/prices/{symbol}-USD/spot", timeout=8)
+        return float(r.json()['data']['amount'])
+    except:
         return None
 
-# --- COMANDOS DEL BOT ---
-@bot.message_handler(commands=['start', 'help'])
-def send_welcome(message):
-    bot.reply_to(message, "¡Hola Rub! Soy tu BTC Vicente Alert 🚀\n\nEscribe:\n*Precio* - para ver el BTC ahora\n*Hola* - para saludar")
+def comprar(symbol, usd_amount, price):
+    bal = load_balance()
+    if bal["usd"] < usd_amount:
+        return f"❌ No alcanza, solo tienes ${bal['usd']:.2f}"
+    cantidad = usd_amount / price
+    bal["usd"] -= usd_amount
+    bal[symbol.lower()] += cantidad
+    bal["historial"].append(f"{datetime.now().strftime('%d/%m %H:%M')} COMPRA {symbol} {cantidad:.6f} a ${price:.2f}")
+    save_balance(bal)
+    return f"✅ DEMO COMPRA: ${usd_amount} de {symbol} = {cantidad:.6f} a ${price:.2f}"
 
-@bot.message_handler(func=lambda m: True)
-def handle_all(message):
-    texto = message.text.lower().strip()
+def vender(symbol, cantidad, price):
+    bal = load_balance()
+    if bal[symbol.lower()] < cantidad:
+        return f"❌ No tienes suficiente {symbol}"
+    bal[symbol.lower()] -= cantidad
+    bal["usd"] += cantidad * price
+    bal["historial"].append(f"{datetime.now().strftime('%d/%m %H:%M')} VENTA {symbol} {cantidad:.6f} a ${price:.2f}")
+    save_balance(bal)
+    return f"✅ DEMO VENTA: {cantidad:.6f} {symbol} por ${cantidad*price:.2f}"
+
+async def handle_message(update, context):
+    text = update.message.text.lower()
+    bal = load_balance()
     
-    if "precio" in texto or "btc" in texto:
-        bot.send_chat_action(message.chat.id, 'typing')
-        precio = get_btc_price()
-        if precio is None:
-            bot.reply_to(message, "Hola Rub! Estoy vivo, pero las APIs no me contestan. Intenta en 10 seg.")
-        else:
-            bot.reply_to(message, f"🔥 BTC AHORA: ${precio:,.2f} USD\n\n¿Quieres que te avise si baja?")
-    elif "hola" in texto or "ola" in texto:
-        precio = get_btc_price()
-        if precio:
-            bot.reply_to(message, f"Hola Rub! 🙋‍♂️ BTC está en ${precio:,.2f}")
-        else:
-            bot.reply_to(message, "¡Hola Rub! Estoy vivo ✅")
-    else:
-        bot.reply_to(message, f"Recibido: {message.text}\nEscribe *Precio* para ver el BTC")
+    btc = get_price("BTC") or 0
+    eth = get_price("ETH") or 0
+    xrp = get_price("XRP") or 0
+    
+    if "precio" in text:
+        valor_total = bal["usd"] + bal["btc"]*btc + bal["eth"]*eth + bal["xrp"]*xrp
+        ganancia = valor_total - INITIAL_BALANCE
+        await update.message.reply_text(
+            f"🔥 PRECIOS:\nBTC: ${btc:,.0f}\nETH: ${eth:,.0f}\nXRP: ${xrp:.4f}\n\n"
+            f"💰 TU DEMO:\nUSD: ${bal['usd']:.2f}\nBTC: {bal['btc']:.6f}\nETH: {bal['eth']:.6f}\nXRP: {bal['xrp']:.2f}\n"
+            f"TOTAL: ${valor_total:.2f} ({ganancia:+.2f})"
+        )
+    elif "comprar btc" in text:
+        await update.message.reply_text(comprar("BTC", 100, btc))
+    elif "comprar eth" in text:
+        await update.message.reply_text(comprar("ETH", 100, eth))
+    elif "comprar xrp" in text:
+        await update.message.reply_text(comprar("XRP", 100, xrp))
+    elif "balance" in text or "ganancia" in text:
+        valor_total = bal["usd"] + bal["btc"]*btc + bal["eth"]*eth + bal["xrp"]*xrp
+        await update.message.reply_text(f"📊 BALANCE DEMO\nIniciaste: ${INITIAL_BALANCE}\nAhora: ${valor_total:.2f}\nGanancia: ${valor_total-INITIAL_BALANCE:+.2f}\n\nHistorial:\n" + "\n".join(bal["historial"][-5:]))
 
-# --- PARA QUE RENDER NO LO APAGUE ---
-def run_bot():
-    print("BOT INICIANDO...")
-    bot.infinity_polling(none_stop=True, timeout=60)
-
-# Inicia el bot en un hilo
-threading.Thread(target=run_bot, daemon=True).start()
+async def main():
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(MessageHandler(filters.TEXT, handle_message))
+    await app.run_polling()
 
 if __name__ == "__main__":
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host="0.0.0.0", port=port)
+    asyncio.run(main())
