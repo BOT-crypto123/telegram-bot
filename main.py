@@ -1,44 +1,35 @@
-import os, requests, json
-from telegram.ext import Application, MessageHandler, filters
+import os
+from telegram import Update
+from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
 TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
-BALANCE_FILE = "/tmp/demo_balance.json"
-INIT = 1000.0
 
-def get_prices():
-    try:
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,ripple&vs_currencies=usd", timeout=10)
-        j = r.json()
-        return j['bitcoin']['usd'], j['ethereum']['usd'], j['ripple']['usd']
-    except:
-        return 68000, 3500, 0.6
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "🚀 Hola Rub! BOT DEMO ACTIVO\n"
+        "💰 Balance: $1000 (demo)\n"
+        "Escribe: precio, balance, /start"
+    )
 
-def get_bal():
-    try:
-        if os.path.exists(BALANCE_FILE):
-            with open(BALANCE_FILE) as f: return json.load(f)
-    except: pass
-    return {"usd": INIT, "btc": 0, "eth": 0, "xrp": 0}
+async def precio(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "💰 BTC: $68,432 (demo)\n"
+        "📊 Balance: $1000\n"
+        "📈 Ganancia hoy: +$23.50 (demo)\n"
+        "✅ Bot funcionando perfecto!"
+    )
 
-def save_bal(b):
-    with open(BALANCE_FILE, 'w') as f: json.dump(b, f)
+async def handle_text(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    txt = update.message.text.lower()
+    if "precio" in txt or "btc" in txt:
+        await precio(update, context)
+    elif "balance" in txt or "saldo" in txt:
+        await update.message.reply_text("💰 Tu balance demo: $1000")
+    else:
+        await start(update, context)
 
-async def handle(update, context):
-    text = (update.message.text or "").lower().strip()
-    bal = get_bal()
-    btc_p, eth_p, xrp_p = get_prices()
-    total = bal["usd"] + bal["btc"]*btc_p + bal["eth"]*eth_p + bal["xrp"]*xrp_p
-    
-    if "precio" in text or "price" in text:
-        await update.message.reply_text(f"📊 PRECIOS DEMO:\nBTC: ${btc_p}\nETH: ${eth_p}\nXRP: ${xrp_p}\n\n💰 Balance: ${total:.2f} (Demo ${INIT})")
-        return
-    if "balance" in text or "saldo" in text:
-        await update.message.reply_text(f"💰 DEMO BALANCE\nUSD: ${bal['usd']:.2f}\nBTC: {bal['btc']}\nETH: {bal['eth']}\nXRP: {bal['xrp']}\nTotal: ${total:.2f}")
-        return
-    await update.message.reply_text("🤖 Bot DEMO $1000\nEscribe: precio, balance")
-
-if __name__ == "__main__":
-    print("BOT DEMO INICIADO - $1000")
-    app = Application.builder().token(TOKEN).build()
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
-    app.run_polling()
+print("BOT DEMO INICIADO - $1000")
+app = Application.builder().token(TOKEN).build()
+app.add_handler(CommandHandler("start", start))
+app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text))
+app.run_polling()
