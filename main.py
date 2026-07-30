@@ -1,4 +1,5 @@
-import os, requests
+import os, requests, threading
+from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
@@ -9,6 +10,16 @@ PORTAFOLIO = {
     "ETH": {"cantidad": 0.1, "entrada": 3200},
     "SOL": {"cantidad": 2, "entrada": 140}
 }
+
+# Servidor falso para que Render no se queje
+app_flask = Flask(__name__)
+@app_flask.route('/')
+def home():
+    return "Bot Rub 3 Cryptos Activo!"
+
+def run_flask():
+    port = int(os.environ.get("PORT", 10000))
+    app_flask.run(host='0.0.0.0', port=port)
 
 def get_precios():
     try:
@@ -23,7 +34,7 @@ def get_precios():
         return {"BTC": 68432, "ETH": 3450, "SOL": 165}
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚀 Bot Rub - 3 Cryptos Activo!\nEscribe: precio")
+    await update.message.reply_text("🚀 Bot Rub 3 Cryptos Activo!\nEscribe: precio")
 
 async def precio(update: Update, context: ContextTypes.DEFAULT_TYPE):
     precios = get_precios()
@@ -44,8 +55,10 @@ async def precio(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await precio(update, context)
 
-print("BOT 3 CRYPTOS INICIADO")
-app = Application.builder().token(TOKEN).build()
-app.add_handler(CommandHandler("start", start))
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
-app.run_polling()
+if __name__ == "__main__":
+    threading.Thread(target=run_flask, daemon=True).start()
+    print("BOT 3 CRYPTOS INICIADO - Web server OK")
+    app = Application.builder().token(TOKEN).build()
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
+    app.run_polling()
