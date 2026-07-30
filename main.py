@@ -1,4 +1,4 @@
-import os, asyncio, threading, requests
+import os, threading, requests
 from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
@@ -6,7 +6,7 @@ from telegram.ext import Application, CommandHandler, MessageHandler, filters, C
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "BOT XRP DEMO REAL VIVO"
+    return "BOT XRP DEMO REAL - VIVO"
 
 TOKEN = os.environ.get("BOT_TOKEN")
 INVERSION = 1000
@@ -22,7 +22,7 @@ def get_precio(s):
         r = requests.get(url, timeout=10).json()
         return float(r[m[s]]['usd'])
     except:
-        return {"BTC":68000,"ETH":3400,"XRP":0.58}[s]
+        return {"BTC":68000,"ETH":3400,"XRP":0.60}[s]
 
 def init():
     if portfolio: return
@@ -49,20 +49,18 @@ async def precio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
         txt += f"{emoji} *{mon}:* ${ahora:,.4f}\n {cant:.4f} = ${valor:.2f} ({gan:+.2f})\n\n"
     gt = total - INVERSION
     pc = (gt/INVERSION)*100
-    txt += f"💰 *Total: ${total:.2f}*\n📈 *Ganancia REAL: ${gt:+.2f} ({pc:+.2f}%)*\n\nDemo - no cobrable"
+    txt += f"💰 *Total: ${total:.2f}*\n📈 *Ganancia REAL: ${gt:+.2f} ({pc:+.2f}%)*\n\nDemo - no cobrable pero precio real"
     await update.message.reply_text(txt, parse_mode='Markdown')
 
 def run_flask():
     app.run(host='0.0.0.0', port=int(os.environ.get("PORT",10000)))
 
-async def main_bot():
+if __name__ == "__main__":
     init()
     threading.Thread(target=run_flask, daemon=True).start()
     application = Application.builder().token(TOKEN).build()
     application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("precio", precio_cmd))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, precio_cmd))
-    print("BOT XRP INICIADO - precios reales")
-    await application.run_polling()
-
-if __name__ == "__main__":
-    asyncio.run(main_bot())
+    print("BOT XRP INICIADO - precios reales CoinGecko")
+    application.run_polling()
