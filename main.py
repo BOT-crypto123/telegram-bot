@@ -1,64 +1,90 @@
-import os, requests, threading
+import os, threading, requests
 from flask import Flask
 from telegram import Update
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
 
-TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
-
-PORTAFOLIO = {
-    "BTC": {"cantidad": 0.01, "entrada": 65000},
-    "ETH": {"cantidad": 0.1, "entrada": 3200},
-    "SOL": {"cantidad": 2, "entrada": 140}
-}
-
-# Servidor falso para que Render no se queje
-app_flask = Flask(__name__)
-@app_flask.route('/')
+# --- CONFIGURACION PARA RENDER ---
+app = Flask(__name__)
+@app.route('/')
 def home():
-    return "Bot Rub 3 Cryptos Activo!"
+    return "BOT DEMO REAL - BTC ETH XRP VIVO"
 
-def run_flask():
-    port = int(os.environ.get("PORT", 10000))
-    app_flask.run(host='0.0.0.0', port=port)
+# --- CONFIGURACION DE TU DEMO REAL ---
+TOKEN = os.environ.get("BOT_TOKEN")
+INVERSION_INICIAL = 1000
+MONEDAS = ["BTC", "ETH", "XRP"]
+DINERO_POR_MONEDA = INVERSION_INICIAL / len(MONEDAS) # 333.33
 
-def get_precios():
+portfolio = {} # Aqui se guardara cuantas monedas compraste
+precios_entrada = {} # A cuanto compraste
+
+def get_precio_real(simbolo):
     try:
-        r = requests.get("https://api.binance.com/api/v3/ticker/price", timeout=5)
-        data = {item['symbol']: float(item['price']) for item in r.json()}
-        return {
-            "BTC": data.get("BTCUSDT", 68432),
-            "ETH": data.get("ETHUSDT", 3450),
-            "SOL": data.get("SOLUSDT", 165)
-        }
+        # Precio real de Binance
+        url = f"https://api.binance.com/api/v3/ticker/price?symbol={simbolo}USDT"
+        r = requests.get(url, timeout=5).json()
+        return float(r['price'])
     except:
-        return {"BTC": 68432, "ETH": 3450, "SOL": 165}
+        # Respaldo por si Binance falla
+        return 0
 
+def inicializar_portafolio():
+    global portfolio, precios_entrada
+    if portfolio: return
+    print("INICIALIZANDO PORTAFOLIO DEMO REAL...")
+    for moneda in MONEDAS:
+        precio_actual = get_precio_real(moneda)
+        cantidad = DINERO_POR_MONEDA / precio_actual
+        portfolio[moneda] = cantidad
+        precios_entrada[moneda] = precio_actual
+        print(f"COMPRADO {cantidad} {moneda} a ${precio_actual}")
+    print("PORTAFOLIO LISTO")
+
+# --- COMANDOS DE TELEGRAM ---
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("🚀 Bot Rub 3 Cryptos Activo!\nEscribe: precio")
+    inicializar_portafolio()
+    await update.message.reply_text("✅ Bot Demo Real Activo\nBTC + ETH + XRP\nEscribe 'precio' para ver tu ganancia REAL")
 
 async def precio(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    precios = get_precios()
-    msg = "💰 PORTAFOLIO $1000\n\n"
-    total = 0
-    ganancia_total = 0
-    for m, info in PORTAFOLIO.items():
-        p = precios[m]
-        valor = info["cantidad"] * p
-        g = valor - (info["cantidad"] * info["entrada"])
-        total += valor
-        ganancia_total += g
-        emoji = "🟢" if g >=0 else "🔴"
-        msg += f"{emoji} {m}: ${p:,.2f}\n ${valor:.2f} ({g:+.2f})\n\n"
-    msg += f"💵 Total: ${total:.2f}\n📈 Ganancia: ${ganancia_total:+.2f}"
-    await update.message.reply_text(msg)
+    inicializar_portafolio()
+    texto = "📊 *PORTAFOLIO DEMO $1000 - GANANCIA REAL*\n\n"
+    total_actual = 0
+    total_entrada = 0
+    
+    for moneda in MONEDAS:
+        precio_ahora = get_precio_real(moneda)
+        cantidad = portfolio[moneda]
+        valor_ahora = cantidad * precio_ahora
+        valor_entrada = cantidad * precios_entrada[moneda]
+        
+        total_actual += valor_ahora
+        total_entrada += valor_entrada
+        
+        ganancia = valor_ahora - valor_entrada
+        emoji = "🟢" if ganancia >=0 else "🔴"
+        
+        texto += f"{emoji} *{moneda}:* ${precio_ahora:,.2f}\n"
+        texto += f"   Tienes: {cantidad:.4f} | Valor: ${valor_ahora:.2f} ({ganancia:+.2f})\n\n"
 
-async def handle(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await precio(update, context)
+    ganancia_total = total_actual - INVERSION_INICIAL
+    porcentaje = (ganancia_total / INVERSION_INICIAL) * 100
+    
+    texto += f"💰 *Total Actual: ${total_actual:.2f}*\n"
+    texto += f"📈 *Ganancia REAL: ${ganancia_total:+.2f} ({porcentaje:+.2f}%)*\n"
+    texto += f"_Precios reales de Binance_"
+    
+    await update.message.reply_text(texto, parse_mode='Markdown')
 
-if __name__ == "__main__":
-    threading.Thread(target=run_flask, daemon=True).start()
+def run_bot():
+    inicializar_portafolio()
+    app_telegram = Application.builder().token(TOKEN).build()
+    app_telegram.add_handler(CommandHandler("start", start))
+    app_telegram.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, precio))
     print("BOT 3 CRYPTOS INICIADO - Web server OK")
-    app = Application.builder().token(TOKEN).build()
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle))
-    app.run_polling()
+    app_telegram.run_polling()
+
+# --- INICIO ---
+if __name__ == "__main__":
+    threading.Thread(target=run_bot).start()
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
