@@ -3,7 +3,7 @@ from flask import Flask
 import telebot
 from telebot import types
 
-print("INICIANDO BTC ETH XRP VICENTE PRO 5MIN...", flush=True)
+print("INICIANDO VICENTE PRO 3 MONEDAS FIX...", flush=True)
 
 TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
@@ -14,29 +14,42 @@ CARTERA_FILE = "cartera.json"
 
 def load_cartera():
     if os.path.exists(CARTERA_FILE):
-        with open(CARTERA_FILE, "r") as f:
-            return json.load(f)
-    return {
-        "usd": 1000.0,
-        "btc": 0.0, "eth": 0.0, "xrp": 0.0,
-        "precio_btc": 0.0, "precio_eth": 0.0, "precio_xrp": 0.0
-    }
+        try:
+            with open(CARTERA_FILE, "r") as f:
+                return json.load(f)
+        except: pass
+    return {"usd": 1000.0, "btc": 0.0, "eth": 0.0, "xrp": 0.0, "precio_btc": 0.0, "precio_eth": 0.0, "precio_xrp": 0.0}
 
 def save_cartera(c):
     with open(CARTERA_FILE, "w") as f:
         json.dump(c, f)
 
 def get_precios():
+    headers = {"User-Agent": "Mozilla/5.0"}
     try:
+        # Intentamos con CoinGecko con headers
         r = requests.get(
             "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,ripple&vs_currencies=usd&include_24hr_change=true",
-            timeout=10).json()
+            headers=headers, timeout=15).json()
         return {
             "btc": (r['bitcoin']['usd'], r['bitcoin']['usd_24h_change']),
             "eth": (r['ethereum']['usd'], r['ethereum']['usd_24h_change']),
             "xrp": (r['ripple']['usd'], r['ripple']['usd_24h_change'])
         }
-    except:
+    except Exception as e:
+        print(f"Error coingecko: {e}, probando binance", flush=True)
+    try:
+        # Respaldo Binance
+        def get_binance(sym):
+            d = requests.get(f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}", headers=headers, timeout=10).json()
+            return float(d['lastPrice']), float(d['priceChangePercent'])
+        return {
+            "btc": get_binance("BTCUSDT"),
+            "eth": get_binance("ETHUSDT"),
+            "xrp": get_binance("XRPUSDT")
+        }
+    except Exception as e:
+        print(f"Error binance tambien: {e}", flush=True)
         return None
 
 def get_keyboard():
@@ -51,114 +64,69 @@ def get_keyboard():
         types.InlineKeyboardButton("🔴 ETH", callback_data="vender_eth"),
         types.InlineKeyboardButton("🔴 XRP", callback_data="vender_xrp")
     )
-    markup.row(
-        types.InlineKeyboardButton("📊 Ver Gráfica BTC", url="https://www.tradingview.com/symbols/BTCUSDT/"),
-    )
     return markup
 
 @bot.message_handler(commands=['start', 'balance'])
 def start(m):
     precios = get_precios()
     if not precios:
-        bot.send_message(m.chat.id, "Error obteniendo precios, intenta en 10 seg")
+        bot.send_message(m.chat.id, "⚠️ API de precios saturada, intenta en 15 seg")
         return
-    cartera = load_cartera()
-
-    p_btc, c_btc = precios['btc']
-    p_eth, c_eth = precios['eth']
-    p_xrp, c_xrp = precios['xrp']
-
-    total = cartera["usd"] + cartera["btc"]*p_btc + cartera["eth"]*p_eth + cartera["xrp"]*p_xrp
-
-    txt = (
-        f"⚡ *VICENTE CRYPTO PRO - 3 MONEDAS (5min)*\n\n"
-        f"BTC: ${p_btc:,.2f} ({c_btc:+.2f}%)\n"
-        f"ETH: ${p_eth:,.2f} ({c_eth:+.2f}%)\n"
-        f"XRP: ${p_xrp:,.4f} ({c_xrp:+.2f}%)\n\n"
-        f"USD Virtual: ${cartera['usd']:.2f}\n"
-        f"BTC: {cartera['btc']:.6f}\n"
-        f"ETH: {cartera['eth']:.6f}\n"
-        f"XRP: {cartera['xrp']:.2f}\n"
-        f"*TOTAL: ${total:.2f}*\n"
-        f"Comisión: 0.78% por operación"
-    )
+    c = load_cartera()
+    total = c["usd"] + c["btc"]*precios['btc'][0] + c["eth"]*precios['eth'][0] + c["xrp"]*precios['xrp'][0]
+    txt = (f"⚡ *VICENTE CRYPTO PRO - 3 MONEDAS (5min)*\n\n"
+           f"BTC: ${precios['btc'][0]:,.2f} ({precios['btc'][1]:+.2f}%)\n"
+           f"ETH: ${precios['eth'][0]:,.2f} ({precios['eth'][1]:+.2f}%)\n"
+           f"XRP: ${precios['xrp'][0]:,.4f} ({precios['xrp'][1]:+.2f}%)\n\n"
+           f"USD: ${c['usd']:.2f} | TOTAL: ${total:.2f}")
     bot.send_message(m.chat.id, txt, reply_markup=get_keyboard(), parse_mode="Markdown")
 
 @bot.callback_query_handler(func=lambda c: True)
 def callback(call):
-    cartera = load_cartera()
+    c = load_cartera()
     precios = get_precios()
-    if not precios:
-        bot.answer_callback_query(call.id, "Error precios")
-        return
-
-    moneda = call.data.split("_")[1] # btc, eth, xrp
-    accion = call.data.split("_")[0] # comprar, vender
+    if not precios: return
+    accion, moneda = call.data.split("_")
     precio = precios[moneda][0]
-
     if accion == "comprar":
-        if cartera["usd"] < 10:
-            bot.answer_callback_query(call.id, "Sin USD virtual")
-            return
-        usd = cartera["usd"] * 0.33 # compra 33% del saldo para poder comprar las 3
+        if c["usd"] < 5:
+            bot.answer_callback_query(call.id, "Sin USD"); return
+        usd = c["usd"] * 0.33
         cant = (usd * (1-COMISION)) / precio
-        cartera["usd"] -= usd
-        cartera[moneda] += cant
-        cartera[f"precio_{moneda}"] = precio
-        save_cartera(cartera)
-        bot.answer_callback_query(call.id, f"Compraste {cant:.6f} {moneda.upper()}")
+        c["usd"] -= usd; c[moneda] += cant; c[f"precio_{moneda}"] = precio
+        save_cartera(c)
         bot.send_message(call.message.chat.id, f"✅ COMPRA {moneda.upper()}: {cant:.6f} a ${precio:,.2f}")
-
-    elif accion == "vender":
-        if cartera[moneda] == 0:
-            bot.answer_callback_query(call.id, f"No tienes {moneda.upper()}")
-            return
-        usd_obt = cartera[moneda] * precio * (1-COMISION)
-        cartera["usd"] += usd_obt
-        cartera[moneda] = 0
-        save_cartera(cartera)
-        bot.answer_callback_query(call.id, f"Vendiste {moneda.upper()} por ${usd_obt:.2f}")
+    else:
+        if c[moneda] == 0:
+            bot.answer_callback_query(call.id, f"No tienes {moneda.upper()}"); return
+        usd_obt = c[moneda] * precio * (1-COMISION)
+        c["usd"] += usd_obt; c[moneda] = 0
+        save_cartera(c)
         bot.send_message(call.message.chat.id, f"✅ VENTA {moneda.upper()}: ${usd_obt:.2f}", reply_markup=get_keyboard())
+    bot.answer_callback_query(call.id, "Hecho")
 
 def alerta_automatica():
     while True:
-        time.sleep(300) # 5 MINUTOS
+        time.sleep(300)
         try:
             precios = get_precios()
-            if not precios or not CHAT_ID:
-                continue
-            for moneda in ["btc", "eth", "xrp"]:
-                precio, cambio = precios[moneda]
-                if cambio is None: continue
-
-                # ALERTA COMPRA SI BAJA -2% O MAS
+            if not precios or not CHAT_ID: continue
+            c = load_cartera()
+            for mon in ["btc","eth","xrp"]:
+                precio, cambio = precios[mon]
                 if cambio <= -2:
-                    bot.send_message(CHAT_ID,
-                        f"🟢 *ALERTA COMPRA {moneda.upper()}!*\n\n📉 Se desplomó {cambio:.2f}%\n💰 Precio: ${precio:,.4f}\n¡Oportunidad de comprar barato!",
-                        reply_markup=get_keyboard(), parse_mode="Markdown")
-
-                # ALERTA VENTA SI TIENES LA MONEDA Y GANAS +2% NETO
-                cartera = load_cartera()
-                if cartera[moneda] > 0:
-                    precio_compra = cartera[f"precio_{moneda}"]
-                    if precio_compra > 0:
-                        ganancia = (precio - precio_compra) / precio_compra * 100
-                        com_total = COMISION*2*100 # aprox
-                        ganancia_neta = ganancia - com_total
-                        if ganancia_neta >= 2:
-                            bot.send_message(CHAT_ID,
-                                f"🔴 *ALERTA VENTA {moneda.upper()}!*\n\n📈 Precio: ${precio:,.4f} ({cambio:+.2f}%)\n✅ *Ganancia NETA: {ganancia_neta:.2f}%*\n¡Conviene vender!",
-                                reply_markup=get_keyboard(), parse_mode="Markdown")
+                    bot.send_message(CHAT_ID, f"🟢 *COMPRA {mon.upper()}!* Cayó {cambio:.2f}% - ${precio:,.4f}", reply_markup=get_keyboard(), parse_mode="Markdown")
+                if c[mon] > 0 and c[f"precio_{mon}"] > 0:
+                    gan = (precio - c[f"precio_{mon}"]) / c[f"precio_{mon}"] * 100 - 1.56
+                    if gan >= 2:
+                        bot.send_message(CHAT_ID, f"🔴 *VENDE {mon.upper()}!* Neta +{gan:.2f}% - ${precio:,.4f}", reply_markup=get_keyboard(), parse_mode="Markdown")
         except Exception as e:
-            print(f"Error alerta: {e}")
+            print(e)
 
 threading.Thread(target=alerta_automatica, daemon=True).start()
 threading.Thread(target=lambda: bot.infinity_polling(), daemon=True).start()
-
 app = Flask(__name__)
 @app.route('/')
-def home():
-    return "Vicente PRO - BTC ETH XRP - 5min"
-
+def home(): return "Vicente PRO 3 FIX - Live"
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
