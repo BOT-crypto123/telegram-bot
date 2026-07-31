@@ -13,32 +13,35 @@ def get_datos(s):
     except:
         return None, None
 
-def main():
-    reporte = ""
-    alertas = ""
-    for m in MONEDAS:
-        precio, cambio = get_datos(m)
-        if not precio: continue
-        reporte += f"• {m}: ${precio:,.2f} ({cambio:+.2f}%)\n"
-        if cambio <= -2:
-            alertas += f"🟢 {m} BAJÓ {cambio:.2f}% - OPORTUNIDAD!\n"
-        elif cambio >= 2:
-            alertas += f"🔴 {m} SUBIÓ +{cambio:.2f}% - VENDE!\n"
-
-    if alertas:
-        texto = f"🚨 ALERTA 2% 🚨\n{alertas}\n⏰ REPORTE - Vicente\n{reporte}\n¿Qué hacemos?"
-    else:
-        texto = f"⏰ REPORTE BTC - Vicente\n\n{reporte}\n😴 Mercado estable (sin +-2%)\n¿Qué hacemos?"
-
+def mandar_mensaje(texto, moneda):
+    # Botones específicos de ESA moneda
     teclado = {
         "inline_keyboard": [
-            [{"text": "🟢 COMPRAR", "callback_data": "comprar"}, {"text": "🔴 VENDER", "callback_data": "vender"}],
-            [{"text": "📊 Ver gráfica", "url": "https://www.tradingview.com/symbols/BTCUSDT/"}]
+            [
+                {"text": f"🟢 COMPRAR {moneda}", "callback_data": f"comprar_{moneda}"},
+                {"text": f"🔴 VENDER {moneda}", "callback_data": f"vender_{moneda}"}
+            ],
+            [{"text": f"📊 Ver gráfica de {moneda}", "url": f"https://www.tradingview.com/symbols/{moneda}USDT/"}]
         ]
     }
-
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": CHAT_ID, "text": texto, "reply_markup": teclado})
+    requests.post(url, json={"chat_id": CHAT_ID, "text": texto, "reply_markup": teclado, "parse_mode": "Markdown"})
+
+def main():
+    for m in MONEDAS:
+        precio, cambio = get_datos(m)
+        if precio is None: continue
+
+        # SOLO SI SE MUEVE +-2%
+        if cambio <= -2:
+            texto = f"🚨 *ALERTA DE COMPRA* 🚨\n\n🟢 *{m} BAJÓ {cambio:.2f}%*\n💰 Precio actual: ${precio:,.2f}\n\n📉 Cayó más de 2% en 24h - ¡OPORTUNIDAD!\n\n¿Compramos {m}?"
+            mandar_mensaje(texto, m)
+
+        elif cambio >= 2:
+            texto = f"🚨 *ALERTA DE VENTA* 🚨\n\n🔴 *{m} SUBIÓ +{cambio:.2f}%*\n💰 Precio actual: ${precio:,.2f}\n\n📈 Subió más de 2% en 24h - ¡GANANCIA!\n\n¿Vendemos {m}?"
+            mandar_mensaje(texto, m)
+
+    print("Revisión terminada. Solo se mandó alerta si hubo +-2%")
 
 if __name__ == "__main__":
     main()
