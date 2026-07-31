@@ -10,7 +10,7 @@ PRECIO_COMPRA = float(os.getenv("PRECIO_COMPRA", 64364))
 bot = telebot.TeleBot(TOKEN)
 
 def get_btc():
-    url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,ripple&vs_currencies=usd&include_24hr_change=true"
+    url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true"
     return requests.get(url, timeout=10).json()
 
 def job():
@@ -22,6 +22,13 @@ def job():
         print(f"Estable {btc_change:.2f}% - no se envia")
         return
 
+    # ALERTA COMPRA -2%
+    if btc_change <= -2:
+        texto = f"🟢 ALERTA DE COMPRA - OPORTUNIDAD!\n\n📉 BTC bajo {btc_change:.2f}%\n💰 Precio: ${btc_price:,.2f}\nEs buen momento para comprar barato."
+        bot.send_message(CHAT_ID, texto)
+        return
+
+    # ALERTA VENTA +2%
     com_c = PRECIO_COMPRA * COMISION
     com_v = btc_price * COMISION
     ganancia_real = (btc_price - PRECIO_COMPRA) - (com_c + com_v)
@@ -31,7 +38,7 @@ def job():
         print(f"Ganancia real {porc_real:.2f}% - esperando")
         return
 
-    texto = f"🔴 ALERTA VENTA BTC\nSubio {btc_change:+.2f}%\nPrecio: ${btc_price:,.2f}\nGanancia REAL: ${ganancia_real:.2f} ({porc_real:.2f}%)"
+    texto = f"🔴 ALERTA DE VENTA - CONVIENE VENDER!\n\n📈 BTC subio {btc_change:+.2f}%\n💰 Precio: ${btc_price:,.2f}\n✅ GANANCIA REAL NETA: ${ganancia_real:.2f} ({porc_real:.2f}%)"
     bot.send_message(CHAT_ID, texto)
 
 if __name__ == "__main__":
