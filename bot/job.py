@@ -1,25 +1,41 @@
-import os, requests
+import os
+import requests
 
-TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
-CHAT_ID = 8976512826
+BOT_TOKEN = os.getenv("BOT_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")  # Asegúrate de tenerlo en Secrets
 
-def get_prices():
+def get_btc():
     try:
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,ripple&vs_currencies=usd", timeout=15).json()
-        return r['bitcoin']['usd'], r['ethereum']['usd'], r['ripple']['usd']
+        r = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=5).json()
+        return float(r['price'])
     except:
-        return 68000.0, 3400.0, 0.6
+        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", timeout=10).json()
+        return float(r['bitcoin']['usd'])
 
-def format_msg():
-    btc, eth, xrp = get_prices()
-    return f"BTC: ${btc:,.2f}\nETH: ${eth:,.2f}\nXRP: ${xrp:.4f}"
+precio = get_btc()
 
-def main():
-    btc, eth, xrp = get_prices()
-    texto = f"⏰ ALERTA 1 HORA - BTC Vicente\n\n{format_msg()}"
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": CHAT_ID, "text": texto})
-    print(f"Enviado: {texto}")
+# Texto del reporte
+texto = f"⏰ REPORTE BTC - Vicente\n\n💰 BTC: ${precio:,.2f}\n\n¿Qué hacemos?"
 
-if __name__ == "__main__":
-    main()
+# BOTONES COMPRAR / VENDER
+teclado = {
+    "inline_keyboard": [
+        [
+            {"text": "🟢 COMPRAR", "callback_data": "comprar"},
+            {"text": "🔴 VENDER", "callback_data": "vender"}
+        ],
+        [
+            {"text": "📊 Ver gráfica", "url": "https://www.tradingview.com/symbols/BTCUSDT/"}
+        ]
+    ]
+}
+
+url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+data = {
+    "chat_id": CHAT_ID,
+    "text": texto,
+    "reply_markup": teclado
+}
+
+resp = requests.post(url, json=data)
+print(resp.text)
