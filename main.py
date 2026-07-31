@@ -5,41 +5,38 @@ CHAT_ID = os.environ.get("CHAT_ID")
 INVERSION = 1000
 MONEDAS = ["BTC", "ETH", "XRP"]
 
-def get_precio(s):
+def get_datos(s):
     try:
         m = {"BTC":"bitcoin", "ETH":"ethereum", "XRP":"ripple"}
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={m[s]}&vs_currencies=usd"
+        url = f"https://api.coingecko.com/api/v3/simple/price?ids={m[s]}&vs_currencies=usd&include_24hr_change=true"
         r = requests.get(url, timeout=10).json()
-        return r[m[s]]["usd"]
+        precio = r[m[s]]["usd"]
+        cambio = r[m[s]].get("usd_24h_change", 0)
+        return precio, cambio
     except:
-        return None
+        return None, None
 
 def main():
     mensaje = f"⏰ REPORTE PRO - Vicente\n💰 Inversion: ${INVERSION}\n\n"
-    total_alerta = ""
+    alertas = ""
 
     for moneda in MONEDAS:
-        precio = get_precio(moneda)
+        precio, cambio = get_datos(moneda)
         if not precio:
             continue
 
-        # Lógica de Compra/Venta - CAMBIA ESTOS % SI QUIERES
-        # Si quieres que sea más sensible pon 1.0, si menos pon 3.0
-        if moneda == "BTC":
-            # Ejemplo: Alerta si BTC baja de 63000 o sube de 67000
-            if precio < 63000:
-                total_alerta += f"🟢 {moneda} BARATO para COMPRAR: ${precio:,.2f} (bajo $63k)\n"
-            elif precio > 67000:
-                total_alerta += f"🔴 {moneda} CARO para VENDER: ${precio:,.2f} (sobre $67k)\n"
+        if cambio <= -2:
+            alertas += f"🟢 {moneda} BAJO {cambio:.2f}% - OPORTUNIDAD COMPRA: ${precio:,.2f}\n"
+        elif cambio >= 2:
+            alertas += f"🔴 {moneda} SUBIO +{cambio:.2f}% - CONSIDERA VENDER: ${precio:,.2f}\n"
 
-        mensaje += f"• {moneda}: ${precio:,.2f}\n"
+        mensaje += f"• {moneda}: ${precio:,.2f} ({cambio:+.2f}%)\n"
 
-    if total_alerta:
-        mensaje = f"🚨🚨 ALERTA DE MERCADO 🚨🚨\n\n{total_alerta}\n" + mensaje
+    if alertas:
+        mensaje = f"🚨🚨 ALERTA 2% 🚨🚨\n{alertas}\n" + mensaje
     else:
-        mensaje += "\n😴 Mercado estable, sin alertas."
+        mensaje += "\n😴 Mercado estable (sin movimientos de +-2%)."
 
-    # Enviar a Telegram
     url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
     requests.post(url, json={"chat_id": CHAT_ID, "text": mensaje})
 
