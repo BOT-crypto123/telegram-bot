@@ -7,6 +7,7 @@ TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
 COMISION = 0.0078
 PRECIO_COMPRA = float(os.getenv("PRECIO_COMPRA", 64364))
+VERSION = "46-lines-fix"
 
 bot = telebot.TeleBot(TOKEN)
 
@@ -20,7 +21,7 @@ def job():
     btc_change = data['bitcoin']['usd_24h_change']
 
     if abs(btc_change) < 2:
-        print(f"Estable {btc_change:.2f}% - no se envia")
+        print(f"Estable {btc_change:.2f}% - no se envia {VERSION}")
         return
 
     if btc_change <= -2:
