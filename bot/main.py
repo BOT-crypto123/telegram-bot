@@ -3,7 +3,7 @@ from flask import Flask
 import telebot
 from telebot import types
 
-print("INICIANDO BTC VICENTE ALERT PRO...", flush=True)
+print("INICIANDO BTC VICENTE ALERT PRO 5MIN...", flush=True)
 
 TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
@@ -28,7 +28,7 @@ def get_btc():
         r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd&include_24hr_change=true", timeout=10).json()
         return r['bitcoin']['usd'], r['bitcoin']['usd_24h_change']
     except:
-        return 115000.0, 0.0  # precio respaldo si falla API
+        return 115000.0, 0.0
 
 def get_keyboard():
     markup = types.InlineKeyboardMarkup()
@@ -53,7 +53,7 @@ def start(m):
     ganancia_neta = (total - 1000) - com_c - com_v
 
     txt = (
-        f"⚡ *BTC VICENTE ALERT - PRO*\n\n"
+        f"⚡ *BTC VICENTE ALERT - PRO (5min)*\n\n"
         f"BTC: ${precio:,.2f} ({cambio:+.2f}%)\n"
         f"USD Virtual: ${cartera['usd']:.2f}\n"
         f"BTC Virtual: {cartera['btc']:.6f}\n"
@@ -79,6 +79,7 @@ def callback(call):
         cartera["usd"] -= usd
         cartera["precio_prom"] = precio
         save_cartera(cartera)
+        bot.answer_callback_query(call.id, f"Compraste {btc_comp:.6f} BTC")
         bot.send_message(call.message.chat.id, f"✅ COMPRA: {btc_comp:.6f} BTC a ${precio:,.2f}\nQuedan ${cartera['usd']:.2f}")
     elif call.data == "vender":
         if cartera["btc"] == 0:
@@ -89,23 +90,33 @@ def callback(call):
         cartera["usd"] += usd_obt
         cartera["btc"] = 0
         save_cartera(cartera)
+        bot.answer_callback_query(call.id, f"Vendiste por ${usd_obt:.2f}")
         bot.send_message(call.message.chat.id, f"✅ VENTA: ${usd_obt:.2f}\nGanancia NETA: ${ganancia:+.2f}", reply_markup=get_keyboard())
 
 def alerta_automatica():
     while True:
-        time.sleep(3600)
+        time.sleep(300) # <-- 5 MINUTOS, SOLO AVISA SI ES IMPORTANTE
         try:
             precio, cambio = get_btc()
-            if not precio or not CHAT_ID: continue
+            if not precio or not CHAT_ID:
+                continue
             if cambio is None: cambio = 0.0
+            
+            # SOLO SI BAJA -2% O MAS
             if cambio <= -2:
-                bot.send_message(CHAT_ID, f"🟢 *ALERTA COMPRA!* \n📉 Bajo {cambio:.2f}%\n💰 ${precio:,.2f}", reply_markup=get_keyboard(), parse_mode="Markdown")
+                bot.send_message(CHAT_ID, 
+                    f"🟢 *ALERTA COMPRA - OPORTUNIDAD!*\n\n📉 BTC se desplomó {cambio:.2f}%\n💰 Precio: ${precio:,.2f}\nBuen momento para comprar barato.",
+                    reply_markup=get_keyboard(), parse_mode="Markdown")
+            
+            # SOLO SI GANAS +2% NETO REAL
             com_c = PRECIO_COMPRA_REAL * COMISION
             com_v = precio * COMISION
             ganancia_real = (precio - PRECIO_COMPRA_REAL) - (com_c + com_v)
             porc_real = (ganancia_real / PRECIO_COMPRA_REAL) * 100
             if porc_real >= 2:
-                bot.send_message(CHAT_ID, f"🔴 *ALERTA VENTA!* \n📈 ${precio:,.2f} ({cambio:+.2f}%)\n✅ NETA: ${ganancia_real:.2f} ({porc_real:.2f}%)", reply_markup=get_keyboard(), parse_mode="Markdown")
+                bot.send_message(CHAT_ID,
+                    f"🔴 *ALERTA VENTA - IMPORTANTE!*\n\n📈 BTC: ${precio:,.2f} ({cambio:+.2f}%)\n✅ *Ganancia NETA: ${ganancia_real:.2f} ({porc_real:.2f}%)*\n¡Ya conviene vender ganando!",
+                    reply_markup=get_keyboard(), parse_mode="Markdown")
         except Exception as e:
             print(f"Error alerta: {e}")
 
@@ -115,7 +126,7 @@ threading.Thread(target=lambda: bot.infinity_polling(), daemon=True).start()
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return "BTC Vicente Alert PRO - Live"
+    return "BTC Vicente Alert PRO - 5min - Solo alertas importantes"
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
