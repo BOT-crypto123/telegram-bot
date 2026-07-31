@@ -2,7 +2,7 @@ name: BTC Bot Hourly
 
 on:
   schedule:
-    - cron: '*/20 * * * *'
+    - cron: '*/5 * * * *'
   workflow_dispatch:
 
 jobs:
