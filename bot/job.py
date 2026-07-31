@@ -1,47 +1,60 @@
-import os, requests
+import os
+import requests
+import telebot
+from telebot import types
 
-TOKEN = os.environ.get("BOT_TOKEN")
-CHAT_ID = os.environ.get("CHAT_ID")
-MONEDAS = ["BTC", "ETH", "XRP"]
-MAPA = {"BTC":"bitcoin", "ETH":"ethereum", "XRP":"ripple"}
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+CHAT_ID = os.getenv("CHAT_ID")
+COMISION = 0.0078  # 0.78% Bitso Taker
+PRECIO_COMPRA_GUARDADO = float(os.getenv("PRECIO_COMPRA", 64364))
 
-def get_datos(s):
-    try:
-        url = f"https://api.coingecko.com/api/v3/simple/price?ids={MAPA[s]}&vs_currencies=usd&include_24hr_change=true"
-        r = requests.get(url, timeout=10).json()
-        return r[MAPA[s]]["usd"], r[MAPA[s]].get("usd_24h_change",0)
-    except:
-        return None, None
+bot = telebot.TeleBot(TOKEN)
 
-def mandar_mensaje(texto, moneda):
-    # Botones específicos de ESA moneda
-    teclado = {
-        "inline_keyboard": [
-            [
-                {"text": f"🟢 COMPRAR {moneda}", "callback_data": f"comprar_{moneda}"},
-                {"text": f"🔴 VENDER {moneda}", "callback_data": f"vender_{moneda}"}
-            ],
-            [{"text": f"📊 Ver gráfica de {moneda}", "url": f"https://www.tradingview.com/symbols/{moneda}USDT/"}]
-        ]
-    }
-    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
-    requests.post(url, json={"chat_id": CHAT_ID, "text": texto, "reply_markup": teclado, "parse_mode": "Markdown"})
+def get_btc():
+    url = "https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,ripple&vs_currencies=usd&include_24hr_change=true"
+    r = requests.get(url, timeout=10).json()
+    return r
 
-def main():
-    for m in MONEDAS:
-        precio, cambio = get_datos(m)
-        if precio is None: continue
+def job():
+    data = get_btc()
+    btc_price = data['bitcoin']['usd']
+    btc_change = data['bitcoin']['usd_24h_change']
 
-        # SOLO SI SE MUEVE +-2%
-        if cambio <= -2:
-            texto = f"🚨 *ALERTA DE COMPRA* 🚨\n\n🟢 *{m} BAJÓ {cambio:.2f}%*\n💰 Precio actual: ${precio:,.2f}\n\n📉 Cayó más de 2% en 24h - ¡OPORTUNIDAD!\n\n¿Compramos {m}?"
-            mandar_mensaje(texto, m)
+    # 1. FILTRO DE VOLATILIDAD: Si no llega a +-2%, no hacer nada
+    if abs(btc_change) < 2:
+        print(f"[JOB] Mercado estable {btc_change:.2f}% - No se envía nada")
+        return
 
-        elif cambio >= 2:
-            texto = f"🚨 *ALERTA DE VENTA* 🚨\n\n🔴 *{m} SUBIÓ +{cambio:.2f}%*\n💰 Precio actual: ${precio:,.2f}\n\n📈 Subió más de 2% en 24h - ¡GANANCIA!\n\n¿Vendemos {m}?"
-            mandar_mensaje(texto, m)
+    # 2. FILTRO DE GANANCIA REAL CON COMISION
+    com_compra = PRECIO_COMPRA_GUARDADO * COMISION
+    com_venta = btc_price * COMISION
+    ganancia_real = (btc_price - PRECIO_COMPRA_GUARDADO) - (com_compra + com_venta)
+    porc_real = (ganancia_real / PRECIO_COMPRA_GUARDADO) * 100
 
-    print("Revisión terminada. Solo se mandó alerta si hubo +-2%")
+    # Si subió 2% pero la ganancia real es menor a 2%, tampoco avisamos
+    if porc_real < 2:
+        print(f"[JOB] Subió {btc_change:.2f}% pero ganancia real {porc_real:.2f}% - Esperando")
+        return
+
+    # 3. SOLO AQUÍ SI CONVIENE, MANDA LA ALERTA
+    texto = f"""🔴 ALERTA DE VENTA BTC - ¡CONVIENE!
+
+📈 Volatilidad: {btc_change:+.2f}%
+💰 Precio actual: ${btc_price:,.2f}
+Precio compra: ${PRECIO_COMPRA_GUARDADO:,.2f}
+
+💸 Comisión compra: ${com_compra:.2f}
+💸 Comisión venta: ${com_venta:.2f}
+
+✅ GANANCIA REAL NETA: ${ganancia_real:.2f} ({porc_real:.2f}%)
+"""
+    
+    markup = types.InlineKeyboardMarkup()
+    markup.add(types.InlineKeyboardButton("🔴 VENDER AHORA", callback_data="vender"))
+    markup.add(types.InlineKeyboardButton("📊 Ver gráfica", url="https://www.coingecko.com/en/coins/bitcoin"))
+
+    bot.send_message(CHAT_ID, texto, reply_markup=markup)
+    print(f"[JOB] Alerta enviada! Ganancia real {porc_real:.2f}%")
 
 if __name__ == "__main__":
-    main()
+    job()
