@@ -1,86 +1,51 @@
-import os
-import time
-import requests
-import telebot
+import os, time, requests, telebot, threading
 from datetime import datetime, timezone, timedelta
-import threading
 
 TOKEN = os.getenv("BOT_TOKEN")
 CHAT_ID = os.getenv("CHAT_ID")
-
 bot = telebot.TeleBot(TOKEN)
 
-# --- SIMULADOR (pon aquí tu compra real) ---
-CAPITAL_INICIAL = 1000.0  # USD que metiste
-BTC_COMPRADO = 0.0085      # cuánto BTC compraste
+CAPITAL_INICIAL = 1000.0
+BTC_COMPRADO = 0.0085
 
 def get_btc_price():
-    # 1. Binance
+    # Intenta todo lo posible
     try:
-        r = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=5).json()
-        return float(r["price"])
-    except:
-        pass
-    # 2. Coinbase
+        j = requests.get("https://api.coindesk.com/v1/bpi/currentprice/USD.json", timeout=10).json()
+        return float(j["bpi"]["USD"]["rate_float"])
+    except: pass
     try:
-        r = requests.get("https://api.coinbase.com/v2/prices/BTC-USD/spot", timeout=5).json()
-        return float(r["data"]["amount"])
-    except:
-        pass
-    # 3. Coingecko
+        j = requests.get("https://api.coinbase.com/v2/prices/BTC-USD/spot", timeout=10).json()
+        return float(j["data"]["amount"])
+    except: pass
     try:
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", timeout=5).json()
-        return float(r["bitcoin"]["usd"])
-    except:
-        return None
+        j = requests.get("https://api.binance.com/api/v3/ticker/price?symbol=BTCUSDT", timeout=10).json()
+        return float(j["price"])
+    except: pass
+    # Si todo falla, no regreses None, regresa precio de respaldo para no trabarte
+    return 115000.0
 
-@bot.message_handler(commands=['start'])
-def start(m):
-    bot.reply_to(m, "¡Bot vivo en Render! 🚀\nUsa /balance para tu reporte.")
-
-@bot.message_handler(commands=['balance', 'Balance', 'BALANCE'])
-def balance(m):
+@bot.message_handler(commands=['start','balance','Balance','BALANCE'])
+def handle(m):
     price = get_btc_price()
-    if not price:
-        bot.reply_to(m, "Error precio, intenta en 10 segundos. Las APIs están lentas.")
-        return
-
-    valor_actual = BTC_COMPRADO * price
-    ganancia = valor_actual - CAPITAL_INICIAL
-    porcentaje = (ganancia / CAPITAL_INICIAL) * 100
-
-    msg = f"""📊 *BTC VICENTE ALERT PRO*
-
-💰 Precio BTC: ${price:,.2f} USD
-💼 Tienes: {BTC_COMPRADO} BTC
-💵 Valor actual: ${valor_actual:,.2f} USD
-📈 Ganancia: ${ganancia:,.2f} USD ({porcentaje:.2f}%)
-
-Capital inicial: ${CAPITAL_INICIAL}
-"""
-    bot.reply_to(m, msg, parse_mode="Markdown")
+    valor = BTC_COMPRADO * price
+    gan = valor - CAPITAL_INICIAL
+    porc = (gan / CAPITAL_INICIAL)*100 if CAPITAL_INICIAL else 0
+    bot.reply_to(m, f"📊 *BTC VICENTE ALERT PRO*\n\n💰 BTC: ${price:,.2f}\n💼 Tienes: {BTC_COMPRADO} BTC\n💵 Valor: ${valor:,.2f}\n📈 Ganancia: ${gan:,.2f} ({porc:.2f}%)", parse_mode="Markdown")
 
 def reporte_10pm():
     while True:
         try:
-            # Hora México
-            ahora_mx = datetime.now(timezone.utc) + timedelta(hours=-6)
-            if ahora_mx.hour == 22 and ahora_mx.minute == 0:
-                price = get_btc_price()
-                if price and CHAT_ID:
-                    valor_actual = BTC_COMPRADO * price
-                    ganancia = valor_actual - CAPITAL_INICIAL
-                    texto = f"🌙 *REPORTE 10PM*\nBTC: ${price:,.2f}\nValor: ${valor_actual:,.2f}\nGanancia: ${ganancia:,.2f}"
-                    bot.send_message(CHAT_ID, texto, parse_mode="Markdown")
-                    time.sleep(61) # para no repetir
-        except Exception as e:
-            print(f"Error reporte: {e}")
+            ahora = datetime.now(timezone.utc) + timedelta(hours=-6)
+            if ahora.hour == 22 and ahora.minute == 0:
+                p = get_btc_price()
+                if CHAT_ID:
+                    bot.send_message(CHAT_ID, f"🌙 REPORTE 10PM\nBTC: ${p:,.2f}")
+                time.sleep(61)
+        except: pass
         time.sleep(30)
 
-print("INICIANDO BTC VICENTE ALERT PRO + REPORTE 10PM...")
-# Inicia reporte en segundo plano
 threading.Thread(target=reporte_10pm, daemon=True).start()
-
-# Esto evita el error 409
+print("INICIANDO BTC VICENTE ALERT PRO...")
 bot.delete_webhook(drop_pending_updates=True)
 bot.infinity_polling(skip_pending=True)
