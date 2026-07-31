@@ -1,66 +1,47 @@
-import os, threading, requests
-from flask import Flask
-from telegram import Update
-from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes
-
-app = Flask(__name__)
-@app.route('/')
-def home():
-    return "BOT XRP DEMO REAL - VIVO"
+import os, requests
 
 TOKEN = os.environ.get("BOT_TOKEN")
+CHAT_ID = os.environ.get("CHAT_ID")
 INVERSION = 1000
 MONEDAS = ["BTC", "ETH", "XRP"]
 
-portfolio = {}
-entrada = {}
-
 def get_precio(s):
     try:
-        m = {"BTC":"bitcoin","ETH":"ethereum","XRP":"ripple"}
+        m = {"BTC":"bitcoin", "ETH":"ethereum", "XRP":"ripple"}
         url = f"https://api.coingecko.com/api/v3/simple/price?ids={m[s]}&vs_currencies=usd"
         r = requests.get(url, timeout=10).json()
-        return float(r[m[s]]['usd'])
+        return r[m[s]]["usd"]
     except:
-        return {"BTC":68000,"ETH":3400,"XRP":0.60}[s]
+        return None
 
-def init():
-    if portfolio: return
-    for mon in MONEDAS:
-        p = get_precio(mon)
-        portfolio[mon] = (INVERSION/3) / p
-        entrada[mon] = p
+def main():
+    mensaje = f"⏰ REPORTE PRO - Vicente\n💰 Inversion: ${INVERSION}\n\n"
+    total_alerta = ""
 
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    init()
-    await update.message.reply_text("✅ Bot BTC+ETH+XRP Demo REAL activo\nEscribe 'precio'")
+    for moneda in MONEDAS:
+        precio = get_precio(moneda)
+        if not precio:
+            continue
 
-async def precio_cmd(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    init()
-    txt = "📊 *DEMO $1000 - GANANCIA REAL (BTC ETH XRP)*\n\n"
-    total = 0
-    for mon in MONEDAS:
-        ahora = get_precio(mon)
-        cant = portfolio[mon]
-        valor = cant * ahora
-        total += valor
-        gan = valor - (INVERSION/3)
-        emoji = "🟢" if gan>=0 else "🔴"
-        txt += f"{emoji} *{mon}:* ${ahora:,.4f}\n {cant:.4f} = ${valor:.2f} ({gan:+.2f})\n\n"
-    gt = total - INVERSION
-    pc = (gt/INVERSION)*100
-    txt += f"💰 *Total: ${total:.2f}*\n📈 *Ganancia REAL: ${gt:+.2f} ({pc:+.2f}%)*\n\nDemo - no cobrable pero precio real"
-    await update.message.reply_text(txt, parse_mode='Markdown')
+        # Lógica de Compra/Venta - CAMBIA ESTOS % SI QUIERES
+        # Si quieres que sea más sensible pon 1.0, si menos pon 3.0
+        if moneda == "BTC":
+            # Ejemplo: Alerta si BTC baja de 63000 o sube de 67000
+            if precio < 63000:
+                total_alerta += f"🟢 {moneda} BARATO para COMPRAR: ${precio:,.2f} (bajo $63k)\n"
+            elif precio > 67000:
+                total_alerta += f"🔴 {moneda} CARO para VENDER: ${precio:,.2f} (sobre $67k)\n"
 
-def run_flask():
-    app.run(host='0.0.0.0', port=int(os.environ.get("PORT",10000)))
+        mensaje += f"• {moneda}: ${precio:,.2f}\n"
+
+    if total_alerta:
+        mensaje = f"🚨🚨 ALERTA DE MERCADO 🚨🚨\n\n{total_alerta}\n" + mensaje
+    else:
+        mensaje += "\n😴 Mercado estable, sin alertas."
+
+    # Enviar a Telegram
+    url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+    requests.post(url, json={"chat_id": CHAT_ID, "text": mensaje})
 
 if __name__ == "__main__":
-    init()
-    threading.Thread(target=run_flask, daemon=True).start()
-    application = Application.builder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("precio", precio_cmd))
-    application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, precio_cmd))
-    print("BOT XRP INICIADO - precios reales CoinGecko")
-    application.run_polling()
+    main()
