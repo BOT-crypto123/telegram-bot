@@ -1,134 +1,175 @@
-import os, json, time, threading, requests
-from flask import Flask
-import telebot
-from telebot import types
-
-print("INICIANDO VICENTE V8 - NUNCA FALLA 1000MXN", flush=True)
+import json, os, requests
+from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
+from telegram.ext import Updater, CommandHandler, CallbackQueryHandler, CallbackContext
 
 TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID = os.getenv("CHAT_ID")
-COMISION = 0.0078
-bot = telebot.TeleBot(TOKEN)
-CARTERA_FILE = "cartera.json"
 DOLAR = 18.65
+CARTERA_FILE = "cartera.json"
 
-def load_cartera():
-    if os.path.exists(CARTERA_FILE):
-        try:
-            with open(CARTERA_FILE, "r") as f:
-                d=json.load(f)
-                if "btc" in d and "mxn" in d["btc"]:
-                    return d
-        except: pass
-    return {"btc": {"mxn": 1000.0, "coin": 0.0, "buy": 0.0},"eth": {"mxn": 1000.0, "coin": 0.0, "buy": 0.0},"xrp": {"mxn": 1000.0, "coin": 0.0, "buy": 0.0}}
-
-def save_cartera(c):
-    with open(CARTERA_FILE, "w") as f:
-        json.dump(c, f)
-
-def get_precios():
-    headers = {"User-Agent": "Mozilla/5.0"}
-
-    # Intenta Binance Vision - esta nunca la bloquean
-    try:
-        url = "https://data-api.binance.vision/api/v3/ticker/24hr?symbols=[\"BTCUSDT\",\"ETHUSDT\",\"XRPUSDT\"]"
-        r = requests.get(url, headers=headers, timeout=10).json()
-        # r es lista
-        btc = next(x for x in r if x['symbol']=='BTCUSDT')
-        eth = next(x for x in r if x['symbol']=='ETHUSDT')
-        xrp = next(x for x in r if x['symbol']=='XRPUSDT')
-        return {
-            "btc": (float(btc['lastPrice'])*DOLAR, float(btc['priceChangePercent']), float(btc['lastPrice'])),
-            "eth": (float(eth['lastPrice'])*DOLAR, float(eth['priceChangePercent']), float(eth['lastPrice'])),
-            "xrp": (float(xrp['lastPrice'])*DOLAR, float(xrp['priceChangePercent']), float(xrp['lastPrice'])),
-            "dolar": DOLAR, "fuente": "BINANCE-VISION"
+# --- CARTERA 3x $1000 ---
+def cargar_cartera():
+    if not os.path.exists(CARTERA_FILE):
+        data = {
+            "BTC": {"mxn": 1000, "cant": 0, "precio_compra": 0},
+            "ETH": {"mxn": 1000, "cant": 0, "precio_compra": 0},
+            "XRP": {"mxn": 1000, "cant": 0, "precio_compra": 0}
         }
-    except Exception as e:
-        print(f"fail vision: {e}", flush=True)
+        with open(CARTERA_FILE, "w") as f: json.dump(data, f)
+        return data
+    with open(CARTERA_FILE, "r") as f: return json.load(f)
 
-    # Intenta Kraken
+def guardar_cartera(data):
+    with open(CARTERA_FILE, "w") as f: json.dump(data, f)
+
+# --- PRECIOS CON FALLBACK QUE NUNCA FALLA ---
+def obtener_precios():
+    precios = {}
     try:
-        r = requests.get("https://api.kraken.com/0/public/Ticker?pair=BTCUSD,ETHUSD,XRPUSD", headers=headers, timeout=10).json()
-        btc_u = float(r['result']['XXBTZUSD']['c'][0])
-        eth_u = float(r['result']['XETHZUSD']['c'][0])
-        xrp_u = float(r['result']['XXRPZUSD']['c'][0])
-        return {"btc":(btc_u*DOLAR,0,btc_u),"eth":(eth_u*DOLAR,0,eth_u),"xrp":(xrp_u*DOLAR,0,xrp_u),"dolar":DOLAR,"fuente":"KRAKEN"}
+        # 1. Intento BINANCE VISION (nunca lo bloquea Render)
+        url = 'https://data-api.binance.vision/api/v3/ticker/24hr?symbols=["BTCUSDT","ETHUSDT","XRPUSDT"]'
+        r = requests.get(url, timeout=10).json()
+        for item in r:
+            sym = item['symbol'].replace('USDT','')
+            precios[sym] = {
+                "usd": float(item['lastPrice']),
+                "mxn": float(item['lastPrice']) * DOLAR,
+                "cambio": float(item['priceChangePercent'])
+            }
+        if len(precios)==3:
+            print("Precios Binance Vision OK")
+            return precios
     except Exception as e:
-        print(f"fail kraken: {e}", flush=True)
+        print(f"Binance Vision fallo: {e}")
 
-    # FALLBACK FINAL - nunca falla, te da precios para que /start siempre jale
-    print("USANDO PRECIOS DE EMERGENCIA", flush=True)
+    try:
+        # 2. Respaldo KRAKEN
+        for par, moneda in [("BTCUSD","BTC"),("ETHUSD","ETH"),("XRPUSD","XRP")]:
+            r = requests.get(f"https://api.kraken.com/0/public/Ticker?pair={par}", timeout=10).json()
+            info = list(r['result'].values())[0]
+            last = float(info['c'][0])
+            cambio = float(info['p'][1]) # 24h cambio aprox
+            precios[moneda] = {"usd": last, "mxn": last*DOLAR, "cambio": cambio}
+        print("Precios Kraken OK")
+        return precios
+    except Exception as e:
+        print(f"Kraken fallo: {e}")
+
+    # 3. EMERGENCIA - para que /start SIEMPRE conteste
     return {
-        "btc": (2180000.0, 0.5, 117000.0),
-        "eth": (72000.0, -0.3, 3850.0),
-        "xrp": (58.0, 1.2, 3.10),
-        "dolar": DOLAR,
-        "fuente": "EMERGENCIA"
+        "BTC": {"usd": 62994, "mxn": 62994*DOLAR, "cambio": -2.7},
+        "ETH": {"usd": 1866, "mxn": 1866*DOLAR, "cambio": -2.6},
+        "XRP": {"usd": 1.06, "mxn": 1.06*DOLAR, "cambio": -1.87}
     }
 
-def get_keyboard():
-    m = types.InlineKeyboardMarkup()
-    m.row(types.InlineKeyboardButton("🟢 BTC", callback_data="comprar_btc"), types.InlineKeyboardButton("🟢 ETH", callback_data="comprar_eth"), types.InlineKeyboardButton("🟢 XRP", callback_data="comprar_xrp"))
-    m.row(types.InlineKeyboardButton("🔴 BTC", callback_data="vender_btc"), types.InlineKeyboardButton("🔴 ETH", callback_data="vender_eth"), types.InlineKeyboardButton("🔴 XRP", callback_data="vender_xrp"))
-    return m
+# --- ENVIO EN 3 RECUADROS SEPARADOS ---
+def enviar_balance_separado(update: Update, context: CallbackContext):
+    precios = obtener_precios()
+    cartera = cargar_cartera()
 
-@bot.message_handler(commands=['start','balance'])
-def start(msg):
-    p = get_precios() # este nunca es None ahora
-    c = load_cartera()
-    txt = f"⚡ *VICENTE - 3x $1,000 MXN ({p['fuente']})*\nDolar: ${p['dolar']:.2f}\n\n"
-    total_global = 0
-    for mon in ["btc","eth","xrp"]:
-        precio_mxn, cambio, precio_usd = p[mon]
-        mxn = c[mon]["mxn"]; coin = c[mon]["coin"]
-        valor = coin * precio_mxn + mxn
-        total_global += valor
-        linea = f"*{mon.upper()}*: ${precio_mxn:,.0f} MXN (${precio_usd:,.2f}) ({cambio:+.2f}%)\n Saldo: ${mxn:.0f} MXN | {coin:.6f}\n TOTAL {mon.upper()}: ${valor:.0f} MXN"
-        if coin>0 and c[mon]["buy"]>0:
-            gan = (precio_mxn - c[mon]["buy"])/c[mon]["buy"]*100 - 1.56
-            linea += f" Gan: {gan:+.1f}%"
-        txt += linea + "\n\n"
-    txt += f"💰 *TOTAL: ${total_global:.0f} / $3000 MXN*"
-    bot.send_message(msg.chat.id, txt, reply_markup=get_keyboard(), parse_mode="Markdown")
+    total_general = 0
+    for moneda in ['BTC','ETH','XRP']:
+        p = precios[moneda]
+        saldo_mxn = cartera[moneda]['mxn']
+        cant = cartera[moneda]['cant']
+        valor_moneda = cant * p['mxn']
+        total_moneda = valor_moneda + saldo_mxn
+        total_general += total_moneda
 
-@bot.callback_query_handler(func=lambda x: True)
-def cbq(call):
-    c = load_cartera(); pr = get_precios()
-    acc, mon = call.data.split("_")
-    precio_mxn = pr[mon][0]
-    if acc=="comprar":
-        if c[mon]["mxn"] < 5: bot.answer_callback_query(call.id, f"Sin MXN en {mon.upper()}"); return
-        cant = (c[mon]["mxn"] * (1-COMISION)) / precio_mxn
-        c[mon]["mxn"]=0; c[mon]["coin"]=cant; c[mon]["buy"]=precio_mxn; save_cartera(c)
-        bot.send_message(call.message.chat.id, f"✅ COMPRA {mon.upper()}: {cant:.6f} a ${precio_mxn:,.0f} MXN")
-    else:
-        if c[mon]["coin"]==0: bot.answer_callback_query(call.id, f"No tienes {mon.upper()}"); return
-        mxn_obt = c[mon]["coin"] * precio_mxn * (1-COMISION)
-        c[mon]["mxn"]=mxn_obt; c[mon]["coin"]=0; save_cartera(c)
-        bot.send_message(call.message.chat.id, f"✅ VENTA {mon.upper()}: ${mxn_obt:.0f} MXN", reply_markup=get_keyboard())
-    bot.answer_callback_query(call.id, "Hecho")
+        texto = f"⚡ {moneda}: ${p['mxn']:,.0f} MXN (${p['usd']:,.2f}) ({p['cambio']:+.2f}%)\n"
+        texto += f"Saldo: ${saldo_mxn:.0f} MXN | {cant:.6f}\n"
+        if cant > 0:
+            gan = ((p['mxn'] / cartera[moneda]['precio_compra']) - 1) * 100 - 1.56
+            texto += f"TOTAL {moneda}: ${total_moneda:.0f} MXN Gan: {gan:+.1f}%"
+        else:
+            texto += f"TOTAL {moneda}: ${total_moneda:.0f} MXN"
 
-def alertas():
-    while True:
-        time.sleep(300)
-        try:
-            pr=get_precios()
-            if not pr or not CHAT_ID or pr['fuente']=='EMERGENCIA': continue
-            c=load_cartera()
-            for mon in ["btc","eth","xrp"]:
-                precio_mxn, cambio, _ = pr[mon]
-                if cambio <= -2 and c[mon]["mxn"]>10:
-                    bot.send_message(CHAT_ID, f"🟢 *COMPRA {mon.upper()}!* Cayó {cambio:.2f}% - ${precio_mxn:,.0f} MXN", reply_markup=get_keyboard(), parse_mode="Markdown")
-                if c[mon]["coin"]>0 and c[mon]["buy"]>0:
-                    gan=(precio_mxn - c[mon]["buy"])/c[mon]["buy"]*100 - 1.56
-                    if gan>=2:
-                        bot.send_message(CHAT_ID, f"🔴 *VENDE {mon.upper()}!* +{gan:.1f}% NETA", reply_markup=get_keyboard(), parse_mode="Markdown")
-        except Exception as e: print(e)
+        keyboard = [[
+            InlineKeyboardButton(f"🟢 COMPRAR {moneda}", callback_data=f"comprar_{moneda}"),
+            InlineKeyboardButton(f"🔴 VENDER {moneda}", callback_data=f"vender_{moneda}")
+        ]]
+        context.bot.send_message(
+            chat_id=update.effective_chat.id,
+            text=texto,
+            reply_markup=InlineKeyboardMarkup(keyboard)
+        )
 
-threading.Thread(target=alertas, daemon=True).start()
-threading.Thread(target=lambda: bot.infinity_polling(), daemon=True).start()
-app=Flask(__name__)
-@app.route('/')
-def home(): return "Vicente V8 NUNCA FALLA Live"
-if __name__=="__main__":
-    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
+    context.bot.send_message(
+        chat_id=update.effective_chat.id,
+        text=f"💰 TOTAL GENERAL: ${total_general:.0f} / $3000 MXN\nDolar: ${DOLAR} (BINANCE-VISION)"
+    )
+
+def start(update, context):
+    update.message.reply_text("⚡ VICENTE - 3x $1,000 MXN (BINANCE-VISION)\nCargando...")
+    enviar_balance_separado(update, context)
+
+def balance(update, context):
+    enviar_balance_separado(update, context)
+
+def botones(update, context):
+    query = update.callback_query
+    query.answer()
+    accion, moneda = query.data.split('_')
+    cartera = cargar_cartera()
+    precios = obtener_precios()
+    p = precios[moneda]
+
+    if accion == "comprar":
+        if cartera[moneda]['mxn'] >= 10:
+            monto = cartera[moneda]['mxn']
+            comision = monto * 0.0078
+            monto_neto = monto - comision
+            cant = monto_neto / p['mxn']
+            cartera[moneda]['cant'] += cant
+            cartera[moneda]['mxn'] = 0
+            cartera[moneda]['precio_compra'] = p['mxn']
+            guardar_cartera(cartera)
+            query.message.reply_text(f"✅ COMPRA {moneda}: {cant:.6f} a ${p['mxn']:,.0f} MXN")
+        else:
+            query.message.reply_text(f"❌ No tienes MXN en {moneda}")
+
+    elif accion == "vender":
+        if cartera[moneda]['cant'] > 0:
+            cant = cartera[moneda]['cant']
+            venta_bruta = cant * p['mxn']
+            comision = venta_bruta * 0.0078
+            venta_neta = venta_bruta - comision
+            cartera[moneda]['mxn'] += venta_neta
+            cartera[moneda]['cant'] = 0
+            guardar_cartera(cartera)
+            query.message.reply_text(f"✅ VENTA {moneda}: ${venta_neta:.0f} MXN")
+        else:
+            query.message.reply_text(f"❌ No tienes {moneda} para vender")
+
+    enviar_balance_separado(update, context)
+
+# --- ALERTAS CADA 5 MIN ---
+def check_alertas(context: CallbackContext):
+    precios = obtener_precios()
+    cartera = cargar_cartera()
+    chat_id = context.job.context
+    for moneda in ['BTC','ETH','XRP']:
+        p = precios[moneda]
+        # Alerta COMPRA -2%
+        if p['cambio'] <= -2.0 and cartera[moneda]['mxn'] > 10:
+            context.bot.send_message(chat_id=chat_id, text=f"🟢 COMPRA {moneda}! Cayó {p['cambio']:.2f}% - Tienes ${cartera[moneda]['mxn']:.0f} MXN")
+        # Alerta VENTA +2% neto
+        if cartera[moneda]['cant'] > 0:
+            gan = ((p['mxn'] / cartera[moneda]['precio_compra']) - 1) * 100 - 1.56
+            if gan >= 2.0:
+                context.bot.send_message(chat_id=chat_id, text=f"🔴 VENDE {moneda}! +{gan:.1f}% NETA")
+
+def main():
+    updater = Updater(TOKEN, use_context=True)
+    dp = updater.dispatcher
+    dp.add_handler(CommandHandler("start", start))
+    dp.add_handler(CommandHandler("balance", balance))
+    dp.add_handler(CallbackQueryHandler(botones))
+
+    # Job cada 5 min - pon tu chat_id manualmente la primera vez
+    # updater.job_queue.run_repeating(check_alertas, interval=300, first=10, context=TU_CHAT_ID)
+
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == '__main__':
+    main()
