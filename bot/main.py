@@ -1,27 +1,18 @@
 import asyncio
 import os
 import requests
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
 TOKEN = os.getenv("TELEGRAM_TOKEN")
-
-# CONFIG V22
 BUY_DROP = 0.02
 SELL_GAIN = 0.022
 CHECK_MIN = 300
 
-precios_compra = {
-"BTC": 63000,
-"ETH": 3200,
-"XRP": 0.60
-}
-cantidades = {
-"BTC": 0.0012,
-"ETH": 0.5,
-"XRP": 555.55
-}
-
+precios_compra = {"BTC": 63000, "ETH": 3200, "XRP": 0.60}
+cantidades = {"BTC": 0.0012, "ETH": 0.5, "XRP": 555.55}
 chat_id_global = None
 
 def get_price(symbol):
@@ -52,51 +43,59 @@ async def xrp(update, context):
 async def balance(update, context):
     global chat_id_global
     chat_id_global = update.effective_chat.id
-    total = 0
-    txt = "BALANCE V22\n"
+    total=0
+    txt="BALANCE V22\n"
     for s in ["BTC","ETH","XRP"]:
-        p = get_price(s)
+        p=get_price(s)
         if p:
-            v = p * cantidades[s]
-            total += v
-            txt += f"\n{s}: ${p:.4f} = ${v:.2f}"
-    txt += f"\n\nTOTAL: ${total:.2f}\nReviso cada 5 min."
+            v=p*cantidades[s]
+            total+=v
+            txt+=f"\n{s}: ${v:.2f}"
+    txt+=f"\n\nTOTAL: ${total:.2f}"
     await update.message.reply_text(txt)
 
 async def alertas(update, context):
     global chat_id_global
     chat_id_global = update.effective_chat.id
-    await update.message.reply_text("V22 ACTIVO\nReviso cada 5 min.\n-2% COMPRA\n+2.2% VENTA")
+    await update.message.reply_text("V22 ACTIVO - Reviso cada 5 min")
 
 async def cerebro(app):
     global precios_compra
-    print("Cerebro V22 iniciado cada 5 min")
     while True:
         await asyncio.sleep(CHECK_MIN)
         if not chat_id_global:
             continue
         for sym in ["BTC","ETH","XRP"]:
-            price = get_price(sym)
-            if not price:
-                continue
-            compra = precios_compra[sym]
+            price=get_price(sym)
+            if not price: continue
+            compra=precios_compra[sym]
             if price <= compra * (1 - BUY_DROP):
-                pct = (price-compra)/compra*100
                 try:
-                    await app.bot.send_message(chat_id=chat_id_global, text=f"COMPRA {sym}\nAhora: ${price:.4f}\nBajo {pct:.2f}%\nCompra: ${compra}")
-                    precios_compra[sym] = price
-                except:
-                    pass
+                    await app.bot.send_message(chat_id=chat_id_global, text=f"COMPRA {sym} ${price:.4f}")
+                    precios_compra[sym]=price
+                except: pass
             elif price >= compra * (1 + SELL_GAIN):
-                ganancia = (price-compra)/compra*100
-                neta = ganancia - 0.20
                 try:
-                    await app.bot.send_message(chat_id=chat_id_global, text=f"VENTA {sym}\nAhora: ${price:.4f}\nSubio +{ganancia:.2f}%\nLimpio: +{neta:.2f}%\nCompra: ${compra}")
-                    precios_compra[sym] = price
-                except:
-                    pass
+                    await app.bot.send_message(chat_id=chat_id_global, text=f"VENTA {sym} ${price:.4f}")
+                    precios_compra[sym]=price
+                except: pass
+
+# TRUCO PARA RENDER - PUERTO FALSO
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"Bot V22 OK")
+    def log_message(self, *args):
+        pass
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    server = HTTPServer(("0.0.0.0", port), Handler)
+    server.serve_forever()
 
 async def main():
+    threading.Thread(target=run_web, daemon=True).start()
     app = ApplicationBuilder().token(TOKEN).build()
     app.add_handler(CommandHandler("btc", btc))
     app.add_handler(CommandHandler("eth", eth))
