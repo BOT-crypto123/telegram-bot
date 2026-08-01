@@ -6,7 +6,7 @@ from http.server import HTTPServer, BaseHTTPRequestHandler
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-TOKEN = os.getenv("TELEGRAM_TOKEN")
+TOKEN = os.getenv("TELEGRAM_TOKEN") or os.getenv("BOT_TOKEN")
 BUY_DROP = 0.02
 SELL_GAIN = 0.022
 CHECK_MIN = 300
@@ -44,7 +44,7 @@ async def balance(update, context):
     global chat_id_global
     chat_id_global = update.effective_chat.id
     total=0
-    txt="BALANCE V22\n"
+    txt="BALANCE V22.1\n"
     for s in ["BTC","ETH","XRP"]:
         p=get_price(s)
         if p:
@@ -57,7 +57,7 @@ async def balance(update, context):
 async def alertas(update, context):
     global chat_id_global
     chat_id_global = update.effective_chat.id
-    await update.message.reply_text("V22 ACTIVO - Reviso cada 5 min")
+    await update.message.reply_text("V22.1 ACTIVO - Reviso cada 5 min")
 
 async def cerebro(app):
     global precios_compra
@@ -84,7 +84,7 @@ class Handler(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
-        self.wfile.write(b"Bot V22 OK")
+        self.wfile.write(b"Bot V22.1 OK")
     def log_message(self, *args):
         pass
 
@@ -101,9 +101,8 @@ async def main():
     app.add_handler(CommandHandler("xrp", xrp))
     app.add_handler(CommandHandler("balance", balance))
     app.add_handler(CommandHandler("alertas", alertas))
-    app.job_queue = None
     asyncio.create_task(cerebro(app))
-    print("Bot V22 listo")
+    print("Bot V22.1 listo")
     await app.run_polling()
 
 if __name__ == "__main__":
