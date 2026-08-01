@@ -1,132 +1,121 @@
-import os, json, threading, time
-print("=== V21.1 FIX VICENTE ===", flush=True)
-from flask import Flask
+import asyncio
+import os
 import requests
-from telegram import InlineKeyboardButton, InlineKeyboardMarkup, Update
-from telegram.ext import ApplicationBuilder, CommandHandler, CallbackQueryHandler, ContextTypes
-TOKEN = os.getenv("BOT_TOKEN")
-CHAT_ID_FILE = "/tmp/chat_id.txt"
-BALANCE_FILE = "/tmp/balance.json"
-CACHE = {"t":0, "data":None}
-INIT = 1000.0
-COMISION = 0.0078
-app = Flask(__name__)
-@app.route('/')
-def home(): return "V21.1 LIVE"
-@app.route('/health')
-def hl(): return "OK"
-def run_web(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT",10000)))
-def get_prices():
-    global CACHE
-    if time.time() - CACHE["t"] < 60 and CACHE["data"]:
-        return CACHE["data"]
-    try:
-        url = "https://api.binance.com/api/v3/ticker/24hr?symbols=[%22BTCUSDT%22,%22ETHUSDT%22,%22XRPUSDT%22]"
-        r = requests.get(url, timeout=10).json()
-        d = {x['symbol']: (float(x['lastPrice']), float(x['priceChangePercent'])) for x in r}
-        data = {"btc": d['BTCUSDT'], "eth": d['ETHUSDT'], "xrp": d['XRPUSDT']}
-        CACHE["t"] = time.time()
-        CACHE["data"] = data
-        return data
-    except: pass
-    try:
-        g = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin,ethereum,ripple&vs_currencies=usd&include_24hr_change=true", timeout=10).json()
-        data = {"btc": (float(g['bitcoin']['usd']), float(g['bitcoin']['usd_24h_change'])), "eth": (float(g['ethereum']['usd']), float(g['ethereum']['usd_24h_change'])), "xrp": (float(g['ripple']['usd']), float(g['ripple']['usd_24h_change']))}
-        CACHE["t"] = time.time()
-        CACHE["data"] = data
-        return data
-    except: pass
-    if CACHE["data"]:
-        return CACHE["data"]
-    return {"btc": (63450.12, 1.25), "eth": (3450.55, 0.89), "xrp": (0.62, 2.1)}
-def load_bal():
-    try:
-        with open(BALANCE_FILE,'r') as f: return json.load(f)
-    except:
-        return {"btc": (INIT/3)/68000, "eth": (INIT/3)/3400, "xrp": (INIT/3)/0.6, "usd":0, "init":INIT, "p_btc":68000,"p_eth":3400,"p_xrp":0.6}
-def save_bal(b):
-    with open(BALANCE_FILE,'w') as f: json.dump(b,f)
-def recuadro(moneda, precio, cambio, bal):
-    qty = bal[moneda]
-    valor = qty*precio
-    p_compra = bal.get(f'p_{moneda}', precio)
-    gan = ((precio - p_compra)/p_compra*100) if p_compra>0 else 0
-    icono = "🟢" if cambio>=0 else "🔴"
-    return f"┌─ {icono} {moneda.upper()} ──────────\n│ 💰 Precio: ${precio:,.4f}\n│ 📈 24h: {cambio:+.2f}%\n│ 📦 Tienes: {qty:.6f}\n│ 💵 Valor: ${valor:.2f}\n│ 🎯 Compra: ${p_compra:,.4f}\n│ 📊 Ganancia: {gan:+.2f}%\n└──────────────────"
-def fmt_one(m):
-    p = get_prices()
-    price, change = p[m]
-    bal = load_bal()
-    return recuadro(m, price, change, bal)
-def fmt_all():
-    p = get_prices()
-    bal = load_bal()
-    total = bal['btc']*p['btc'][0] + bal['eth']*p['eth'][0] + bal['xrp']*p['xrp'][0] + bal['usd']
-    pct_total = (total-INIT)/INIT*100
-    texto = f"💼 BALANCE TOTAL: ${total:.2f} ({pct_total:+.2f}%)\n\n"
-    texto += recuadro("btc", p['btc'][0], p['btc'][1], bal) + "\n\n"
-    texto += recuadro("eth", p['eth'][0], p['eth'][1], bal) + "\n\n"
-    texto += recuadro("xrp", p['xrp'][0], p['xrp'][1], bal)
-    return texto
-def get_buttons(m=None):
-    if m:
-        return InlineKeyboardMarkup([ [InlineKeyboardButton(f"🟢 Comprar {m.upper()}", callback_data=f"comprar_{m}"), InlineKeyboardButton(f"🔴 Vender {m.upper()}", callback_data=f"vender_{m}")], [InlineKeyboardButton("💰 Ver Todo", callback_data="todo")] ])
-    return InlineKeyboardMarkup([ [InlineKeyboardButton("🟢 BTC", callback_data="ver_btc"), InlineKeyboardButton("🔴 BTC", callback_data="vender_btc")], [InlineKeyboardButton("🟢 ETH", callback_data="ver_eth"), InlineKeyboardButton("🔴 ETH", callback_data="vender_eth")], [InlineKeyboardButton("🟢 XRP", callback_data="ver_xrp"), InlineKeyboardButton("🔴 XRP", callback_data="vender_xrp")], [InlineKeyboardButton("💰 Balance Total", callback_data="todo")] ])
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    with open(CHAT_ID_FILE,'w') as f: f.write(str(update.effective_chat.id))
-    await update.message.reply_text("✅ V21.1 RECUADROS LISTO\n/btc /eth /xrp /balance", reply_markup=get_buttons())
-async def cmd_btc(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(fmt_one("btc"), reply_markup=get_buttons("btc"))
-async def cmd_eth(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(fmt_one("eth"), reply_markup=get_buttons("eth"))
-async def cmd_xrp(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(fmt_one("xrp"), reply_markup=get_buttons("xrp"))
-async def cmd_balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(fmt_all(), reply_markup=get_buttons())
-async def buttons(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q = update.callback_query
-    await q.answer()
-    bal = load_bal()
-    precios = get_prices()
-    data = q.data
-    if data.startswith("ver_"):
-        m = data.split("_")[1]
-        await q.edit_message_text(fmt_one(m), reply_markup=get_buttons(m))
-        return
-    if data == "todo":
-        await q.edit_message_text(fmt_all(), reply_markup=get_buttons())
-        return
-    accion, moneda = data.split("_")
-    precio = precios[moneda][0]
-    if accion == "comprar":
-        cant = (50*(1-COMISION))/precio
-        bal[moneda]+=cant
-        bal[f"p_{moneda}"]=precio
-        save_bal(bal)
-        await q.edit_message_text(f"✅ COMPRA {moneda.upper()}\n\n"+fmt_one(moneda), reply_markup=get_buttons(moneda))
-    else:
-        if bal[moneda]<=0:
-            await q.answer(f"No tienes {moneda.upper()}")
-            return
-        usd = bal[moneda]*precio*(1-COMISION)
-        bal['usd']+=usd
-        bal[moneda]=0
-        save_bal(bal)
-        await q.edit_message_text(f"✅ VENTA {moneda.upper()} ${usd:.2f}\n\n"+fmt_all(), reply_markup=get_buttons())
-def main():
-    try:
-        requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=True", timeout=5)
-    except: pass
-    time.sleep(2)
-    threading.Thread(target=run_web, daemon=True).start()
-    application = ApplicationBuilder().token(TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("btc", cmd_btc))
-    application.add_handler(CommandHandler("eth", cmd_eth))
-    application.add_handler(CommandHandler("xrp", cmd_xrp))
-    application.add_handler(CommandHandler("balance", cmd_balance))
-    application.add_handler(CallbackQueryHandler(buttons))
-    print("V21.1 FIX LIVE", flush=True)
-    application.run_polling(drop_pending_updates=True)
-if __name__=="__main__":
-    main()
+from telegram import Update
+from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
+
+TOKEN = os.getenv("TELEGRAM_TOKEN")
+
+# CONFIG V22 - LO QUE PEDISTE
+BUY_DROP = 0.02 # Comprar -2%
+SELL_GAIN = 0.022 # Vender +2.2% = +2% limpio ya sin comisiones
+CHECK_MIN = 300 # Revisar cada 5 minutos
+
+# Tus compras base - CAMBIALAS si quieres
+precios_compra = {
+    "BTC": 63000,
+        "ETH": 3200,
+            "XRP": 0.60
+            }
+            cantidades = {
+                "BTC": 0.0012,
+                    "ETH": 0.5,
+                        "XRP": 555.55
+                        }
+
+                        chat_id_global = None
+
+                        def get_price(symbol):
+                            try:
+                                    r = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}USDT", timeout=10)
+                                            return float(r.json()["price"])
+                                                except:
+                                                        return None
+
+                                                        # Comandos
+                                                        async def btc(update, context):
+                                                            global chat_id_global
+                                                                chat_id_global = update.effective_chat.id
+                                                                    p = get_price("BTC")
+                                                                        await update.message.reply_text(f"┌─ 🟢 BTC ───────\n│ 💰 Precio: ${p:,.2f}\n│ 📈 Compra: ${precios_compra['BTC']}\n│ 📦 Tienes: {cantidades['BTC']}\n│ 💵 Valor: ${p*cantidades['BTC']:.2f}\n└────────────────")
+
+                                                                        async def eth(update, context):
+                                                                            global chat_id_global
+                                                                                chat_id_global = update.effective_chat.id
+                                                                                    p = get_price("ETH")
+                                                                                        await update.message.reply_text(f"┌─ 🔵 ETH ───────\n│ 💰 Precio: ${p:,.2f}\n│ 📈 Compra: ${precios_compra['ETH']}\n│ 📦 Tienes: {cantidades['ETH']}\n│ 💵 Valor: ${p*cantidades['ETH']:.2f}\n└────────────────")
+
+                                                                                        async def xrp(update, context):
+                                                                                            global chat_id_global
+                                                                                                chat_id_global = update.effective_chat.id
+                                                                                                    p = get_price("XRP")
+                                                                                                        await update.message.reply_text(f"┌─ ⚫ XRP ───────\n│ 💰 Precio: ${p:.4f}\n│ 📈 Compra: ${precios_compra['XRP']}\n│ 📦 Tienes: {cantidades['XRP']}\n│ 💵 Valor: ${p*cantidades['XRP']:.2f}\n└────────────────")
+
+                                                                                                        async def balance(update, context):
+                                                                                                            global chat_id_global
+                                                                                                                chat_id_global = update.effective_chat.id
+                                                                                                                    total=0
+                                                                                                                        txt="💼 BALANCE V22\n"
+                                                                                                                            for s in ["BTC","ETH","XRP"]:
+                                                                                                                                    p=get_price(s)
+                                                                                                                                            if p:
+                                                                                                                                                        v=p*cantidades[s]
+                                                                                                                                                                    total+=v
+                                                                                                                                                                                txt+=f"\n{s}: ${p:.4f} = ${v:.2f}"
+                                                                                                                                                                                    txt+=f"\n\nTOTAL: ${total:.2f}\n\nReviso cada 5 min.\nTe aviso solo si toca comprar/vender."
+                                                                                                                                                                                        await update.message.reply_text(txt)
+
+                                                                                                                                                                                        async def alertas(update, context):
+                                                                                                                                                                                            global chat_id_global
+                                                                                                                                                                                                chat_id_global = update.effective_chat.id
+                                                                                                                                                                                                    await update.message.reply_text("✅ V22 ACTIVO\n\nReviso precios cada 5 min.\nSi baja -2% = te aviso COMPRA\nSi sube +2.2% = te aviso VENDE (+2% limpio para ti)\n\nNo te mandare nada hasta que toque.")
+
+                                                                                                                                                                                                    # CEREBRO QUE REVISA CADA 5 MIN
+                                                                                                                                                                                                    async def cerebro(app):
+                                                                                                                                                                                                        global precios_compra
+                                                                                                                                                                                                            print("Cerebro V22 iniciado cada 5 min")
+                                                                                                                                                                                                                while True:
+                                                                                                                                                                                                                        await asyncio.sleep(CHECK_MIN)
+                                                                                                                                                                                                                                if not chat_id_global:
+                                                                                                                                                                                                                                            continue
+                                                                                                                                                                                                                                                    for sym in ["BTC","ETH","XRP"]:
+                                                                                                                                                                                                                                                                price = get_price(sym)
+                                                                                                                                                                                                                                                                            if not price: continue
+                                                                                                                                                                                                                                                                                        compra = precios_compra[sym]
+
+                                                                                                                                                                                                                                                                                                    # COMPRA -2%
+                                                                                                                                                                                                                                                                                                                if price <= compra * (1 - BUY_DROP):
+                                                                                                                                                                                                                                                                                                                                pct = (price-compra)/compra*100
+                                                                                                                                                                                                                                                                                                                                                try:
+                                                                                                                                                                                                                                                                                                                                                                    await app.bot.send_message(chat_id=chat_id_global, text=f"🟢 ALERTA COMPRA {sym}\n\n💰 Ahora: ${price:.4f}\n📉 Bajó {pct:.2f}%\nTu compra: ${compra}\n\nToca COMPRAR -2%")
+                                                                                                                                                                                                                                                                                                                                                                                        precios_compra[sym] = price # Actualiza base
+                                                                                                                                                                                                                                                                                                                                                                                                        except Exception as e:
+                                                                                                                                                                                                                                                                                                                                                                                                                            print(e)
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                        # VENTA +2.2%
+                                                                                                                                                                                                                                                                                                                                                                                                                                                    elif price >= compra * (1 + SELL_GAIN):
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                    ganancia = (price-compra)/compra*100
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    neta = ganancia - 0.20
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    try:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        await app.bot.send_message(chat_id=chat_id_global, text=f"🔴 ALERTA VENTA {sym}\n\n💰 Ahora: ${price:.4f}\n📈 Subió +{ganancia:.2f}%\n💵 Para ti limpio: +{neta:.2f}%\nTu compra: ${compra}\n\nToca VENDER +2% limpio")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            precios_compra[sym] = price # Actualiza base
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            except Exception as e:
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                print(e)
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                async def main():
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    app = ApplicationBuilder().token(TOKEN).build()
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        app.add_handler(CommandHandler("btc", btc))
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            app.add_handler(CommandHandler("eth", eth))
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                app.add_handler(CommandHandler("xrp", xrp))
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    app.add_handler(CommandHandler("balance", balance))
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        app.add_handler(CommandHandler("alertas", alertas))
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            # Inicia cerebro en paralelo
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                app.job_queue = None
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    asyncio.create_task(cerebro(app))
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        print("Bot V22 listo")
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            await app.run_polling()
+
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            if __name__ == "__main__":
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                asyncio.run(main())
