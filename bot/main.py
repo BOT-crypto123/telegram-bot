@@ -13,12 +13,15 @@ def cargar_cartera():
             "ETH": {"mxn": 1000, "cant": 0, "precio_compra": 0},
             "XRP": {"mxn": 1000, "cant": 0, "precio_compra": 0}
         }
-        with open(CARTERA_FILE, "w") as f: json.dump(data, f)
+        with open(CARTERA_FILE, "w") as f:
+            json.dump(data, f)
         return data
-    with open(CARTERA_FILE, "r") as f: return json.load(f)
+    with open(CARTERA_FILE, "r") as f:
+        return json.load(f)
 
 def guardar_cartera(data):
-    with open(CARTERA_FILE, "w") as f: json.dump(data, f)
+    with open(CARTERA_FILE, "w") as f:
+        json.dump(data, f)
 
 def obtener_precios():
     precios = {}
@@ -27,22 +30,36 @@ def obtener_precios():
         r = requests.get(url, timeout=10).json()
         for item in r:
             sym = item['symbol'].replace('USDT','')
-            precios[sym] = {
-                "usd": float(item['lastPrice']),
-                "mxn": float(item['lastPrice']) * DOLAR,
-                "cambio": float(item['priceChangePercent'])
-            }
-        if len(precios)==3: return precios
-    except: pass
-    try:
-        for par, moneda in [("BTCUSD","BTC"),("ETHUSD","ETH"),("XRPUSD","XRP")]:
-            r = requests.get(f"https://api.kraken.com/0/public/Ticker?pair={par}", timeout=10).json()
-            info = list(r['result'].values())[0]
-            last = float(info['c'][0])
-            cambio = float(info['p'][1])
-            precios[moneda] = {"usd": last, "mxn": last*DOLAR, "cambio": cambio}
-        return precios
-    except: pass
+            usd = float(item['lastPrice'])
+            precios[sym] = {"usd": usd, "mxn": usd*DOLAR, "cambio": float(item['priceChangePercent'])}
+        if len(precios)==3:
+            return precios
+    except:
+        pass
     return {
-        "BTC": {"usd": 62994, "mxn": 62994*DOLAR, "cambio": -2.7},
-        "ETH": {"usd": 1866, "mxn":
+        "BTC": {"usd": 62994, "mxn": 1170000, "cambio": -2.7},
+        "ETH": {"usd": 1866, "mxn": 34800, "cambio": -2.6},
+        "XRP": {"usd": 1.06, "mxn": 20, "cambio": -1.8}
+    }
+
+def enviar_balance_separado(update, context):
+    precios = obtener_precios()
+    cartera = cargar_cartera()
+    total_general = 0
+    for moneda in ['BTC','ETH','XRP']:
+        p = precios[moneda]
+        saldo_mxn = cartera[moneda]['mxn']
+        cant = cartera[moneda]['cant']
+        total_moneda = cant * p['mxn'] + saldo_mxn
+        total_general += total_moneda
+        texto = f"⚡ {moneda}: ${p['mxn']:,.0f} MXN (${p['usd']:,.2f}) ({p['cambio']:+.2f}%)\n"
+        texto += f"Saldo: ${saldo_mxn:.0f} MXN | {cant:.6f}\n"
+        if cant > 0:
+            gan = ((p['mxn'] / cartera[moneda]['precio_compra']) - 1) * 100 - 1.56
+            texto += f"TOTAL {moneda}: ${total_moneda:.0f} MXN Gan: {gan:+.1f}%"
+        else:
+            texto += f"TOTAL {moneda}: ${total_moneda:.0f} MXN"
+        keyboard = [[
+            InlineKeyboardButton(f"🟢 COMPRAR {moneda}", callback_data=f"comprar_{moneda}"),
+            InlineKeyboardButton(f"🔴 VENDER {moneda}", callback_data=f"vender_{moneda}")
+        ]]
