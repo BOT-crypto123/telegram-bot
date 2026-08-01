@@ -1,4 +1,6 @@
-import os, threading
+import os, threading, asyncio
+import nest_asyncio
+nest_asyncio.apply()
 import yfinance as yf
 from flask import Flask
 from telegram import Update
@@ -9,54 +11,38 @@ PORTFOLIO = {"BTC":{"qty":0.00015,"free":0},"ETH":{"qty":0.028534,"free":0},"XRP
 
 app = Flask(__name__)
 @app.route('/')
-def home(): return "V12 LIVE"
+def home(): return "V13 LIVE"
 @app.route('/health')
 def health(): return "OK"
 
 def run_web():
-    p = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=p)
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)))
 
-def get_price(ticker):
+def get_price(t):
     try:
-        df = yf.Ticker(ticker).history(period="1d")
-        last = float(df['Close'].iloc[-1])
-        open_p = float(df['Open'].iloc[0])
-        ch = (last-open_p)/open_p*100
-        return last, ch
+        df = yf.Ticker(t).history(period="1d")
+        return float(df['Close'].iloc[-1]), float((df['Close'].iloc[-1]-df['Open'].iloc[0])/df['Open'].iloc[0]*100)
     except: return 0,0
-
 def get_rate():
     try: return float(yf.Ticker("USDMXN=X").history(period="1d")['Close'].iloc[-1])
     except: return 18.6
 
-def build_msg():
-    rate = get_rate()
-    total = 0
-    txt = ""
-    for c in ["BTC","ETH","XRP"]:
-        usd,ch = get_price(c+"-USD")
-        mxn = usd*rate
-        h = PORTFOLIO[c]
-        t = h["qty"]*mxn + h["free"]
-        total+=t
-        txt+=f"{c}: ${mxn:.0f} MXN ({ch:+.1f}%)\n"
+async def start(u: Update, c: ContextTypes.DEFAULT_TYPE): await u.message.reply_text("V13 LIVE - /balance")
+async def bal(u: Update, c: ContextTypes.DEFAULT_TYPE):
+    rate=get_rate(); total=0; txt=""
+    for k in ["BTC","ETH","XRP"]:
+        usd,ch=get_price(k+"-USD"); mxn=usd*rate; t=PORTFOLIO[k]["qty"]*mxn+PORTFOLIO[k]["free"]; total+=t
+        txt+=f"{k}: ${mxn:.0f} MXN ({ch:+.1f}%)\n"
     txt+=f"\nTOTAL: ${total:.0f} / 3000 MXN"
-    return txt
-
-async def start(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("V12 LIVE - Usa /balance /btc /eth /xrp")
-
-async def bal(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text(build_msg())
-
-async def price_cmd(update: Update, ctx: ContextTypes.DEFAULT_TYPE):
-    coin = update.message.text.replace("/","").upper()
-    usd,ch = get_price(coin+"-USD")
-    await update.message.reply_text(f"{coin}: ${usd*get_rate():.0f} MXN {ch:+.1f}%")
+    await u.message.reply_text(txt)
+async def price_cmd(u: Update, c: ContextTypes.DEFAULT_TYPE):
+    coin=u.message.text.replace("/","").upper(); usd,ch=get_price(coin+"-USD")
+    await u.message.reply_text(f"{coin}: ${usd*get_rate():.0f} MXN {ch:+.1f}%")
 
 def main():
     threading.Thread(target=run_web, daemon=True).start()
+    loop = asyncio.new_event_loop()
+    asyncio.set_event_loop(loop)
     app_t = ApplicationBuilder().token(BOT_TOKEN).build()
     app_t.add_handler(CommandHandler("start", start))
     app_t.add_handler(CommandHandler("balance", bal))
@@ -65,5 +51,4 @@ def main():
     app_t.add_handler(CommandHandler("xrp", price_cmd))
     app_t.run_polling(drop_pending_updates=True)
 
-if __name__=="__main__":
-    main()
+if __name__=="__main__": main()
