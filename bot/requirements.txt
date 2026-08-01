@@ -1,3 +1,4 @@
 python-telegram-bot==22.3
-yfinance
-flask
+Flask==3.0.3
+yfinance==0.2.38
+nest-asyncio==1.6.0
