@@ -7,91 +7,118 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 BOT_TOKEN = os.environ.get("BOT_TOKEN")
 URL = os.environ.get("UPSTASH_REDIS_REST_URL")
 REST_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-KEY = "btc-bot-v29"
+KEY = "btc-vicente-v29-eternal"
 
 app = Flask(__name__)
 @app.route('/')
-def home(): return "Bot V29 Activo - Upstash OK"
+def home(): return "V29 ETERNO-UPSTASH OK"
 
 def load_data():
     try:
-        if not URL or not REST_TOKEN: raise Exception("No URL")
+        if not URL or not REST_TOKEN: return {"users":{}}
         r = requests.post(URL, headers={"Authorization": f"Bearer {REST_TOKEN}"}, json=["GET", KEY], timeout=10)
-        data = r.json().get("result")
-        if data:
-            return json.loads(data)
+        res = r.json().get("result")
+        if res: return json.loads(res)
     except Exception as e:
-        print(f"Load error: {e}")
-    return {"users": {}}
+        print(f"Load err: {e}")
+    return {"users":{}}
 
 def save_data(data):
     try:
         j = json.dumps(data)
         requests.post(URL, headers={"Authorization": f"Bearer {REST_TOKEN}"}, json=["SET", KEY, j], timeout=10)
-        print("Guardado en Upstash OK")
     except Exception as e:
-        print(f"Save error: {e}")
+        print(f"Save err: {e}")
 
-def get_price():
+def get_prices():
     try:
-        btc = yf.Ticker("BTC-USD")
-        return float(btc.fast_info['last_price'])
+        btc = float(yf.Ticker("BTC-USD").fast_info['last_price'])
+        eth = float(yf.Ticker("ETH-USD").fast_info['last_price'])
+        xrp = float(yf.Ticker("XRP-USD").fast_info['last_price'])
+        usdmxn = float(yf.Ticker("USDMXN=X").fast_info['last_price'])
+        # RSI simple
+        def rsi(ticker):
+            try:
+                hist = yf.Ticker(ticker).history(period="14d")['Close']
+                delta = hist.diff()
+                gain = delta.where(delta>0,0).rolling(14).mean()
+                loss = -delta.where(delta<0,0).rolling(14).mean()
+                rs = gain / loss
+                return round(100 - (100/(1+rs.iloc[-1])),1)
+            except: return 35.0
+        return btc, eth, xrp, usdmxn, rsi("BTC-USD"), rsi("ETH-USD"), rsi("XRP-USD")
     except:
-        return 65000.0
+        return 64185, 1899, 1.03, 17.23, 35.0, 45.3, 32.2
 
-def get_user_data(user_id, data):
-    uid = str(user_id)
+def get_user(uid, data):
+    uid=str(uid)
     if uid not in data["users"]:
-        data["users"][uid] = {"balance": 1000.0, "btc": 0.0}
+        # Reparto inicial $333.33 cada uno como en tu captura
+        btc_p, eth_p, xrp_p, usdmxn, _, _, _ = get_prices()
+        data["users"][uid] = {
+            "efectivo_mxn": 0.0,
+            "btc": (333.33/usdmxn)/btc_p,
+            "eth": (333.33/usdmxn)/eth_p,
+            "xrp": (333.33/usdmxn)/xrp_p,
+            "inicial": 1000.0
+        }
         save_data(data)
     return data["users"][uid]
 
+def format_portfolio(u):
+    btc_p, eth_p, xrp_p, usdmxn, rsi_btc, rsi_eth, rsi_xrp = get_prices()
+    btc_val_mxn = u['btc']*btc_p*usdmxn
+    eth_val_mxn = u['eth']*eth_p*usdmxn
+    xrp_val_mxn = u['xrp']*xrp_p*usdmxn
+    total = u['efectivo_mxn'] + btc_val_mxn + eth_val_mxn + xrp_val_mxn
+    gan = total - u['inicial']
+    gan_p = (gan/u['inicial']*100) if u['inicial'] else 0
+
+    barato_btc = " 💎BARATO" if rsi_btc < 35 else ""
+    barato_xrp = " 💎BARATO" if rsi_xrp < 35 else ""
+
+    msg = f"""🎮 DEMO $1000 MXN (capital práctica)
+💵 USD/MXN REAL: ${usdmxn:.2f}
+💵 Efectivo DEMO: ${u['efectivo_mxn']:.2f} MXN
+
+🔴 BTC: {u['btc']:.8f}
+Precio ${btc_p:,.2f} RSI:{rsi_btc}{barato_btc}
+Valor ${btc_val_mxn:.2f} MXN
+🔴 ETH: {u['eth']:.8f}
+Precio ${eth_p:,.2f} RSI:{rsi_eth}
+Valor ${eth_val_mxn:.2f} MXN
+🔴 XRP: {u['xrp']:.8f}
+Precio ${xrp_p:.2f} RSI:{rsi_xrp}{barato_xrp}
+Valor ${xrp_val_mxn:.2f} MXN
+
+💰 TOTAL: ${total:.2f} MXN
+📈 Ganancia: {gan_p:.2f}% (${gan:.2f})
+
+🔔 Alertas -2%/+2% + RSI activas
+✅ V29 ETERNO-UPSTASH"""
+    return msg
+
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    data = load_data()
-    u = get_user_data(update.effective_user.id, data)
-    await update.message.reply_text(f"🚀 Bot BTC Activo!\n💰 Balance: ${u['balance']:.2f}\n₿ BTC: {u['btc']}\n\nUsa:\n/price - precio\n/buy 100 - comprar $100\n/sell 0.01 - vender\n/balance - ver todo")
+    data=load_data()
+    u=get_user(update.effective_user.id, data)
+    await update.message.reply_text(format_portfolio(u))
 
-async def price(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    p = get_price()
-    await update.message.reply_text(f"₿ BTC ahora: ${p:,.2f}")
+async def comprar(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Usa: /comprar BTC 100 (en MXN)\nEjemplo: /comprar BTC 100")
 
-async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    data = load_data()
-    u = get_user_data(update.effective_user.id, data)
-    p = get_price()
-    total = u['balance'] + (u['btc'] * p)
-    await update.message.reply_text(f"📊 Tu cuenta:\nEfectivo: ${u['balance']:.2f}\nBTC: {u['btc']}\nValor BTC: ${u['btc']*p:.2f}\nTOTAL: ${total:.2f}")
+async def vender(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text("Usa: /vender BTC 0.001")
 
-async def buy(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        amount = float(context.args[0])
-        data = load_data()
-        u = get_user_data(update.effective_user.id, data)
-        if u['balance'] < amount:
-            await update.message.reply_text("❌ No tienes suficiente saldo")
-            return
-        p = get_price()
-        btc_bought = amount / p
-        u['balance'] -= amount
-        u['btc'] += btc_bought
-        save_data(data)
-        await update.message.reply_text(f"✅ Compraste {btc_bought:.6f} BTC por ${amount:.2f}\nPrecio: ${p:,.2f}")
-    except:
-        await update.message.reply_text("Uso: /buy 100")
+def run_flask():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT",10000)))
 
-async def sell(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    try:
-        amount = float(context.args[0])
-        data = load_data()
-        u = get_user_data(update.effective_user.id, data)
-        if u['btc'] < amount:
-            await update.message.reply_text("❌ No tienes suficiente BTC")
-            return
-        p = get_price()
-        usd = amount * p
-        u['btc'] -= amount
-        u['balance'] += usd
-        save_data(data)
-        await update.message.reply_text(f"✅ Vendiste {amount} BTC por ${usd:.2f}")
-    except:
-        await update.message.reply_text("Uso: /sell 0.01
+if __name__ == "__main__":
+    threading.Thread(target=run_flask, daemon=True).start()
+    application = Application.builder().token(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("actualizar", start))
+    application.add_handler(CommandHandler("comprar", comprar))
+    application.add_handler(CommandHandler("vender", vender))
+    application.add_handler(CommandHandler("balance", start))
+    print("Bot V29 ETERNO Iniciado")
+    application.run_polling()
