@@ -1,10 +1,9 @@
-import os, json, requests, threading, time
+import os, json, requests, threading
 from flask import Flask
 import yfinance as yf
 from telegram import Update
 from telegram.ext import Application, CommandHandler, ContextTypes
 
-# Soporta BOT_TOKEN o TELEGRAM_TOKEN
 BOT_TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
 URL = os.environ.get("UPSTASH_REDIS_REST_URL")
 REST_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
@@ -12,7 +11,7 @@ KEY = "btc-vicente-v29-final"
 
 app = Flask(__name__)
 @app.route('/')
-def home(): return "V29 ETERNO-UPSTASH OK"
+def home(): return "V29 OK"
 
 def load_data():
     try:
@@ -31,44 +30,56 @@ def save_data(data):
 
 def get_prices():
     try:
-        btc_t = yf.Ticker("BTC-USD")
-        eth_t = yf.Ticker("ETH-USD")
-        xrp_t = yf.Ticker("XRP-USD")
-        mxn_t = yf.Ticker("USDMXN=X")
-        btc = float(btc_t.fast_info['last_price'])
-        eth = float(eth_t.fast_info['last_price'])
-        xrp = float(xrp_t.fast_info['last_price'])
-        usdmxn = float(mxn_t.fast_info['last_price'])
-        # % cambio 24h
-        def pct(t):
-            try: return float(t.history(period="2d")['Close'].pct_change().iloc[-1]*100)
-            except: return 0.0
-        def rsi(ticker):
-            try:
-                hist = yf.Ticker(ticker).history(period="14d")['Close']
-                delta = hist.diff()
-                gain = delta.where(delta>0,0).rolling(14).mean()
-                loss = -delta.where(delta<0,0).rolling(14).mean()
-                rs = gain/loss
-                return round(100-(100/(1+rs.iloc[-1])),1)
-            except: return 35.0
-        return btc, eth, xrp, usdmxn, pct(btc_t), pct(eth_t), pct(xrp_t), rsi("BTC-USD"), rsi("ETH-USD"), rsi("XRP-USD")
+        btc = float(yf.Ticker("BTC-USD").fast_info['last_price'])
+        eth = float(yf.Ticker("ETH-USD").fast_info['last_price'])
+        xrp = float(yf.Ticker("XRP-USD").fast_info['last_price'])
+        usdmxn = float(yf.Ticker("USDMXN=X").fast_info['last_price'])
+        return btc, eth, xrp, usdmxn
     except:
-        return 64157, 1898, 1.03, 17.23, -0.66, -0.49, -2.77, 34.4, 44.5, 32.8
+        return 64157, 1898, 1.03, 17.23
 
 def get_user(uid, data):
     uid=str(uid)
     if uid not in data["users"]:
-        btc_p, eth_p, xrp_p, usdmxn, _,_,_, _,_,_ = get_prices()
-        data["users"][uid] = {
-            "efectivo": 0.0,
-            "btc": (333.33/usdmxn)/btc_p,
-            "eth": (333.33/usdmxn)/eth_p,
-            "xrp": (333.33/usdmxn)/xrp_p,
-            "inicial": 1000.0
-        }
+        btc_p, eth_p, xrp_p, usdmxn = get_prices()
+        data["users"][uid] = {"efectivo":0.0,"btc":(333.33/usdmxn)/btc_p,"eth":(333.33/usdmxn)/eth_p,"xrp":(333.33/usdmxn)/xrp_p,"inicial":1000.0}
         save_data(data)
     return data["users"][uid]
 
-def texto_portfolio(u):
-    btc_p, eth_p, xrp_p, usdmxn, pb, pe
+def texto(u):
+    btc_p, eth_p, xrp_p, usdmxn = get_prices()
+    btc_mxn = u['btc']*btc_p*usdmxn
+    eth_mxn = u['eth']*eth_p*usdmxn
+    xrp_mxn = u['xrp']*xrp_p*usdmxn
+    total = u['efectivo']+btc_mxn+eth_mxn+xrp_mxn
+    gan = total-u['inicial']
+    gan_p = gan/u['inicial']*100
+    return f"""🎮 DEMO $1000 MXN
+USD/MXN: ${usdmxn:.2f}
+Efectivo: ${u['efectivo']:.2f} MXN
+
+BTC: {u['btc']:.8f} | ${btc_mxn:.2f} MXN
+ETH: {u['eth']:.8f} | ${eth_mxn:.2f} MXN
+XRP: {u['xrp']:.8f} | ${xrp_mxn:.2f} MXN
+
+TOTAL: ${total:.2f} MXN
+Ganancia: {gan_p:.2f}% (${gan:.2f})
+
+✅ V29 ETERNO-UPSTASH"""
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data=load_data()
+    u=get_user(update.effective_user.id, data)
+    await update.message.reply_text(texto(u))
+
+def run_flask():
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT",10000)))
+
+if __name__ == "__main__":
+    threading.Thread(target=run_flask, daemon=True).start()
+    application = Application.builder().token(BOT_TOKEN).build()
+    application.add_handler(CommandHandler("start", start))
+    application.add_handler(CommandHandler("actualizar", start))
+    application.add_handler(CommandHandler("balance", start))
+    print("V29 Iniciado")
+    application.run_polling()
