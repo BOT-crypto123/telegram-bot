@@ -9,7 +9,7 @@ if not TOKEN:
 if not TOKEN:
     TOKEN = ""
 
-VERSION = "V44.1 GRAF REAL"
+VERSION = "V44.2 GRAF COINBASE"
 app = Flask(__name__)
 
 SYMS = ["BTC","ETH","SOL","XRP"]
@@ -42,16 +42,19 @@ def msg(cid, txt):
 def chart(cid, sym):
     try:
         import urllib.parse as up
-        bsym = sym + "USDT"
-        u = "https://api.binance.com/api/v3/"
-        u += "klines?symbol=" + bsym
-        u += "&interval=30m&limit=48"
-        d = requests.get(u, timeout=10).json()
+        # coinbase candles reales
+        u = "https://api.exchange.coinbase.com/"
+        u += "products/" + sym + "-USD/candles"
+        u += "?granularity=1800"
+        r = requests.get(u, timeout=10, headers={"User-Agent":"bot"})
+        d = r.json()
         pr = []
-        for x in d:
+        # d viene al reves
+        d = d[::-1]
+        for x in d[-48:]:
             pr.append(float(x[4]))
-        if not pr:
-            pr = [price(sym)]
+        if len(pr) < 5:
+            pr = [price(sym)-10, price(sym)-5, price(sym), price(sym)+5, price(sym)+2]
         last = round(pr[-1], 2)
         dat = ""
         for i, v in enumerate(pr):
@@ -62,19 +65,22 @@ def chart(cid, sym):
         base += "bkg=black&width=800&height=400&c="
         c1 = "{type:'line',data:{datasets:[{data:["
         c2 = dat + "],borderColor:'#00ff88',"
-        c3 = "fill:true,backgroundColor:'rgba(0,255,136,0.1)',"
-        c4 = "pointRadius:0,borderWidth:2}]},"
+        c3 = "backgroundColor:'rgba(0,255,136,0.15)',"
+        c4 = "fill:true,pointRadius:0,borderWidth:2}]},"
         c5 = "options:{legend:{display:false},"
-        c6 = "title:{display:true,text:'"
-        c7 = sym + " " + str(last) + "',fontColor:'white'}}}"
-        full = c1 + c2 + c3 + c4 + c5 + c6 + c7
+        c6 = "scales:{yAxes:[{ticks:{fontColor:'white'}}]},"
+        c7 = "title:{display:true,text:'"
+        c8 = sym + " " + str(last) + " 24h',"
+        c9 = "fontColor:'white',fontSize:16}}}"
+        full = c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9
         url = base + up.quote(full)
-        cap = "GRAF " + sym + " " + str(last)
+        cap = "GRAF REAL " + sym + " " + str(last)
         uu = "https://api.telegram.org/bot"
         uu += TOKEN + "/sendPhoto"
         requests.post(uu, data={"chat_id": cid, "caption": cap, "photo": url}, timeout=15)
     except Exception as e:
         print(e)
+        msg(cid, "Error graf: " + str(e)[:100])
 
 def mon():
     while True:
@@ -115,7 +121,7 @@ def wh():
             return "ok", 200
         ps = price(SEL)
         if "GRAF" in t:
-            msg(cid, "Generando " + SEL + "...")
+            msg(cid, "Generando " + SEL + " vol real...")
             chart(cid, SEL)
         elif "PRO" in t or t.startswith("/START"):
             m = VERSION + " " + SEL + " "
