@@ -9,7 +9,7 @@ if not TOKEN:
 if not TOKEN:
     TOKEN = ""
 
-VERSION = "V44.4 ZOOM REAL"
+VERSION = "V45 FINAL"
 app = Flask(__name__)
 
 SYMS = ["BTC","ETH","SOL","XRP"]
@@ -42,7 +42,6 @@ def msg(cid, txt):
 def chart(cid, sym):
     try:
         import urllib.parse as up
-        # 5 min = 300 seg = mucho mas vol
         u = "https://api.exchange.coinbase.com/"
         u += "products/" + sym + "-USD/candles"
         u += "?granularity=300"
@@ -63,11 +62,15 @@ def chart(cid, sym):
                 pass
         if len(pr) < 5:
             p = price(sym)
-            pr = [p*0.995, p*1.002, p*0.998, p*1.003, p]
+            pr = [p*0.995, p*1.002, p*0.998, p]
         last = pr[-1]
-        # zoom auto: usa min/max real
+        first = pr[0]
         lo = min(pr)
         hi = max(pr)
+        ch = (last/first-1)*100
+        col = "#00ff88"
+        if ch < 0:
+            col = "#ff4444"
         dat = ""
         for i, v in enumerate(pr):
             if i > 0:
@@ -76,26 +79,33 @@ def chart(cid, sym):
         base = "https://quickchart.io/chart?"
         base += "bkg=black&width=800&height=450&c="
         c1 = "{type:'line',data:{datasets:[{data:["
-        c2 = dat + "],borderColor:'#00ff88',"
-        c3 = "backgroundColor:'rgba(0,255,136,0.2)',"
+        c2 = dat + "],borderColor:'" + col + "',"
+        c3 = "backgroundColor:'rgba(0,255,136,0.15)',"
         c4 = "fill:true,pointRadius:0,borderWidth:3}]},"
         c5 = "options:{legend:{display:false},"
-        c6 = "scales:{yAxes:[{ticks:{fontColor:'white',"
-        c7 = "fontSize:12},gridLines:{color:'rgba(255,255,255,0.1)'}}],"
-        c8 = "xAxes:[{display:false}]},"
-        c9 = "title:{display:true,text:'"
-        c10 = sym + " " + str(round(last,4)) + " 24h ZOOM',"
-        c11 = "fontColor:'white',fontSize:18}}}"
-        full = c1+c2+c3+c4+c5+c6+c7+c8+c9+c10+c11
+        c6 = "scales:{yAxes:[{ticks:{fontColor:'white'}}]},"
+        c7 = "title:{display:true,text:'"
+        c8 = sym + " " + str(round(last,2)) + " "
+        c9 = str(round(ch,2)) + "% 24h',fontColor:'white',fontSize:18}}}"
+        # si es rojo cambia bg
+        if ch < 0:
+            c3 = "backgroundColor:'rgba(255,68,68,0.15)',"
+        full = c1+c2+c3+c4+c5+c6+c7+c8+c9
         url = base + up.quote(full)
-        cap = "GRAF ZOOM " + sym + " " + str(round(last,4))
-        cap += " L:" + str(round(lo,4)) + " H:" + str(round(hi,4))
+        cap = "GRAF " + sym + " " + str(round(last,2))
+        cap += " " + str(round(ch,2)) + "%\n"
+        cap += "L:" + str(round(lo,2)) + " H:" + str(round(hi,2))
+        # si tiene partida pon ganancia
+        if sym in ENTS:
+            en = ENTS[sym]
+            g = (last/en-1)*100
+            cap += "\nENT:" + str(round(en,2)) + " G:" + str(round(g,2)) + "%"
         uu = "https://api.telegram.org/bot"
         uu += TOKEN + "/sendPhoto"
         requests.post(uu, data={"chat_id": cid, "caption": cap, "photo": url}, timeout=15)
     except Exception as e:
         print(e)
-        msg(cid, "Error: " + str(e)[:100])
+        msg(cid, "Error graf")
 
 def mon():
     while True:
@@ -130,25 +140,37 @@ def wh():
         if t in SYMS:
             SEL = t
             p = price(t)
-            msg(cid, VERSION + " " + t + " " + str(p))
+            e = ENTS.get(t,0)
+            if e:
+                g = (p/e-1)*100
+                msg(cid, t + " E:" + str(round(e,2)) + " A:" + str(round(p,2)) + " G:" + str(round(g,2)) + "%")
+            else:
+                msg(cid, VERSION + " " + t + " " + str(round(p,2)))
             return "ok", 200
         ps = price(SEL)
         if "GRAF" in t:
-            msg(cid, "Generando " + SEL + " zoom...")
+            msg(cid, "Generando " + SEL + "...")
             chart(cid, SEL)
         elif "PRO" in t or t.startswith("/START"):
-            m = VERSION + " " + SEL + " "
-            m += str(round(ps,2)) + "\n"
+            m = VERSION + " Sel:" + SEL + " " + str(round(ps,2)) + "\n"
             for s in SYMS:
                 m += s + ":" + str(round(price(s),2)) + " "
+            if ENTS:
+                m += "\n"
+                for s, en in ENTS.items():
+                    pp = price(s)
+                    g = (pp/en-1)*100
+                    m += s + " G:" + str(round(g,2)) + "% "
             msg(cid, m)
         elif "COMPRAR" in t:
             ENTS[SEL] = ps
-            msg(cid, "PARTIDA " + SEL)
+            msg(cid, "PARTIDA " + SEL + " " + str(round(ps,2)))
         elif "VENDER" in t:
             if SEL in ENTS:
+                en = ENTS[SEL]
+                g = (ps/en-1)*100
                 del ENTS[SEL]
-                msg(cid, "CERRADA " + SEL)
+                msg(cid, "CERRADA " + SEL + " G:" + str(round(g,2)) + "%")
             else:
                 msg(cid, "Sin partida")
         return "ok", 200
