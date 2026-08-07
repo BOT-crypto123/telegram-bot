@@ -9,7 +9,7 @@ if not TOKEN:
 if not TOKEN:
     TOKEN = ""
 
-VERSION = "V44.2 GRAF COINBASE"
+VERSION = "V44.3 GRAF FIX"
 app = Flask(__name__)
 
 SYMS = ["BTC","ETH","SOL","XRP"]
@@ -42,19 +42,30 @@ def msg(cid, txt):
 def chart(cid, sym):
     try:
         import urllib.parse as up
-        # coinbase candles reales
         u = "https://api.exchange.coinbase.com/"
         u += "products/" + sym + "-USD/candles"
         u += "?granularity=1800"
         r = requests.get(u, timeout=10, headers={"User-Agent":"bot"})
         d = r.json()
+        # si no es lista, fallback
+        if not isinstance(d, list):
+            d = []
         pr = []
-        # d viene al reves
-        d = d[::-1]
-        for x in d[-48:]:
-            pr.append(float(x[4]))
+        # reversa manual sin slice
+        d2 = list(reversed(d))
+        # toma ultimos 48
+        cnt = len(d2)
+        start = 0
+        if cnt > 48:
+            start = cnt - 48
+        for i in range(start, cnt):
+            try:
+                pr.append(float(d2[i][4]))
+            except:
+                pass
         if len(pr) < 5:
-            pr = [price(sym)-10, price(sym)-5, price(sym), price(sym)+5, price(sym)+2]
+            p = price(sym)
+            pr = [p*0.98, p*0.99, p*1.01, p*0.995, p]
         last = round(pr[-1], 2)
         dat = ""
         for i, v in enumerate(pr):
@@ -71,7 +82,7 @@ def chart(cid, sym):
         c6 = "scales:{yAxes:[{ticks:{fontColor:'white'}}]},"
         c7 = "title:{display:true,text:'"
         c8 = sym + " " + str(last) + " 24h',"
-        c9 = "fontColor:'white',fontSize:16}}}"
+        c9 = "fontColor:'white'}}}"
         full = c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9
         url = base + up.quote(full)
         cap = "GRAF REAL " + sym + " " + str(last)
@@ -80,7 +91,7 @@ def chart(cid, sym):
         requests.post(uu, data={"chat_id": cid, "caption": cap, "photo": url}, timeout=15)
     except Exception as e:
         print(e)
-        msg(cid, "Error graf: " + str(e)[:100])
+        msg(cid, "Error graf: " + str(e)[:120])
 
 def mon():
     while True:
@@ -106,9 +117,7 @@ def wh():
     global CHAT, SEL
     try:
         data = request.get_json(force=True, silent=True)
-        if not data:
-            return "ok", 200
-        if "message" not in data:
+        if not data or "message" not in data:
             return "ok", 200
         cid = data["message"]["chat"]["id"]
         CHAT = cid
@@ -121,7 +130,7 @@ def wh():
             return "ok", 200
         ps = price(SEL)
         if "GRAF" in t:
-            msg(cid, "Generando " + SEL + " vol real...")
+            msg(cid, "Generando " + SEL + " real...")
             chart(cid, SEL)
         elif "PRO" in t or t.startswith("/START"):
             m = VERSION + " " + SEL + " "
