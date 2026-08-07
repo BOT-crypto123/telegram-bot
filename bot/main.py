@@ -9,7 +9,7 @@ if not TOKEN:
 if not TOKEN:
     TOKEN = ""
 
-VERSION = "V44.3 GRAF FIX"
+VERSION = "V44.4 ZOOM REAL"
 app = Flask(__name__)
 
 SYMS = ["BTC","ETH","SOL","XRP"]
@@ -42,22 +42,20 @@ def msg(cid, txt):
 def chart(cid, sym):
     try:
         import urllib.parse as up
+        # 5 min = 300 seg = mucho mas vol
         u = "https://api.exchange.coinbase.com/"
         u += "products/" + sym + "-USD/candles"
-        u += "?granularity=1800"
+        u += "?granularity=300"
         r = requests.get(u, timeout=10, headers={"User-Agent":"bot"})
         d = r.json()
-        # si no es lista, fallback
         if not isinstance(d, list):
             d = []
         pr = []
-        # reversa manual sin slice
         d2 = list(reversed(d))
-        # toma ultimos 48
         cnt = len(d2)
         start = 0
-        if cnt > 48:
-            start = cnt - 48
+        if cnt > 80:
+            start = cnt - 80
         for i in range(start, cnt):
             try:
                 pr.append(float(d2[i][4]))
@@ -65,33 +63,39 @@ def chart(cid, sym):
                 pass
         if len(pr) < 5:
             p = price(sym)
-            pr = [p*0.98, p*0.99, p*1.01, p*0.995, p]
-        last = round(pr[-1], 2)
+            pr = [p*0.995, p*1.002, p*0.998, p*1.003, p]
+        last = pr[-1]
+        # zoom auto: usa min/max real
+        lo = min(pr)
+        hi = max(pr)
         dat = ""
         for i, v in enumerate(pr):
             if i > 0:
                 dat += ","
-            dat += str(round(v, 2))
+            dat += str(v)
         base = "https://quickchart.io/chart?"
-        base += "bkg=black&width=800&height=400&c="
+        base += "bkg=black&width=800&height=450&c="
         c1 = "{type:'line',data:{datasets:[{data:["
         c2 = dat + "],borderColor:'#00ff88',"
-        c3 = "backgroundColor:'rgba(0,255,136,0.15)',"
-        c4 = "fill:true,pointRadius:0,borderWidth:2}]},"
+        c3 = "backgroundColor:'rgba(0,255,136,0.2)',"
+        c4 = "fill:true,pointRadius:0,borderWidth:3}]},"
         c5 = "options:{legend:{display:false},"
-        c6 = "scales:{yAxes:[{ticks:{fontColor:'white'}}]},"
-        c7 = "title:{display:true,text:'"
-        c8 = sym + " " + str(last) + " 24h',"
-        c9 = "fontColor:'white'}}}"
-        full = c1 + c2 + c3 + c4 + c5 + c6 + c7 + c8 + c9
+        c6 = "scales:{yAxes:[{ticks:{fontColor:'white',"
+        c7 = "fontSize:12},gridLines:{color:'rgba(255,255,255,0.1)'}}],"
+        c8 = "xAxes:[{display:false}]},"
+        c9 = "title:{display:true,text:'"
+        c10 = sym + " " + str(round(last,4)) + " 24h ZOOM',"
+        c11 = "fontColor:'white',fontSize:18}}}"
+        full = c1+c2+c3+c4+c5+c6+c7+c8+c9+c10+c11
         url = base + up.quote(full)
-        cap = "GRAF REAL " + sym + " " + str(last)
+        cap = "GRAF ZOOM " + sym + " " + str(round(last,4))
+        cap += " L:" + str(round(lo,4)) + " H:" + str(round(hi,4))
         uu = "https://api.telegram.org/bot"
         uu += TOKEN + "/sendPhoto"
         requests.post(uu, data={"chat_id": cid, "caption": cap, "photo": url}, timeout=15)
     except Exception as e:
         print(e)
-        msg(cid, "Error graf: " + str(e)[:120])
+        msg(cid, "Error: " + str(e)[:100])
 
 def mon():
     while True:
@@ -121,7 +125,7 @@ def wh():
             return "ok", 200
         cid = data["message"]["chat"]["id"]
         CHAT = cid
-        t = data["message"].get("text", "")
+        t = data["message"].get("text","")
         t = t.upper().strip()
         if t in SYMS:
             SEL = t
@@ -130,13 +134,13 @@ def wh():
             return "ok", 200
         ps = price(SEL)
         if "GRAF" in t:
-            msg(cid, "Generando " + SEL + " real...")
+            msg(cid, "Generando " + SEL + " zoom...")
             chart(cid, SEL)
         elif "PRO" in t or t.startswith("/START"):
             m = VERSION + " " + SEL + " "
-            m += str(round(ps, 2)) + "\n"
+            m += str(round(ps,2)) + "\n"
             for s in SYMS:
-                m += s + ":" + str(round(price(s), 2)) + " "
+                m += s + ":" + str(round(price(s),2)) + " "
             msg(cid, m)
         elif "COMPRAR" in t:
             ENTS[SEL] = ps
