@@ -107,3 +107,30 @@ def webhook():
             send_msg(chat_id, f"{VERSION} ON SL:{sl}% TP:+{tp}%\nBTC {btc} ETH {eth} XRP {xrp}\nTP +{tp}%")
         elif text == "COMPRAR":
             send_msg(chat_id, f"COMPRA SIMULADA\nBTC {btc} SL {sl}% TP {tp}%")
+        elif text == "VENDER":
+            send_msg(chat_id, f"VENTA SIMULADA\nBTC {btc}")
+        elif text == "Apagar":
+            cfg["on"]=False
+            save_cfg(cfg)
+            send_msg(chat_id, f"{VERSION} OFF")
+        elif text == "GRAF":
+            send_msg(chat_id, f"GRAF BTC {btc} ETH {eth}")
+        elif text == "PRO":
+            send_msg(chat_id, f"PRO SL {sl} TP {tp} ON {on}")
+
+    except Exception as e:
+        print(f"Webhook error: {e}")
+    return "ok"
+
+def set_webhook():
+    time.sleep(3)
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={WEBHOOK_URL}"
+        print(requests.get(url,timeout=10).text)
+    except Exception as e:
+        print(f"SetHook error: {e}")
+
+threading.Thread(target=set_webhook, daemon=True).start()
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=int(os.environ.get("PORT",10000)))
