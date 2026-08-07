@@ -7,11 +7,11 @@ from telegram.ext import Application, CommandHandler, CallbackQueryHandler, Cont
 BOT_TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
 URL = os.environ.get("UPSTASH_REDIS_REST_URL")
 REST_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-KEY = "btc-vicente-v33-vigilante"
+KEY = "btc-vicente-v35-2-final-7porciento"
 
 app = Flask(__name__)
 @app.route('/')
-def home(): return "V33 VIGILANTE OK"
+def home(): return "V35.2 FINAL -7% OK"
 
 def load_data():
     try:
@@ -19,7 +19,7 @@ def load_data():
         res = r.json().get("result")
         if res: return json.loads(res)
     except: pass
-    return {"users":{},"last_alert":{}} # last_alert para no spamear
+    return {"users":{}}
 
 def save_data(data):
     try:
@@ -28,126 +28,20 @@ def save_data(data):
 
 def get_market():
     btc_p, eth_p, xrp_p, usdmxn = 64254.34, 1901.30, 1.03, 17.20
-    bp, ep, xp, br, er, xr = 0.0, 0.0, -2.5, 40.0, 40.0, 40.0
+    bp, ep, xp, br, er, xr = 0.0, 0.0, -2.5, 40.0, 40.0, 32.0
     try:
         btc_p = float(yf.Ticker("BTC-USD").fast_info['last_price'])
         eth_p = float(yf.Ticker("ETH-USD").fast_info['last_price'])
         xrp_p = float(yf.Ticker("XRP-USD").fast_info['last_price'])
         usdmxn = float(yf.Ticker("USDMXN=X").fast_info['last_price'])
-        try:
-            def pct(s):
-                h=yf.Ticker(s).history(period="2d")['Close']
-                return float((h.iloc[-1]/h.iloc[-2]-1)*100) if len(h)>=2 else 0.0
-            bp, ep, xp = pct("BTC-USD"), pct("ETH-USD"), pct("XRP-USD")
-        except: pass
-        try:
-            def rsi(s):
-                h=yf.Ticker(s).history(period="1mo")['Close']
-                if len(h)<15: return 40.0
-                d=h.diff(); g=d.where(d>0,0).rolling(14).mean(); l=-d.where(d<0,0).rolling(14).mean()
-                rs=g.iloc[-1]/l.iloc[-1] if l.iloc[-1]!=0 else 0
-                r=100-(100/(1+rs)) if rs!=0 else 50.0
-                if math.isnan(r): return 40.0
-                return round(float(r),1)
-            br, er, xr = rsi("BTC-USD"), rsi("ETH-USD"), rsi("XRP-USD")
-        except: br, er, xr = 40.0, 40.0, 40.0
-    except: pass
-    return btc_p, eth_p, xrp_p, usdmxn, bp, ep, xp, br, er, xr
-
-def get_user(uid, data):
-    uid=str(uid)
-    if uid not in data["users"]:
-        btc_p, eth_p, xrp_p, usdmxn, *_ = get_market()
-        data["users"][uid] = {"efectivo":0.0,"btc":(333.33/usdmxn)/btc_p,"eth":(333.33/usdmxn)/eth_p,"xrp":(333.33/usdmxn)/xrp_p,"inicial":1000.0}
-        save_data(data)
-    return data["users"][uid]
-
-def texto(u):
-    btc_p, eth_p, xrp_p, usdmxn, bp, ep, xp, br, er, xr = get_market()
-    total = u['efectivo']+u['btc']*btc_p*usdmxn+u['eth']*eth_p*usdmxn+u['xrp']*xrp_p*usdmxn
-    gan = (total-u['inicial'])/u['inicial']*100
-    tag = lambda r: " 🔥 BARATO" if r<35 else ""
-    return f"DEMO $1000 MXN\nUSD/MXN: ${usdmxn:.2f}\nEfectivo: ${u['efectivo']:.2f} MXN\n\nBTC: {u['btc']:.8f} | ${u['btc']*btc_p*usdmxn:.2f}\nPrecio ${btc_p:,.2f} ({bp:.2f}%) RSI:{br}{tag(br)}\nETH: {u['eth']:.8f} | ${u['eth']*eth_p*usdmxn:.2f}\nPrecio ${eth_p:,.2f} ({ep:.2f}%) RSI:{er}{tag(er)}\nXRP: {u['xrp']:.4f} | ${u['xrp']*xrp_p*usdmxn:.2f}\nPrecio ${xrp_p:.2f} ({xp:.2f}%) RSI:{xr}{tag(xr)}\n\nTOTAL: ${total:.2f} MXN\nGanancia: {gan:+.2f}%\nV33 VIGILANTE ACTIVO"
-
-def kb_main(): return InlineKeyboardMarkup([ [InlineKeyboardButton("🟢 COMPRAR", callback_data="menu_c"), InlineKeyboardButton("🔴 VENDER", callback_data="menu_v")], [InlineKeyboardButton("🔄 ACTUALIZAR", callback_data="act")] ])
-def kb_c(): return InlineKeyboardMarkup([ [InlineKeyboardButton("BTC $100", callback_data="c_btc_100"), InlineKeyboardButton("ETH $100", callback_data="c_eth_100")], [InlineKeyboardButton("XRP $100", callback_data="c_xrp_100")], [InlineKeyboardButton("⬅️ Volver", callback_data="act")] ])
-def kb_v(): return InlineKeyboardMarkup([ [InlineKeyboardButton("BTC $100", callback_data="v_btc_100"), InlineKeyboardButton("ETH $100", callback_data="v_eth_100")], [InlineKeyboardButton("XRP $100", callback_data="v_xrp_100"), InlineKeyboardButton("VENDER TODO XRP", callback_data="v_xrp_todo")], [InlineKeyboardButton("⬅️ Volver", callback_data="act")] ])
-
-async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    data=load_data(); u=get_user(update.effective_user.id, data)
-    await update.message.reply_text(texto(u), reply_markup=kb_main())
-
-async def btn(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    q=update.callback_query; await q.answer()
-    data=load_data(); uid=str(q.from_user.id); u=get_user(uid, data)
-    btc_p, eth_p, xrp_p, usdmxn, *_ = get_market()
-    precios={"btc":btc_p,"eth":eth_p,"xrp":xrp_p}
-    d=q.data
-    if d=="act": await q.edit_message_text(texto(u), reply_markup=kb_main()); return
-    if d=="menu_c": await q.edit_message_text("¿Qué COMPRAS?", reply_markup=kb_c()); return
-    if d=="menu_v": await q.edit_message_text("¿Qué VENDES?", reply_markup=kb_v()); return
-    try:
-        acc, mon, mont = d.split("_")
-        mxn = 100 if mont=="100" else 0
-        if mont=="todo": mxn = u[mon]*precios[mon]*usdmxn
-        if acc=="c":
-            if u['efectivo'] < mxn:
-                await q.edit_message_text(f"⚠️ Efectivo insuficiente: ${u['efectivo']:.2f}\nVende primero.\n\n{texto(u)}", reply_markup=kb_main()); return
-            qty=(mxn/usdmxn)/precios[mon]; u[mon]+=qty; u['efectivo']-=mxn; msg=f"✅ COMPRASTE ${mxn:.0f} de {mon.upper()}"
-        else:
-            qty=(mxn/usdmxn)/precios[mon]
-            if mont=="todo": qty=u[mon]; mxn=qty*precios[mon]*usdmxn
-            if u[mon] < qty: qty=u[mon]; mxn=qty*precios[mon]*usdmxn
-            if qty==0: msg="Nada que vender"
-            else: u[mon]-=qty; u['efectivo']+=mxn; msg=f"✅ VENDISTE ${mxn:.0f} de {mon.upper()}"
-        data["users"][uid]=u; save_data(data)
-        await q.edit_message_text(f"{msg}\n\n{texto(u)}", reply_markup=kb_main())
-    except:
-        await q.edit_message_text(texto(u), reply_markup=kb_main())
-
-def send_telegram(chat_id, text):
-    try:
-        requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id":chat_id,"text":text}, timeout=10)
-    except: pass
-
-def vigilante_loop():
-    print("Vigilante iniciado")
-    while True:
-        try:
-            time.sleep(300) # cada 5 min
-            btc_p, eth_p, xrp_p, usdmxn, bp, ep, xp, br, er, xr = get_market()
-            data=load_data()
-            if "last_alert" not in data: data["last_alert"]={}
-            now=time.time()
-            for uid in list(data["users"].keys()):
-                la = data["last_alert"].get(uid, {})
-                # XRP BARATO
-                if xr < 35 and (now - la.get("xrp_barato",0) > 3600): # 1 hora entre alertas
-                    send_telegram(uid, f"🚨 ALERTA BARATA!\n\nXRP RSI:{xr} (<35) 🔥\nPrecio ${xrp_p:.2f} ({xp:.2f}%)\n¡Buen momento para COMPRAR!\n\nDale /start para comprar")
-                    data["last_alert"][uid]={"xrp_barato":now, **la}
-                    save_data(data)
-                if br < 35 and (now - la.get("btc_barato",0) > 3600):
-                    send_telegram(uid, f"🚨 ALERTA BARATA!\n\nBTC RSI:{br} (<35) 🔥\nPrecio ${btc_p:,.2f} ({bp:.2f}%)\n¡Buen momento para COMPRAR!")
-                    data["last_alert"][uid]={"btc_barato":now, **la}
-                    save_data(data)
-                # Caida -2%
-                if xp <= -2.0 and (now - la.get("xrp_caida",0) > 3600):
-                    send_telegram(uid, f"⚠️ CAIDA -2%\nXRP ${xrp_p:.2f} ({xp:.2f}%)")
-                    data["last_alert"][uid]={"xrp_caida":now, **la}
-                    save_data(data)
-        except Exception as e:
-            print(f"Vigilante error {e}")
-            time.sleep(60)
-
-def run_flask(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT",10000)))
-
-if __name__ == "__main__":
-    threading.Thread(target=run_flask, daemon=True).start()
-    threading.Thread(target=vigilante_loop, daemon=True).start()
-    application = Application.builder().token(BOT_TOKEN).build()
-    application.add_handler(CommandHandler("start", start))
-    application.add_handler(CommandHandler("actualizar", start))
-    application.add_handler(CommandHandler("balance", start))
-    application.add_handler(CallbackQueryHandler(btn))
-    print("V33 VIGILANTE OK")
-    application.run_polling()
+        def pct(s):
+            h=yf.Ticker(s).history(period="2d")['Close']
+            return float((h.iloc[-1]/h.iloc[-2]-1)*100) if len(h)>=2 else 0.0
+        bp, ep, xp = pct("BTC-USD"), pct("ETH-USD"), pct("XRP-USD")
+        def rsi(s):
+            h=yf.Ticker(s).history(period="1mo")['Close']
+            if len(h)<15: return 40.0
+            d=h.diff(); g=d.where(d>0,0).rolling(14).mean(); l=-d.where(d<0,0).rolling(14).mean()
+            rs=g.iloc[-1]/l.iloc[-1] if l.iloc[-1]!=0 else 0
+            r=100-(100/(1+rs)) if rs!=0 else 50.0
+            return 40.0 if math.isnan(r
