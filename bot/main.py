@@ -92,4 +92,64 @@ def send_msg(chat_id, text):
     try: requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id":chat_id,"text":text}, timeout=10)
     except: pass
 
-async def start(update
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    data=load_data(); u=get_user(update.effective_user.id, data)
+    await update.message.reply_text(texto(u), reply_markup=kb_main(u))
+
+async def btn(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q=update.callback_query; await q.answer()
+    data=load_data(); uid=str(q.from_user.id); u=get_user(uid, data)
+    btc, eth, xrp, fx, *_ = get_market()
+    precios={"btc":btc,"eth":eth,"xrp":xrp}
+    d=q.data
+    if d=="act": await q.edit_message_text(texto(u), reply_markup=kb_main(u)); return
+    if d=="menu_c": await q.edit_message_text("¿Qué compras?", reply_markup=kb_c()); return
+    if d=="menu_v": await q.edit_message_text("¿Qué vendes?", reply_markup=kb_v()); return
+    if d=="menu_sl": await q.edit_message_text(f"SL: -{u['stoploss']}%", reply_markup=kb_sl()); return
+    if d=="menu_tp": await q.edit_message_text(f"TP: +{u['takeprofit']}%", reply_markup=kb_tp()); return
+    if d.startswith("sl_"): u["stoploss"]=float(d.split("_")[1]); data["users"][uid]=u; save_data(data); await q.edit_message_text(texto(u), reply_markup=kb_main(u)); return
+    if d.startswith("tp_"): u["takeprofit"]=float(d.split("_")[1]); data["users"][uid]=u; save_data(data); await q.edit_message_text(texto(u), reply_markup=kb_main(u)); return
+    if d.startswith("c_"):
+        _, mon, _ = d.split("_")
+        if u['efectivo'] < 100: await q.edit_message_text(f"Sin efectivo\n{texto(u)}", reply_markup=kb_main(u)); return
+        qty=(100/fx)/precios[mon]; u[mon]+=qty; u['efectivo']-=100; u['precio_compra'][mon]=precios[mon]; data["users"][uid]=u; save_data(data); await q.edit_message_text(texto(u), reply_markup=kb_main(u)); return
+    if d.startswith("v_"):
+        mon=d.split("_")[1]; mxn=u[mon]*precios[mon]*fx; u[mon]=0; u['efectivo']+=mxn; data["users"][uid]=u; save_data(data); await q.edit_message_text(f"Vendido {mon.upper()} ${mxn:.2f}\n\n{texto(u)}", reply_markup=kb_main(u)); return
+    if d=="grafica":
+        await q.edit_message_text("📊 Generando grafica Binance... 5s")
+        path=crear_grafica()
+        if path:
+            with open(path,'rb') as f: await q.message.reply_photo(photo=f, caption="7 dias BTC/ETH/XRP % - Binance")
+            await q.message.reply_text(texto(u), reply_markup=kb_main(u))
+        else:
+            await q.message.reply_text("⚠️ Error grafica, intenta de nuevo\n\n"+texto(u), reply_markup=kb_main(u))
+        return
+
+def vigilante():
+    while True:
+        try:
+            time.sleep(180)
+            btc, eth, xrp, fx, *_ = get_market()
+            data=load_data(); precios={"btc":btc,"eth":eth,"xrp":xrp}
+            for uid, u in list(data["users"].items()):
+                u=get_user(uid, data)
+                for mon in ["btc","eth","xrp"]:
+                    if u[mon]>0:
+                        pct=(precios[mon]-u["precio_compra"].get(mon, precios[mon]))/u["precio_compra"].get(mon, precios[mon])*100
+                        if pct <= -u["stoploss"]:
+                            mxn=u[mon]*precios[mon]*fx; u[mon]=0; u['efectivo']+=mxn; data["users"][uid]=u; save_data(data)
+                            send_msg(uid, f"🛑 SL {mon.upper()} {pct:.1f}%")
+                        elif pct >= u["takeprofit"]:
+                            mxn=u[mon]*precios[mon]*fx; u[mon]=0; u['efectivo']+=mxn; data["users"][uid]=u; save_data(data)
+                            send_msg(uid, f"💰 TP {mon.upper()} +{pct:.1f}%")
+        except: time.sleep(60)
+
+def run_flask(): app.run(host='0.0.0.0', port=int(os.environ.get("PORT",10000)))
+if __name__ == "__main__":
+    threading.Thread(target=run_flask, daemon=True).start()
+    threading.Thread(target=vigilante, daemon=True).start()
+    app_ = Application.builder().token(BOT_TOKEN).build()
+    app_.add_handler(CommandHandler("start", start))
+    app_.add_handler(CallbackQueryHandler(btn))
+    print("V36.5 OK")
+    app_.run_polling()
