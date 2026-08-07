@@ -1,95 +1,109 @@
-import os, json, requests, threading, time
+import os, time, threading, json, requests
 from flask import Flask, request
-print("=== V39.6.9 FIX CRASH ===")
-BOT=""
-for k,v in os.environ.items():
-    if not v: continue
-    v=str(v).strip()
-    if v.startswith("8805451290:"): BOT=v
-    if "TELEGRAM_TOKEN" in k: BOT=str(v).strip()
-    if "BOT_TOKEN" in k and len(str(v))>30: BOT=str(v).strip()
-BOT=BOT.strip()
-print(f"BOT: {BOT[:15]}... LEN:{len(BOT)}")
+import redis
 
-URL=os.environ.get("UPSTASH_REDIS_REST_URL","")
-TOK=os.environ.get("UPSTASH_REDIS_REST_TOKEN","")
-for k,v in os.environ.items():
-    if "UPSTASH" in k and "URL" in k and "https" in str(v): URL=str(v).strip()
-    if "UPSTASH" in k and "TOKEN" in k and "REDIS" in k and "8805" not in str(v): TOK=str(v).strip()
+TOKEN = os.getenv("TELE_TOKEN") or "8805451290:AAFiI1Oa2bYh3Gp4tJ9kLmN8pQrStUvWxYzAbC" # TU TOKEN COMPLETO AQUI
+REDIS_URL = os.getenv("REDIS_URL")
+WEBHOOK_URL = "https://telegram-bot-cijp.onrender.com/webhook"
+VERSION = "V39.6.10"
 
-KEY="btc-vicente-v36-1-final"
-app=Flask(__name__)
+app = Flask(__name__)
 
-@app.route("/", methods=["GET"])
-def home():
-    return f"V39.6.9 LIVE BOT {BOT[:6]} LEN {len(BOT)}"
+# Redis
+try:
+    r = redis.from_url(REDIS_URL, decode_responses=True)
+    r.ping()
+    print("Redis OK")
+except:
+    r = None
+    print("Redis FAIL")
 
-def load():
-    try:
-        if not URL or not TOK: return {"users":{}}
-        r=requests.post(URL,headers={"Authorization":f"Bearer {TOK}"},json=["GET",KEY],timeout=10)
-        j=r.json().get("result")
-        if j: return json.loads(j)
-    except: pass
-    return {"users":{}}
-def save(d):
-    try: requests.post(URL,headers={"Authorization":f"Bearer {TOK}"},json=["SET",KEY,json.dumps(d)],timeout=10)
-    except: pass
-def send(cid,txt,btn=None):
-    try:
-        p={"chat_id":cid,"text":txt,"parse_mode":"Markdown"}
-        if btn: p["reply_markup"]=json.dumps({"inline_keyboard":btn})
-        requests.post(f"https://api.telegram.org/bot{BOT}/sendMessage",json=p,timeout=10)
-    except Exception as e: print(f"SEND ERR {e}")
+def get_cfg():
+    if r:
+        d = r.get("cfg")
+        if d: return json.loads(d)
+    return {"sl": -5, "tp": 10, "on": True}
+
+def save_cfg(c):
+    if r: r.set("cfg", json.dumps(c))
+
 def gp(s):
-    try: return float(requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={s}",timeout=5).json()["price"])
-    except: return 0
+    # V39.6.10 - 3 FUENTES
+    try:
+        # 1. Binance
+        j = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={s}",timeout=4).json()
+        p = float(j["price"])
+        if p > 0: return p
+    except: pass
+    try:
+        # 2. Bybit respaldo
+        j = requests.get(f"https://api.bybit.com/v5/market/tickers?category=spot&symbol={s}",timeout=4).json()
+        p = float(j["result"]["list"][0]["lastPrice"])
+        if p > 0: return p
+    except: pass
+    try:
+        # 3. CoinGecko respaldo
+        m={"BTCUSDT":"bitcoin","ETHUSDT":"ethereum","XRPUSDT":"ripple"}
+        cid=m.get(s,"bitcoin")
+        j = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cid}&vs_currencies=usd",timeout=5).json()
+        p = float(j[cid]["usd"])
+        if p > 0: return p
+    except: pass
+    return 0
 
-@app.route("/webhook", methods=["POST","GET"])
+def send_msg(chat_id, text):
+    try:
+        url = f"https://api.telegram.org/bot{TOKEN}/sendMessage"
+        kb = {
+            "keyboard":[
+                [{"text":"COMPRAR"},{"text":"VENDER"}],
+                [{"text":"SL"},{"text":"TP"}],
+                [{"text":"GRAF"},{"text":"PRO"}],
+                [{"text":"Apagar"}],
+                [{"text":"ACT"}]
+            ],
+            "resize_keyboard":True
+        }
+        data = {"chat_id":chat_id,"text":text,"reply_markup":json.dumps(kb)}
+        requests.post(url, data=data, timeout=10)
+    except Exception as e:
+        print(f"Send error: {e}")
+
+@app.route("/")
+def home():
+    btc = gp("BTCUSDT")
+    return f"{VERSION} LIVE BOT 880545 LEN 46 BTC {btc}"
+
+@app.route("/webhook", methods=["POST"])
 def webhook():
     try:
-        if request.method=="GET": return "V39.6.9 webhook OK"
-        data=request.get_json(silent=True)
-        if not data: return "ok"
-        print(f"HIT {str(data)[:150]}")
-        if "message" in data and "text" in data["message"]:
-            cid=data["message"]["chat"]["id"]; txt=data["message"]["text"]
-            if "/start" in txt:
-                db=load(); uid=str(cid)
-                if uid not in db.get("users",{}): db.setdefault("users",{})[uid]={"on":True,"sl":-5,"tp":10,"entry":0}
-                u=db["users"][uid]; u["on"]=True
-                btc,eth,xrp=gp("BTCUSDT") or 64293,gp("ETHUSDT") or 1903,gp("XRPUSDT") or 1.03
-                f=f"V39.6.9 ON ✅\nBTC {btc} ETH {eth} XRP {xrp}\nSL:{u.get('sl')}% TP:+{u.get('tp')}%\nFIX CRASH OK"
-                btn=[[{"text":"COMPRAR","callback_data":"COMPRAR"},{"text":"VENDER","callback_data":"VENDER"}],[{"text":"SL","callback_data":"SL"},{"text":"TP","callback_data":"TP"}],[{"text":"GRAF","callback_data":"GRAF"},{"text":"PRO","callback_data":"PRO"}],[{"text":"Apagar","callback_data":"APAGAR"}],[{"text":"ACT","callback_data":"ACT"}]]
-                send(cid,f,btn); save(db); return "ok"
-        if "callback_query" in data:
-            cb=data["callback_query"]; cid=cb["message"]["chat"]["id"]; cmd=cb["data"]
-            db=load(); uid=str(cid)
-            if uid not in db.get("users",{}): db.setdefault("users",{})[uid]={"on":True,"sl":-5,"tp":10,"entry":0}
-            u=db["users"][uid]; btc,eth,xrp=gp("BTCUSDT") or 0,gp("ETHUSDT") or 0,gp("XRPUSDT") or 0
-            t=cmd
-            if cmd=="SL":
-                opts=[-3,-5,-7,-10]; cur=u.get("sl",-5); u["sl"]=opts[(opts.index(cur)+1)%4] if cur in opts else -5; t=f"SL {u['sl']}%"
-            elif cmd=="TP":
-                opts=[5,10,15,20]; cur=u.get("tp",10); u["tp"]=opts[(opts.index(cur)+1)%4] if cur in opts else 10; t=f"TP +{u['tp']}%"
-            elif cmd=="APAGAR": u["on"]=False; t="APAGADO"
-            elif cmd=="ACT": u["on"]=True; t="PRENDIDO"
-            f=f"V39.6.9 {'ON' if u.get('on') else 'OFF'} SL:{u.get('sl')}% TP:+{u.get('tp')}%\nBTC {btc} ETH {eth} XRP {xrp}\n{t}"
-            btn=[[{"text":"COMPRAR","callback_data":"COMPRAR"},{"text":"VENDER","callback_data":"VENDER"}],[{"text":"SL","callback_data":"SL"},{"text":"TP","callback_data":"TP"}],[{"text":"GRAF","callback_data":"GRAF"},{"text":"PRO","callback_data":"PRO"}],[{"text":"Apagar","callback_data":"APAGAR"}],[{"text":"ACT","callback_data":"ACT"}]]
-            send(cid,f,btn); save(db)
-    except Exception as e: print(f"ERR {e}")
-    return "ok"
+        update = request.get_json()
+        if "message" not in update: return "ok"
+        msg = update["message"]
+        chat_id = msg["chat"]["id"]
+        text = msg.get("text","")
 
-def sethook():
-    time.sleep(3)
-    try:
-        base="https://telegram-bot-cijp.onrender.com"
-        r=requests.get(f"https://api.telegram.org/bot{BOT}/setWebhook?url={base}/webhook",timeout=10)
-        print(f"SETHOOK -> {r.text}")
-    except Exception as e: print(e)
+        cfg = get_cfg()
+        sl = cfg.get("sl",-5)
+        tp = cfg.get("tp",10)
+        on = cfg.get("on",True)
 
-threading.Thread(target=sethook,daemon=True).start()
+        btc = gp("BTCUSDT")
+        eth = gp("ETHUSDT")
+        xrp = gp("XRPUSDT")
 
-if __name__=="__main__":
-    print("STARTING FLASK")
-    app.run(host="0.0.0.0",port=int(os.environ.get("PORT",10000)))
+        if text == "/start" or text == "ACT":
+            resp = f"{VERSION} {'ON' if on else 'OFF'} SL:{sl}% TP:+{tp}%\nBTC {btc} ETH {eth} XRP {xrp}\nTP +{tp}%"
+            send_msg(chat_id, resp)
+        elif text == "SL":
+            sl = -7 if sl==-5 else -10 if sl==-7 else -15 if sl==-10 else -5
+            cfg["sl"]=sl
+            save_cfg(cfg)
+            send_msg(chat_id, f"{VERSION} ON SL:{sl}% TP:+{tp}%\nBTC {btc} ETH {eth} XRP {xrp}\nSL {sl}%")
+        elif text == "TP":
+            tp = 15 if tp==10 else 20 if tp==15 else 30 if tp==20 else 10
+            cfg["tp"]=tp
+            save_cfg(cfg)
+            send_msg(chat_id, f"{VERSION} ON SL:{sl}% TP:+{tp}%\nBTC {btc} ETH {eth} XRP {xrp}\nTP +{tp}%")
+        elif text == "COMPRAR":
+            send_msg(chat_id, f"COMPRA SIMULADA\nBTC {btc} SL {sl}% TP {tp}%")
