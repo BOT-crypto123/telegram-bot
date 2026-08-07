@@ -7,11 +7,11 @@ from telegram.ext import Application, CommandHandler, ContextTypes
 BOT_TOKEN = os.environ.get("BOT_TOKEN") or os.environ.get("TELEGRAM_TOKEN")
 URL = os.environ.get("UPSTASH_REDIS_REST_URL")
 REST_TOKEN = os.environ.get("UPSTASH_REDIS_REST_TOKEN")
-KEY = "btc-vicente-v30-eternal"
+KEY = "btc-vicente-v30-final"
 
 app = Flask(__name__)
 @app.route('/')
-def home(): return "V30 ETERNO OK"
+def home(): return "V30 OK"
 
 def load_data():
     try:
@@ -38,7 +38,7 @@ def get_market():
                 pct = float((hist['Close'].iloc[-1]/hist['Close'].iloc[-2]-1)*100)
             except: pct = 0.0
             try:
-                h = yf.Ticker(sym).history(period="14d")['Close']
+                h = t.history(period="14d")['Close']
                 delta = h.diff()
                 gain = delta.where(delta>0,0).rolling(14).mean()
                 loss = -delta.where(delta<0,0).rolling(14).mean()
@@ -46,7 +46,6 @@ def get_market():
                 rsi = round(100-(100/(1+rs.iloc[-1])),1)
             except: rsi = 35.0
             return price, pct, rsi
-
         btc_p, btc_pct, btc_rsi = get_ticker("BTC-USD")
         eth_p, eth_pct, eth_rsi = get_ticker("ETH-USD")
         xrp_p, xrp_pct, xrp_rsi = get_ticker("XRP-USD")
@@ -59,13 +58,7 @@ def get_user(uid, data):
     uid=str(uid)
     if uid not in data["users"]:
         btc_p, eth_p, xrp_p, usdmxn, _,_,_, _,_,_ = get_market()
-        data["users"][uid] = {
-            "efectivo": 0.0,
-            "btc": (333.33/usdmxn)/btc_p,
-            "eth": (333.33/usdmxn)/eth_p,
-            "xrp": (333.33/usdmxn)/xrp_p,
-            "inicial": 1000.0
-        }
+        data["users"][uid] = {"efectivo":0.0,"btc":(333.33/usdmxn)/btc_p,"eth":(333.33/usdmxn)/eth_p,"xrp":(333.33/usdmxn)/xrp_p,"inicial":1000.0}
         save_data(data)
     return data["users"][uid]
 
@@ -77,28 +70,8 @@ def texto(u):
     total = u['efectivo']+btc_mxn+eth_mxn+xrp_mxn
     gan = total-u['inicial']
     gan_p = gan/u['inicial']*100
-
-    def tag(r): return " 💎BARATO" if r < 35 else ""
-
-    return f"""🎮 DEMO $1000 MXN (capital práctica)
-USD/MXN REAL: ${usdmxn:.2f}
-💵 Efectivo DEMO: ${u['efectivo']:.2f} MXN
-
-🔴 BTC: {u['btc']:.8f}
-Precio ${btc_p:,.2f} ({bp:.2f}%) RSI:{br}{tag(br)}
-Valor ${btc_mxn:.2f} MXN
-🔴 ETH: {u['eth']:.8f}
-Precio ${eth_p:,.2f} ({ep:.2f}%) RSI:{er}
-Valor ${eth_mxn:.2f} MXN
-🔴 XRP: {u['xrp']:.8f}
-Precio ${xrp_p:.2f} ({xp:.2f}%) RSI:{xr}{tag(xr)}
-Valor ${xrp_mxn:.2f} MXN
-
-💵 TOTAL: ${total:.2f} MXN
-📈 Ganancia: {gan_p:+.2f}% (${gan:+.2f})
-
-🔔 Alertas -2%/+2% + RSI activas
-✅ V30 ETERNO-UPSTASH"""
+    def tag(r): return " BARATO" if r < 35 else ""
+    return f"DEMO $1000 MXN\nUSD/MXN: ${usdmxn:.2f}\nEfectivo: ${u['efectivo']:.2f} MXN\n\nBTC: {u['btc']:.8f} | ${btc_mxn:.2f} MXN\nPrecio ${btc_p:,.2f} ({bp:.2f}%) RSI:{br}{tag(br)}\nETH: {u['eth']:.8f} | ${eth_mxn:.2f} MXN\nPrecio ${eth_p:,.2f} ({ep:.2f}%) RSI:{er}\nXRP: {u['xrp']:.8f} | ${xrp_mxn:.2f} MXN\nPrecio ${xrp_p:.2f} ({xp:.2f}%) RSI:{xr}{tag(xr)}\n\nTOTAL: ${total:.2f} MXN\nGanancia: {gan_p:+.2f}%\n\nAlertas -2%/+2% + RSI activas\nV30 ETERNO-UPSTASH"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     data=load_data()
@@ -114,4 +87,5 @@ if __name__ == "__main__":
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("actualizar", start))
     application.add_handler(CommandHandler("balance", start))
-    print("V30 ETERNO Inici
+    print("V30 Iniciado OK")
+    application.run_polling()
