@@ -1,8 +1,8 @@
-import os, requests, time, threading, urllib.parse, json
+import os, requests, time, threading, urllib.parse
 from flask import Flask, request
 
 TOKEN = os.getenv("TELE_TOKEN") or os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or ""
-VERSION = "V41.5 GRAF NEGRA FIX"
+VERSION = "V41.6 GRAF OK"
 app = Flask(__name__)
 
 SYMBOLS = ["BTC","ETH","SOL","XRP"]
@@ -11,14 +11,13 @@ CHAT_ID_SAVED = None
 SELECTED = "BTC"
 
 def get_price(sym):
-    sym = sym.upper()
     try:
         r = requests.get(f"https://api.coinbase.com/v2/prices/{sym}-USD/spot", timeout=5).json()
         return float(r["data"]["amount"])
     except:
         try:
-            ids = {"BTC":"bitcoin","ETH":"ethereum","SOL":"solana","XRP":"ripple"}
-            cid = ids.get(sym,"bitcoin")
+            mp = {"BTC":"bitcoin","ETH":"ethereum","SOL":"solana","XRP":"ripple"}
+            cid = mp.get(sym,"bitcoin")
             r = requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cid}&vs_currencies=usd", timeout=5).json()
             return float(r[cid]["usd"])
         except:
@@ -34,8 +33,12 @@ def send_msg(chat_id, text):
 
 def send_chart(chat_id, symbol):
     try:
-        ids = {"BTC":"bitcoin","ETH":"ethereum","SOL":"solana","XRP":"ripple"}
-        cid = ids.get(symbol,"bitcoin")
+        mp = {"BTC":"bitcoin","ETH":"ethereum","SOL":"solana","XRP":"ripple"}
+        cid = mp.get(symbol,"bitcoin")
         data = requests.get(f"https://api.coingecko.com/api/v3/coins/{cid}/market_chart?vs_currency=usd&days=1", timeout=10).json()
-        prices = [p[1] for p in data["prices"]][-60:]
-        cfg = {"type":"line","data":{"labels":[""]*len(prices),"datasets":[{"data":prices,"borderColor":"#00ff88","backgroundColor":"rgba(0,255,136,0.2)","fill":True,"pointRadius":0,"borderWidth":2}]},"options":{"legend":{"display":False},"title":{"display":True,"text":f"{symbol} {round
+        prices = [p[1] for p in data["prices"]][-50:]
+        last = round(prices[-1],2)
+        # chart simple sin json complejo
+        prices_str = ",".join([str(round(x,2)) for x in prices])
+        txt_chart = symbol + " " + str(last)
+        cfg = "{type:'line',data:{labels:[],datasets:[{data:["+prices_str+"],borderColor:'#00ff88',backgroundColor:'rgba(0,255,136,0.2)',fill:true,pointRadius:0}]},options:{legend:{display:false},title:{display:true,text:'"+txt_chart+"',fontColor:'white
