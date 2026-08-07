@@ -1,2 +1,3 @@
+bot / requirements.txt
 flask
 requests
