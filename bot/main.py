@@ -20,7 +20,6 @@ def get_candles(sym):
    return out
   return []
  except: return []
-
 def send_text(cid,txt):
  try:
   u="https://api.telegram.org/bot"+TOKEN+"/sendMessage"
@@ -32,7 +31,6 @@ def send_graf(cid,sym,p):
  try:
   from PIL import Image, ImageDraw
   candles=get_candles(sym)
-  # SI BINANCE FALLA, CREA VELAS FALSAS PERO REALISTAS
   if len(candles)<5:
    candles=[]
    base=p if p>0 else 65000
@@ -44,12 +42,17 @@ def send_graf(cid,sym,p):
     candles.append([o,h,l,c])
     base=c
 
-  W,H=900,450
+  W,H=900,480
   img=Image.new("RGB",(W,H),"#0a0a0a")
   d=ImageDraw.Draw(img)
   mn=min([c[2] for c in candles]); mx=max([c[1] for c in candles])
+  # AJUSTA PARA QUE SE VEA LA ENTRADA
+  entry=None
+  if sym in ENTS: entry=ENTS[sym]["entry"]
+  if entry:
+   mn=min(mn,entry*0.995); mx=max(mx,entry*1.005)
   if mx==mn: mx=mn*1.01
-  pad=40
+  pad=50
   def yf(v): return H-pad - (v-mn)/(mx-mn)*(H-pad*2-20)
   step=W//len(candles); bw=max(4,step-6)
   for i,c in enumerate(candles):
@@ -60,14 +63,29 @@ def send_graf(cid,sym,p):
    top=min(yf(o),yf(cl)); bot=max(yf(o),yf(cl))
    if bot-top<3: bot=top+4
    d.rectangle([x-bw//2,top,x+bw//2,bot],fill=col)
-  d.text((15,10),sym+" "+str(round(p,2))+" SL -"+str(SL)+"% TP +"+str(TP)+"%",fill="white")
+
+  # LINEA AMARILLA ENTRADA + SL/TP
+  if entry:
+   ye=yf(entry)
+   d.line([0,ye,W,ye],fill="#ffcc00",width=2)
+   d.text((15,ye-18),"ENTRADA "+str(round(entry,2)),fill="#ffcc00")
+   # SL
+   ysl=yf(entry*(1-SL/100))
+   d.line([0,ysl,W,ysl],fill="#ff3b3b",width=1)
+   d.text((W-140,ysl-12),"SL -"+str(SL)+"%",fill="#ff3b3b")
+   # TP
+   ytp=yf(entry*(1+TP/100))
+   d.line([0,ytp,W,ytp],fill="#00ff88",width=1)
+   d.text((W-140,ytp-12),"TP +"+str(TP)+"%",fill="#00ff88")
+
+  d.text((15,10),sym+" "+str(round(p,2)),fill="white")
   bio=io.BytesIO(); bio.name="graf.png"
   img.save(bio,"PNG"); bio.seek(0)
   u="https://api.telegram.org/bot"+TOKEN+"/sendPhoto"
   requests.post(u,data={"chat_id":cid},files={"photo":bio},timeout=20)
   return
  except Exception as e:
-  print("PIL ERR",e)
+  print("ERR",e)
   send_text(cid,sym+" "+str(round(p,2)))
 
 def checker():
@@ -82,15 +100,15 @@ def checker():
       ent=ENTS[k]["entry"]; cid=ENTS[k]["chat"]
       pnl=(p/ent-1)*100
       if pnl < -SL:
-       send_text(cid,"ROJA VENDER "+k+" "+str(round(p,2))); del ENTS[k]
+       send_text(cid,"ROJA VENDER "+k+" "+str(round(p,2))+" "+str(round(pnl,2))+"%"); del ENTS[k]
       if pnl > TP:
        if k in ENTS:
-        send_text(cid,"VERDE VENDER "+k+" "+str(round(p,2))); del ENTS[k]
+        send_text(cid,"VERDE VENDER "+k+" "+str(round(p,2))+" "+str(round(pnl,2))+"%"); del ENTS[k]
     LAST[sym]=p
   except: time.sleep(5)
 threading.Thread(target=checker,daemon=True).start()
 @app.route("/")
-def home(): return "V58 VELAS ALWAYS",200
+def home(): return "V59 ENTRADA LINE",200
 @app.route("/webhook",methods=["POST"])
 def wh():
  global SEL
@@ -122,7 +140,6 @@ def wh():
    return "ok",200
   send_text(cid,SEL+" "+str(round(p,2))); return "ok",200
  except: return "ok",200
-
 if __name__=="__main__":
   port=int(os.getenv("PORT","10000"))
   app.run(host="0.0.0.0",port=port)
