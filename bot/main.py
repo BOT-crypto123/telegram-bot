@@ -2,7 +2,7 @@ import os,requests,threading,time,io,random,re
 from flask import Flask,request
 TOKEN=os.getenv("TELE_TOKEN") or os.getenv("BOT_TOKEN") or ""
 app=Flask(__name__)
-SEL="BTC";SL=5.0;TP=10.0;ENTS={};LAST={}
+SEL="BTC";SL=2.0;TP=2.2;ENTS={};LAST={};HIGHS={}
 def price(s):
  try:
   r=requests.get("https://api.coinbase.com/v2/prices/"+s+"-USD/spot",timeout=8).json()
@@ -27,98 +27,4 @@ def send_text(cid,txt):
   requests.post(u,json={"chat_id":cid,"text":txt,"reply_markup":kb},timeout=10)
  except: return
 def send_graf(cid,sym,p):
- try:
-  from PIL import Image, ImageDraw
-  candles=get_candles(sym)
-  if len(candles)<5:
-   candles=[]; base=p if p>0 else 65000
-   for i in range(30):
-    o=base*(1+random.uniform(-0.005,0.005)); c=o*(1+random.uniform(-0.008,0.008))
-    h=max(o,c)*(1+random.uniform(0,0.003)); l=min(o,c)*(1-random.uniform(0,0.003))
-    candles.append([o,h,l,c]); base=c
-  W,H=900,480; img=Image.new("RGB",(W,H),"#0a0a0a"); d=ImageDraw.Draw(img)
-  mn=min([c[2] for c in candles]); mx=max([c[1] for c in candles])
-  entry=ENTS[sym]["entry"] if sym in ENTS else None
-  if entry: mn=min(mn,entry*0.995); mx=max(mx,entry*1.005)
-  if mx==mn: mx=mn*1.01
-  pad=50
-  def yf(v): return H-pad - (v-mn)/(mx-mn)*(H-pad*2-20)
-  step=W//len(candles); bw=max(4,step-6)
-  for i,c in enumerate(candles):
-   o,h,l,cl=c; x=i*step+bw//2+15; col="#00ff88" if cl>=o else "#ff3b3b"
-   d.line([x,yf(h),x,yf(l)],fill=col,width=2)
-   top=min(yf(o),yf(cl)); bot=max(yf(o),yf(cl))
-   if bot-top<3: bot=top+4
-   d.rectangle([x-bw//2,top,x+bw//2,bot],fill=col)
-  if entry:
-   ye=yf(entry); d.line([0,ye,W,ye],fill="#ffcc00",width=2)
-   d.text((15,ye-18),"ENTRADA "+str(round(entry,4)),fill="#ffcc00")
-   d.line([0,yf(entry*(1-SL/100)),W,yf(entry*(1-SL/100))],fill="#ff3b3b",width=1)
-   d.line([0,yf(entry*(1+TP/100)),W,yf(entry*(1+TP/100))],fill="#00ff88",width=1)
-  d.text((15,10),sym+" "+str(round(p,4)),fill="white")
-  bio=io.BytesIO(); bio.name="graf.png"; img.save(bio,"PNG"); bio.seek(0)
-  u="https://api.telegram.org/bot"+TOKEN+"/sendPhoto"
-  requests.post(u,data={"chat_id":cid},files={"photo":bio},timeout=20)
- except Exception as e: print(e); send_text(cid,sym+" "+str(round(p,4)))
-def checker():
- while True:
-  time.sleep(180)
-  try:
-   for sym in ["BTC","ETH","SOL","XRP"]:
-    p=price(sym)
-    if p<1: continue
-    if sym in ENTS:
-     ent=ENTS[sym]["entry"]; cid=ENTS[sym]["chat"]; pnl=(p/ent-1)*100
-     if pnl < -SL:
-      usd=ENTS[sym].get("usd",0); txt="ROJA VENDER "+sym+" "+str(round(p,4))+" "+str(round(pnl,2))+"%"
-      if usd>0: txt+=" Perdi $"+str(round(usd*pnl/100,2))
-      send_text(cid,txt); del ENTS[sym]
-     if pnl > TP and sym in ENTS:
-      usd=ENTS[sym].get("usd",0); txt="VERDE VENDER "+sym+" "+str(round(p,4))+" "+str(round(pnl,2))+"%"
-      if usd>0: txt+=" Gane $"+str(round(usd*pnl/100,2))
-      send_text(cid,txt); del ENTS[sym]
-    LAST[sym]=p
-  except: time.sleep(5)
-threading.Thread(target=checker,daemon=True).start()
-@app.route("/")
-def home(): return "V60 MONTO",200
-@app.route("/webhook",methods=["POST"])
-def wh():
- global SEL
- try:
-  d=request.get_json(force=True,silent=True)
-  if not d or "message" not in d: return "ok",200
-  cid=d["message"]["chat"]["id"]
-  t=d["message"].get("text","").upper().strip()
-  # SELECCION MONEDA
-  for s in ["BTC","ETH","SOL","XRP"]:
-   if s in t: SEL=s
-  if t in ["BTC","ETH","SOL","XRP"]: SEL=t
-  p=price(SEL)
-  if p<1: p=LAST.get(SEL,0)
-  if "GRAF" in t: send_graf(cid,SEL,p); return "ok",200
-  if "COMPRAR" in t:
-   # BUSCA MONTO: COMPRAR 100 o COMPRAR XRP 500
-   nums=re.findall(r"\d+",t)
-   monto=float(nums[0]) if nums else 100.0
-   if monto<1: monto=100
-   ENTS[SEL]={"entry":p,"chat":cid,"usd":monto,"qty":monto/p if p>0 else 0}
-   send_text(cid,f"ABIERTA {SEL} {round(p,4)} con ${monto} qty {round(monto/p,4) if p>0 else 0}"); return "ok",200
-  if "VENDER" in t:
-   if SEL in ENTS: del ENTS[SEL]
-   send_text(cid,"CERRADA "+SEL); return "ok",200
-  if "PRO" in t:
-   if len(ENTS)==0: send_text(cid,"Sin partidas")
-   else:
-    out=""
-    for k,v in ENTS.items():
-     pp=price(k)
-     if pp<1: pp=v["entry"]
-     pnlp=(pp/v["entry"]-1)*100; usd=v.get("usd",0)
-     out+=k+f" {round(pnlp,2)}% ${round(usd*pnlp/100,2)} | "
-    send_text(cid,out)
-   return "ok",200
-  send_text(cid,SEL+" "+str(round(p,4))); return "ok",200
- except Exception as e: print(e); return "ok",200
-if __name__=="__main__":
-  port=int(os.getenv("PORT","10000")); app.run(host="0.0.0.0",port=port)
+ try
