@@ -121,4 +121,23 @@ def wh():
                 dr.rectangle([x,yf(max(c[3],c[4])),x+6,yf(min(c[3],c[4]))],fill=col)
         dr.text((10,10),f"V81 {SEL} {round(p,4)} {'AUTO ON' if CONFIG['AUTO'] else 'SOLO ALERTAS'}",fill="white")
         bio=io.BytesIO(); bio.name="graf.png"; img.save(bio,"PNG"); bio.seek(0)
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",data={"chat_id":cid},files={"photo":bio},timeout=
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendPhoto",data={"chat_id":cid},files={"photo":bio},timeout=20)
+        return "ok",200
+    if "COMPRAR" in t:
+        nums=re.findall(r"[\d\.]+",t); monto=float(nums[0]) if nums else 100.0
+        ENTS[SEL]={"entry":p,"chat":cid,"usd":monto}; save()
+        send_text(cid,f"✅ COMPRADA {SEL} {round(p,4)} ${monto}"); return "ok",200
+    if "VENDER" in t:
+        if SEL in ENTS: del ENTS[SEL]; save()
+        send_text(cid,f"CERRADA {SEL}"); return "ok",200
+    if "PRO" in t:
+        if not ENTS: send_text(cid,"V81 Sin partidas - En OFF solo alerta")
+        else:
+            out=""
+            for k,v in ENTS.items():
+                pp=price(k) or v["entry"]; pnl=(pp/v["entry"]-1)*100; out+=f"{k} {round(pnl-0.2,2)}% | "
+            send_text(cid,out)
+        return "ok",200
+    send_text(cid,f"{SEL} {round(p,4)} {'ON' if CONFIG['AUTO'] else 'OFF-ALERTA'}")
+    return "ok",200
+if __name__=="__main__": app.run(host="0.0.0.0",port=int(os.getenv("PORT","10000")))
