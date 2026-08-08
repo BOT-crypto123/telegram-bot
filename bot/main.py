@@ -1,22 +1,23 @@
-import os,requests,threading,time,json,urllib.parse
+import os,requests,threading,time,io
 from flask import Flask,request
+from PIL import Image, ImageDraw
 TOKEN=os.getenv("TELE_TOKEN") or os.getenv("BOT_TOKEN") or ""
 app=Flask(__name__)
-SEL="BTC";SL=5.0;TP=10.0;ENTS={};LAST={};CHATS=set()
+SEL="BTC";SL=5.0;TP=10.0;ENTS={};LAST={}
 def price(s):
  try:
   r=requests.get("https://api.coinbase.com/v2/prices/"+s+"-USD/spot",timeout=8).json()
   return float(r["data"]["amount"])
  except: return 0
-def get_closes(sym):
+def get_candles(sym):
  try:
   mp={"BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","XRP":"XRPUSDT"}
   pair=mp.get(sym,"BTCUSDT")
-  url="https://api.binance.com/api/v3/klines?symbol="+pair+"&interval=15m&limit=20"
-  r=requests.get(url,timeout=8).json()
+  url="https://api.binance.com/api/v3/klines?symbol="+pair+"&interval=15m&limit=30"
+  r=requests.get(url,timeout=10).json()
   out=[]
   for x in r:
-   out.append(float(x[4]))
+   out.append([float(x[1]),float(x[2]),float(x[3]),float(x[4])])
   return out
  except: return []
 def send_text(cid,txt):
@@ -27,15 +28,32 @@ def send_text(cid,txt):
  except: return
 def send_graf(cid,sym,p):
  try:
-  closes=get_closes(sym)
-  if len(closes)<5: closes=[p*0.99,p,p*1.01]
-  cfg={"type":"line","data":{"labels":[""]*len(closes),"datasets":[{"label":sym,"data":closes,"borderColor":"#00ff88","backgroundColor":"rgba(0,255,136,0.2)","fill":True}]},"options":{"plugins":{"legend":{"display":False}}}}
-  enc=urllib.parse.quote(json.dumps(cfg))
-  chart="https://quickchart.io/chart?c="+enc+"&bkg=black&width=600&height=300"
+  candles=get_candles(sym)
+  if len(candles)<5:
+   send_text(cid,sym+" "+str(round(p,2))); return
+  W,H=800,400
+  img=Image.new("RGB",(W,H),"#050505")
+  d=ImageDraw.Draw(img)
+  mn=min([c[2] for c in candles]); mx=max([c[1] for c in candles])
+  if mx==mn: mx=mn*1.01
+  pad=30
+  def yf(v): return H-pad - (v-mn)/(mx-mn)*(H-pad*2)
+  step=W//len(candles); bw=step//2
+  for i,c in enumerate(candles):
+   o,h,l,cl=c
+   x=i*step+bw+10
+   col="#00ff88" if cl>=o else "#ff3b3b"
+   d.line([x,yf(h),x,yf(l)],fill=col,width=2)
+   top=min(yf(o),yf(cl)); bot=max(yf(o),yf(cl))
+   if bot-top<2: bot=top+3
+   d.rectangle([x-bw//2+2,top,x+bw//2-2,bot],fill=col)
+  d.text((10,8),sym+" "+str(round(p,2)),fill="white")
+  bio=io.BytesIO(); bio.name="graf.png"
+  img.save(bio,"PNG"); bio.seek(0)
   u="https://api.telegram.org/bot"+TOKEN+"/sendPhoto"
-  requests.post(u,json={"chat_id":cid,"photo":chart,"caption":sym+" "+str(round(p,2))+" SL -"+str(SL)+"% TP +"+str(TP)+"%"},timeout=15)
- except:
-  send_text(cid,sym+" "+str(round(p,2)))
+  cap=sym+" "+str(round(p,2))+" SL -"+str(SL)+"% TP +"+str(TP)+"%"
+  requests.post(u,data={"chat_id":cid,"caption":cap},files={"photo":bio},timeout=20)
+ except: send_text(cid,sym+" "+str(round(p,2)))
 def checker():
  while True:
   time.sleep(180)
@@ -56,7 +74,7 @@ def checker():
   except: time.sleep(5)
 threading.Thread(target=checker,daemon=True).start()
 @app.route("/")
-def home(): return "V56 LIVE",200
+def home(): return "V57 VELAS",200
 @app.route("/webhook",methods=["POST"])
 def wh():
  global SEL
@@ -64,7 +82,6 @@ def wh():
   d=request.get_json(force=True,silent=True)
   if not d or "message" not in d: return "ok",200
   cid=d["message"]["chat"]["id"]
-  CHATS.add(cid)
   t=d["message"].get("text","").upper().strip()
   if t in ["BTC","ETH","SOL","XRP"]: SEL=t
   p=price(SEL)
@@ -87,8 +104,9 @@ def wh():
      out+=k+" "+str(round((pp/v["entry"]-1)*100,2))+"% "
     send_text(cid,out)
    return "ok",200
-  send_text(cid,SEL+" "+str(round(p,2)))
-  return "ok",200
+  send_text(cid,SEL+" "+str(round(p,2))); return "ok",200
  except: return "ok",200
+
 if __name__=="__main__":
- app.run(host="0.0.0.0",port=int(os.environ.get("PORT",10000)))
+  port=int(os.getenv("PORT","10000"))
+  app.run(host="0.0.0.0",port=port)
