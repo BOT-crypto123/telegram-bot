@@ -1,67 +1,62 @@
-import os,requests,threading,time,io,random,re
-from flask import Flask,request
-TOKEN=os.getenv("TELE_TOKEN") or os.getenv("BOT_TOKEN") or ""
-app=Flask(__name__)
-SEL="BTC";SL=2.0;TP=2.2;ENTS={};LAST={};HIGHS={}
+import os, requests, threading, time, re
+from flask import Flask, request
+
+TOKEN = os.getenv("TELE_TOKEN") or os.getenv("BOT_TOKEN") or ""
+app = Flask(__name__)
+
+SEL = "BTC"
+SL = 2.0
+TP = 2.2
+ENTS = {}
+HIGHS = {}
+LAST = {}
+
 def price(s):
- try:
-  r=requests.get("https://api.coinbase.com/v2/prices/"+s+"-USD/spot",timeout=8).json()
-  return float(r["data"]["amount"])
- except:
-  return 0
-def get_candles(sym):
- try:
-  mp={"BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","XRP":"XRPUSDT"}
-  pair=mp.get(sym,"BTCUSDT")
-  url="https://api.binance.com/api/v3/klines?symbol="+pair+"&interval=15m&limit=30"
-  r=requests.get(url,timeout=6).json()
-  if isinstance(r,list) and len(r)>5:
-   out=[]
-   for x in r:
-    out.append([float(x[1]),float(x[2]),float(x[3]),float(x[4])])
-   return out
-  return []
- except:
-  return []
-def send_text(cid,txt):
- try:
-  u="https://api.telegram.org/bot"+TOKEN+"/sendMessage"
-  kb={"keyboard":[["BTC","ETH"],["SOL","XRP"],["COMPRAR 100","VENDER"],["GRAF","PRO"]],"resize_keyboard":True}
-  requests.post(u,json={"chat_id":cid,"text":txt,"reply_markup":kb},timeout=10)
- except:
-  return
-def send_graf(cid,sym,p):
- try:
-  from PIL import Image, ImageDraw
-  candles=get_candles(sym)
-  if len(candles)<5:
-   candles=[]
-   base=p if p>0 else 65000
-   for i in range(30):
-    o=base*(1+random.uniform(-0.005,0.005))
-    c=o*(1+random.uniform(-0.008,0.008))
-    h=max(o,c)*(1+random.uniform(0,0.003))
-    l=min(o,c)*(1-random.uniform(0,0.003))
-    candles.append([o,h,l,c])
-    base=c
-  W,H=900,480
-  img=Image.new("RGB",(W,H),"#0a0a0a")
-  d=ImageDraw.Draw(img)
-  mn=min([c[2] for c in candles])
-  mx=max([c[1] for c in candles])
-  entry=ENTS[sym]["entry"] if sym in ENTS else None
-  if entry:
-   mn=min(mn,entry*0.995)
-   mx=max(mx,entry*1.005)
-  if mx==mn:
-   mx=mn*1.01
-  pad=50
-  def yf(v):
-   return H-pad - (v-mn)/(mx-mn)*(H-pad*2-20)
-  step=W//len(candles)
-  bw=max(4,step-6)
-  for i,c in enumerate(candles):
-   o,h,l,cl=c
-   x=i*step+bw//2+15
-   col="#00ff88" if cl>=o else "#ff3b3b"
-   d
+    try:
+        r = requests.get("https://api.coinbase.com/v2/prices/"+s+"-USD/spot", timeout=8).json()
+        return float(r["data"]["amount"])
+    except:
+        return 0
+
+def send_text(cid, txt):
+    try:
+        u = "https://api.telegram.org/bot"+TOKEN+"/sendMessage"
+        kb = {"keyboard":[["BTC","ETH"],["SOL","XRP"],["COMPRAR 100","VENDER"],["GRAF","PRO"]],"resize_keyboard":True}
+        requests.post(u, json={"chat_id":cid,"text":txt,"reply_markup":kb}, timeout=10)
+    except:
+        pass
+
+def send_graf(cid, sym, p):
+    try:
+        from PIL import Image, ImageDraw
+        import random, io
+        W, H = 800, 400
+        img = Image.new("RGB", (W, H), "#111111")
+        dr = ImageDraw.Draw(img)
+        entry = ENTS[sym]["entry"] if sym in ENTS else p
+        # simula 20 velas
+        prices = []
+        base = p
+        for i in range(20):
+            base = base * (1 + random.uniform(-0.01, 0.01))
+            prices.append(base)
+        mn = min(prices + [entry]) * 0.99
+        mx = max(prices + [entry]) * 1.01
+        def yf(v):
+            return H-40 - (v-mn)/(mx-mn)*(H-80)
+        for i, pr in enumerate(prices):
+            x = i * 40 + 20
+            dr.line([x, yf(pr*0.99), x, yf(pr*1.01)], fill="#00ff88" if i%2==0 else "#ff4444", width=2)
+        if sym in ENTS:
+            ye = yf(entry)
+            dr.line([0, ye, W, ye], fill="#ffcc00", width=2)
+            dr.text((10, ye-15), f"ENT {round(entry,4)}", fill="#ffcc00")
+            dr.line([0, yf(entry*1.022), W, yf(entry*1.022)], fill="#00ff88", width=1)
+            dr.line([0, yf(entry*0.98), W, yf(entry*0.98)], fill="#ff4444", width=1)
+        dr.text((10, 10), f"{sym} {round(p,4)}", fill="white")
+        bio = io.BytesIO()
+        bio.name = "graf.png"
+        img.save(bio, "PNG")
+        bio.seek(0)
+        u = "https://api.telegram.org/bot"+TOKEN+"/sendPhoto"
+        requests.post(u, data={"chat_id":cid}, files={"photo":bio}, timeout=20)
