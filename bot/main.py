@@ -43,8 +43,16 @@ def checker():
    time.sleep(60)
    for sym in list(ENTS.keys()):
     p=price(sym)
-    if p<1: continue
+    if p.__lt__(1): continue
     v=ENTS[sym]
     pnl=(p/v["entry"]-1)*100
     if CONFIG.get("AUTO"):
-     if pnl
+     if pnl.__le__(-SL):
+      send_text(v["chat"],"V89 AUTO VENTA SL "+sym)
+      del ENTS[sym];save()
+     elif pnl.__ge__(TP2):
+      send_text(v["chat"],"V89 AUTO VENTA TP "+sym)
+      del ENTS[sym];save()
+    else:
+     if pnl.__le__(-1.5) and last.get(sym)!=p:
+      send_text(v["chat
