@@ -67,11 +67,17 @@ def lp():
     pr=p(sy)
     e9=ema(cs,9)
     e21=ema(cs,21)
-    # AUTO con EMA + RSI
     if rr<30 and e9>e21 and not E.get(sy):
      E[sy]=pr
-     s2(CID,"AUTO COMPRO "+sy+" RSI "+str(round(rr,1))+" EMA ALCISTA")
+     rr2=str(round(rr,1))
+     m="AUTO COMPRO "+sy+" RSI "+rr2
+     s2(CID,m)
     if rr>70 and e9<e21 and E.get(sy):
      pf=(pr/E[sy]-1)*100
+     pf2=str(round(pf,2))
+     m="AUTO VENDIO "+sy+" "+pf2+"%"
      del E[sy]
-     s2(CID,"AUTO VENDIO "+sy+" PROFIT "+str(round(pf
+     s2(CID,m)
+  except:
+   time.sleep(60)
+thread
