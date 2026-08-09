@@ -3,12 +3,12 @@ from flask import Flask,request
 from datetime import datetime,timedelta
 
 TOKEN=os.getenv('TELE_TOKEN') or os.getenv('BOT_TOKEN') or ''
-print("V100.1 TOKEN", len(TOKEN))
+print("V100.99 TOKEN", len(TOKEN))
 
 app=Flask(__name__)
 SEL='XRP'
 ENTS={}
-FILE='/tmp/bot_v100.json'
+FILE='/tmp/bot_10099.json'
 CONFIG={'AUTO':False,'LAST_CID':0,'LAST_ALERT':''}
 
 def load():
@@ -17,6 +17,7 @@ def load():
             d=json.load(open(FILE))
             ENTS.update(d.get('ENTS',{}))
             CONFIG.update(d.get('CONFIG',{}))
+            print("V100.99 LOADED")
     except Exception as e:
         print("LOAD",e)
 
@@ -40,7 +41,7 @@ def get_candles(sym):
     try:
         u='https://api.exchange.coinbase.com/products/'+sym+'-USD/candles?granularity=60'
         r=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=12).json()
-        return sorted(r)[-70:]
+        return sorted(r)[-80:]
     except:
         return []
 
@@ -91,6 +92,7 @@ def analyze(sym):
         p=closes[-1]
     ema9=ema_calc(closes,9)
     ema21=ema_calc(closes,21)
+    ema50=ema_calc(closes,50)
     rsi=rsi_calc(closes)
     if len(ema9) == 0 or len(ema21) == 0:
         return None
@@ -114,7 +116,7 @@ def analyze(sym):
     if rsi < 30:
         pred='SUBIDA FUERTE'
         senial='COMPRA FUERTE'
-        score=92
+        score=93
     if rsi > 65 and p < e9:
         pred='BAJADA FUERTE'
         senial='VENTA FUERTE'
@@ -122,14 +124,14 @@ def analyze(sym):
     if rsi > 70:
         pred='BAJADA FUERTE'
         senial='VENTA FUERTE'
-        score=91
-    return {'p':p,'candles':candles,'ema9':ema9,'ema21':ema21,'rsi':rsi,'pred':pred,'senial':senial,'score':score}
+        score=92
+    return {'p':p,'candles':candles,'ema9':ema9,'ema21':ema21,'ema50':ema50,'rsi':rsi,'pred':pred,'senial':senial,'score':score}
 
 def auto_loop():
-    print("V100.1 AUTO START")
+    print("V100.99 AUTO START")
     while True:
         try:
-            time.sleep(240)
+            time.sleep(180)
             if CONFIG.get('AUTO') == False:
                 continue
             cid=CONFIG.get('LAST_CID')
@@ -145,12 +147,14 @@ def auto_loop():
                         continue
                     CONFIG['LAST_ALERT']=key
                     save()
-                    txt='ALERTA V100.1 '+sym+' '+info['senial']+'\n'
+                    txt='ALERTA V100.99 '+sym+'\n'
+                    txt=txt+info['senial']+'\n'
                     txt=txt+'Precio: '+str(round(info['p'],2))+'\n'
-                    txt=txt+'RSI: '+str(round(info['rsi'],1))\n
-                    txt=txt+' SCORE: '+str(info['score'])+' pct\n'
+                    txt=txt+'RSI: '+str(round(info['rsi'],1))\n'
+                    txt=txt+' Score: '+str(info['score'])+' pct\n'
+                    txt=txt+'Manda GRAF '+sym
                     send_text(cid,txt)
-                    time.sleep(3)
+                    time.sleep(2)
         except Exception as e:
             print("AUTO ERR",e)
             time.sleep(60)
@@ -159,7 +163,7 @@ threading.Thread(target=auto_loop,daemon=True).start()
 
 @app.route('/')
 def home():
-    return 'V100.1 GOD LIVE',200
+    return 'V100.99 GOD ULTRA LIVE',200
 
 @app.route('/webhook',methods=['POST'])
 def wh():
@@ -177,12 +181,12 @@ def wh():
         if 'AUTO ON' in t:
             CONFIG['AUTO']=True
             save()
-            send_text(cid,'V100.1 AUTO ON')
+            send_text(cid,'V100.99 AUTO ON - 3 min')
             return 'ok',200
         if 'AUTO OFF' in t:
             CONFIG['AUTO']=False
             save()
-            send_text(cid,'V100.1 AUTO OFF')
+            send_text(cid,'V100.99 AUTO OFF')
             return 'ok',200
         for s in ['BTC','ETH','SOL','XRP']:
             if s in t:
@@ -204,8 +208,8 @@ def wh():
             score=info['score']
             ema9=info['ema9']
             ema21=info['ema21']
-            W=900
-            H=540
+            W=1000
+            H=560
             img=Image.new('RGB',(W,H),'#0a0e15')
             dr=ImageDraw.Draw(img)
             mn=p
@@ -216,9 +220,11 @@ def wh():
                 if c[2] > mx:
                     mx=c[2]
             if mn == mx:
-                mn=mn*0.998
-                mx=mx*1.002
-            pad=H-100
+                mn=mn*0.997
+                mx=mx*1.003
+            pad=H-110
+            for y in [80,200,320,440]:
+                dr.line([0,y,W,y],fill='#162032',width=1)
             idx=0
             for c in candles:
                 x=20+idx*12
@@ -251,7 +257,7 @@ def wh():
                 txt_head=txt_head+' | '+sgn+str(round(pnl,2))+' pct'
                 ye=H-70-(entry-mn)/(mx-mn)*pad
                 dr.line([0,ye,W,ye],fill='#ffea00',width=2)
-            dr.rectangle([0,0,W,32],fill='#111827')
+            dr.rectangle([0,0,W,36],fill='#111827')
             dr.text((12,10),txt_head,fill='white')
             e9v=0
             e21v=0
@@ -261,10 +267,10 @@ def wh():
                 e21v=round(ema21[-1],3)
             cap=txt_head+'\n'
             cap=cap+'EMA9:'+str(e9v)+' EMA21:'+str(e21v)+' RSI:'+str(round(rsi,1))+'\n'
-            cap=cap+'PRED: '+pred+' '+str(score)+' pct | SENAL: '+senial+'\n'
-            cap=cap+'V100.1 GOD'
+            cap=cap+'PRED:'+pred+' '+str(score)+' pct | SENAL:'+senial+'\n'
+            cap=cap+'V100.99 ULTRA'
             bio=io.BytesIO()
-            bio.name='v100.png'
+            bio.name='v10099.png'
             img.save(bio,'PNG')
             bio.seek(0)
             requests.post('https://api.telegram.org/bot'+TOKEN+'/sendPhoto',data={'chat_id':cid,'caption':cap},files={'photo':bio},timeout=20)
@@ -279,7 +285,7 @@ def wh():
                     m=100.0
             ENTS[SEL]={'entry':p_now,'usd':m}
             save()
-            send_text(cid,'COMPRADA '+SEL+' @ '+str(round(p_now,2))+' V100.1')
+            send_text(cid,'COMPRADA '+SEL+' @ '+str(round(p_now,2))+' V100.99')
             return 'ok',200
         if 'VENDER' in t:
             if SEL in ENTS:
@@ -292,15 +298,15 @@ def wh():
                 sgn='+'
                 if pnl < 0:
                     sgn=''
-                send_text(cid,'CERRADA '+SEL+' '+sgn+str(round(pnl,2))+' pct ('+sgn+str(round(profit,2))+') V100.1')
+                send_text(cid,'CERRADA '+SEL+' '+sgn+str(round(pnl,2))+' pct ('+sgn+str(round(profit,2))+') V100.99')
             else:
                 send_text(cid,'Sin partida '+SEL)
             return 'ok',200
         if 'PRO' in t:
             if len(ENTS) == 0:
-                send_text(cid,'Sin partidas V100.1')
+                send_text(cid,'Sin partidas V100.99')
             else:
-                out='PORTAFOLIO V100.1\n\n'
+                out='PORTAFOLIO V100.99\n\n'
                 total=0.0
                 for k,v in ENTS.items():
                     pp=price(k)
@@ -320,7 +326,7 @@ def wh():
                 out=out+'\nTotal: '+sgnT+str(round(total,2))
                 send_text(cid,out)
             return 'ok',200
-        send_text(cid,SEL+' '+str(round(p_now,4))+' V100.1 LISTO')
+        send_text(cid,SEL+' '+str(round(p_now,4))+' V100.99 LISTO')
         return 'ok',200
     except Exception as e:
         print("WEBHOOK ERR",e)
@@ -328,5 +334,5 @@ def wh():
 
 if __name__=='__main__':
     port=int(os.getenv('PORT','10000'))
-    print("STARTING V100.1 ON",port)
+    print("STARTING V100.99 ON",port)
     app.run(host='0.0.0.0',port=port)
