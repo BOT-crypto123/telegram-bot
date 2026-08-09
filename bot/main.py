@@ -55,7 +55,34 @@ async def cq_answer(id,txt):
 async def dashboard():
  s=load_state()
  bal=s.get("virtual_balance",0)
- html=f"<h1>V866-B OK</h1><p>Saldo {bal}</p><p>Auto {s.get('auto')}</p><p>{s.get('holdings')}</p>"
+ auto=s.get("auto",False)
+ holds=s.get("holdings",{})
+ hist=s.get("trade_history",[])[-20:]
+ # tabla holdings
+ hold_rows=""
+ for k,v in holds.items():
+  hold_rows+=f"<tr><td>{k}</td><td>{v['amount']:.6f}</td><td>${v['entry']:.2f}</td></tr>"
+ if not hold_rows:
+  hold_rows="<tr><td colspan=3>Sin posiciones</td></tr>"
+ # historial
+ hist_rows=""
+ for h in reversed(hist):
+  color="green" if h["tipo"]=="VENTA" else "orange"
+  hist_rows+=f"<tr style='color:{color}'><td>{h['fecha']}</td><td>{h['tipo']} {h['moneda']}</td><td>${h['precio']}</td><td>${h['monto']:.2f}</td></tr>"
+ if not hist_rows:
+  hist_rows="<tr><td colspan=4>Sin trades</td></tr>"
+ html=f"""
+ <html><head><meta name='viewport' content='width=device-width'><title>V867</title></head>
+ <body style='background:#0d1117;color:#fff;font-family:Arial;padding:20px'>
+ <h1 style='color:#58a6ff'>🤖 Bot Vicente V867</h1>
+ <p><b>Saldo:</b> ${bal:.2f} | <b>Auto:</b> {auto}</p>
+ <h2>Posiciones</h2>
+ <table border=1 cellpadding=6 style='border-collapse:collapse;width:100%'><tr><th>Moneda</th><th>Cantidad</th><th>Entrada</th></tr>{hold_rows}</table>
+ <h2>Historial</h2>
+ <table border=1 cellpadding=6 style='border-collapse:collapse;width:100%'><tr><th>Fecha</th><th>Tipo</th><th>Precio</th><th>Monto</th></tr>{hist_rows}</table>
+ <p><a href='/' style='color:#58a6ff'>Volver</a></p>
+ </body></html>
+ """
  return HTMLResponse(content=html)
 @app.post("/webhook")
 async def webhook(req: Request):
@@ -116,7 +143,7 @@ async def webhook(req: Request):
  if text in ["ESTADO","PORTAFOLIO","BALANCE"]:
   bal=s["virtual_balance"]
   holds=s.get("holdings",{})
-  txt=f"PORTAFOLIO V866-B\nSaldo: ${bal:.2f}\nAuto: {s.get('auto',False)}\n\n"
+  txt=f"PORTAFOLIO V867\nSaldo: ${bal:.2f}\nAuto: {s.get('auto',False)}\n\n"
   tot=bal
   for k,v in holds.items():
    p,_=await get_data(k)
@@ -133,8 +160,8 @@ async def webhook(req: Request):
   p,c=await get_data(text)
   await send_msg(chat_id,f"{text}: ${p:,.2f} ({c:+.2f}%) Bal ${s['virtual_balance']:.2f}",text,True)
  else:
-  await send_menu(chat_id,f"V866-B Bal ${s['virtual_balance']:.2f} {DASH_URL}")
+  await send_menu(chat_id,f"V867 Bal ${s['virtual_balance']:.2f} {DASH_URL}")
  return {"ok":True}
 @app.get("/")
 def home():
- return {"V866B":DASH_URL}
+ return {"V867":DASH_URL}
