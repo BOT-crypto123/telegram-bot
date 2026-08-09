@@ -1,4 +1,5 @@
-import os,requests,io,json,time,threading
+import os,requests,io,json,time
+import threading as th
 from flask import Flask,request
 T=os.getenv("TELE_TOKEN")or""
 A=Flask(__name__)
@@ -80,4 +81,19 @@ def lp():
      s2(CID,m)
   except:
    time.sleep(60)
-thread
+th.Thread(target=lp,daemon=True).start()
+@A.route("/")
+def h():
+ return "V245 LIVE",200
+@A.route("/webhook",methods=["POST"])
+def w():
+ global S,E,ON,CID
+ j=request.get_json(force=True,silent=True)or{}
+ m=j.get("message",{})
+ cid=m.get("chat",{}).get("id",0)
+ if not cid:
+  return "ok",200
+ t=m.get("text","").upper()
+ if "BTC" in t:
+  S="BTC"
+ if "ETH" in t:
