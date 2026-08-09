@@ -1,21 +1,3 @@
 import os,requests,io,json,time,threading as th
 from flask import Flask,request
-B=''
-B+='T=os.getenv("TELE_TOKEN")or""\n'
-B+='A=Flask(__name__)\n'
-B+='S="XRP";E={};O=False;C=0;LC={}\n'
-B+='def p(s):\n'
-B+=' try:\n'
-B+='  a="https://api.coinbase.com/"\n'
-B+='  b="v2/prices/"\n'
-B+='  c="-USD/spot"\n'
-B+='  u=a+b+s+c\n'
-B+='  j=requests.get(u,timeout=8).json()\n'
-B+='  return float(j["data"]["amount"])\n'
-B+=' except:\n'
-B+='  return 0\n'
-B+='def q(s):\n'
-B+=' try:\n'
-B+='  a="https://api.exchange.coinbase.com/"\n'
-B+='  b="products/"+s\n'
-B+
+B=('T=os.getenv("TELE_TOKEN")or""\n' 'A=Flask(__name__)\n' 'S="XRP";E={};O=False;C=0;LC={}\n' 'def p(s):\n' ' try:\n' ' a="https://api.coinbase.com/"\n' ' b="v2/prices/"\n' ' c="-USD/spot"\n' ' u=a+b+s+c\n' ' j=requests.get(u,timeout=8).json()\n' ' return float(j["data"]["amount"])\n' ' except:\n' ' return 0\n' 'def q(s):\n' ' try:\n' ' a="https://api.exchange.coinbase.com/"\n' ' b="products/"+s\n' ' c="-USD/candles"\n' ' d="?granularity=60"\n' ' u=a+b+c+d\n' ' j=requests.get(u,timeout=10).json()\n' ' return sorted(j)[-60:]\n' ' except:\n' ' return []\n' 'def rsi(a):\n' ' if len(a)<15:\n' ' return 50\n' ' g=l=0\n' ' for i in range(1,15):\n' ' d=a[i]-a[i-1]\n' ' if d>0:\n' ' g+=d\n' ' else:\n' ' l+=-d\n' ' if l==0:\n' ' return 88\n' ' return 100-100/(1+g/l)\n' 'def em(a,n):\n' ' if len(a)<n:\n' ' return a[-1]\n' ' k=2/(n+1)\n' ' e=a[0]\n' ' for x in a[1:]:\n' ' e=x*k+e*(1-k)\n' ' return e\n' 'def m(x,t):\n' ' k1=[["BTC","ETH"]]\n' ' k1+=[["SOL","XRP"]]\n' ' k2=[["COMPRAR","VENDER"]]\n' ' k2+=[["AUTO"]]\n' ' kb={"keyboard":k1+k2}\n' ' kb["resize_keyboard"]=True\n' ' try:\n' ' a="https://api.telegram.org/bot"\n' ' b=a+T+"/sendMessage"\n' ' requests.post(b,json={"chat_id":x,"text":t,"reply_markup":kb},timeout=8)\n' ' except:\n' ' pass\n' 'def chk():\n' ' while True:\n' ' time.sleep(180)\n' ' if not O or not C:\n' ' continue\n' ' try:\n' ' for y in ["BTC","ETH","SOL","XRP"]:\n' ' z=q(y)\n' ' if not z:\n' ' continue\n' ' v=[c[4] for c in z]\n' ' u=rsi(v)\n' ' w=p(y)\n' ' j=em(v,9)\n' ' k=em(v,21)\n' ' if u<30 and j>k:\n' ' if LC.get(y)!="C":\n' ' LC[y]="C"\n' ' m(C,y+" COMPRA 92")\n' '
