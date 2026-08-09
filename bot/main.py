@@ -2,12 +2,12 @@ import os,requests,io,json,time,threading
 from flask import Flask,request
 from datetime import datetime,timedelta
 T=os.getenv('TELE_TOKEN') or ''
-print('V220 TOKEN',len(T),flush=True)
+print('V221 TOKEN',len(T),flush=True)
 A=Flask(__name__)
 S='XRP'
 E={}
-F='/tmp/b220.json'
-G='/tmp/a220.json'
+F='/tmp/b221.json'
+G='/tmp/a221.json'
 ON=False
 CID=None
 if os.path.exists(F):
@@ -16,7 +16,7 @@ if os.path.exists(G):
  d=json.load(open(G))
  ON=d.get('ON',False)
  CID=d.get('CID',None)
-print('V220 LOADED',ON,flush=True)
+print('V221 LOADED',ON,flush=True)
 def prc(s):
  u='https://api.coinbase.com/v2/prices/'+s+'-USD/spot'
  r=requests.get(u,timeout=8).json()
@@ -47,10 +47,10 @@ def snd(c,t):
  u='https://api.telegram.org/bot'+T+'/sendMessage'
  k={'keyboard':[['BTC','ETH'],['SOL','XRP'],['COMPRAR','VENDER'],['GRAF','AUTO']],'resize_keyboard':True}
  requests.post(u,json={'chat_id':c,'text':t,'reply_markup':k},timeout=10)
-def trd(sym,auto=False):
+def trd(sym):
  cl=cnd(sym)
  if not cl:
-  return None
+  return None,None
  cs=[]
  for a in cl:
   cs.append(a[4])
@@ -58,30 +58,37 @@ def trd(sym,auto=False):
  if p==0:
   p=cs[-1]
  rr=rsi(cs)
- if rr<30 and sym not in E:
-  E[sym]={'entry':p}
-  open(F,'w').write(json.dumps({'ENTS':E}))
-  return 'AUTO COMPRA '+sym+' '+str(round(p,4))
- if rr>70 and sym in E:
-  pnl=(p/E[sym]['entry']-1)*100
-  del E[sym]
-  open(F,'w').write(json.dumps({'ENTS':E}))
-  return 'AUTO VENTA '+sym+' '+str(round(pnl,2))+'%'
- return None
+ e9=ema(cs,9)
+ e21=ema(cs,21)
+ if rr<30:
+  if sym not in E:
+   E[sym]={'entry':p}
+   open(F,'w').write(json.dumps({'ENTS':E}))
+  return 'COMPRA FUERTE','SUBIDA FUERTE 85%'
+ if rr>70:
+  if sym in E:
+   del E[sym]
+   open(F,'w').write(json.dumps({'ENTS':E}))
+  return 'VENTA FUERTE','BAJADA FUERTE 85%'
+ if e9 and e21 and e9[-1]>e21[-1] and p>e9[-1]:
+  return 'COMPRA','SUBIDA 68%'
+ if e9 and e21 and e9[-1]<e21[-1] and p<e9[-1]:
+  return 'VENTA','BAJADA 66%'
+ return 'ESPERA','LATERAL 50%'
 def loop():
  while True:
   time.sleep(600)
   if not ON or not CID:
    continue
   for s in ['BTC','ETH','SOL','XRP']:
-   m=trd(s,True)
-   if m:
-    snd(CID,'🚨🚨🚨 '+m+' 🚨🚨🚨 AUTO ON')
+   sg,_=trd(s)
+   if 'FUERTE' in sg:
+    snd(CID,'🚨🚨🚨 AUTO '+sg+' '+s+' 🚨🚨🚨')
     time.sleep(2)
 threading.Thread(target=loop,daemon=True).start()
 @A.route('/')
 def home():
- return 'V220 LIVE ON:'+str(ON),200
+ return 'V221 LIVE ON:'+str(ON),200
 @A.route('/webhook',methods=['POST'])
 def wh():
  global S,ON,CID
@@ -103,7 +110,7 @@ def wh():
   ON=not ON
   CID=cid
   open(G,'w').write(json.dumps({'ON':ON,'CID':cid}))
-  snd(cid,'AUTO '+('ON 🤖 COMPRAS AUTO ACTIVAS' if ON else 'OFF 🔕 MANUAL'))
+  snd(cid,'AUTO '+('ON 🤖 AUTO COMPRA/VENTA FUERTE' if ON else 'OFF 🔕 MANUAL'))
   return 'ok',200
  if 'GRAF' in txt:
   from PIL import Image,ImageDraw
@@ -115,6 +122,10 @@ def wh():
   if p==0:
    p=cs[-1]
   rr=rsi(cs)
+  e9=ema(cs,9)
+  e21=ema(cs,21)
+  sg,pred=trd(S)
+  pc=(p/cs[-2]-1)*100 if len(cs)>1 else 0
   mn=min(cs)
   mx=max(cs)
   if mn==mx:
@@ -135,28 +146,34 @@ def wh():
    dr.line([x+3,y1,x+3,y2],fill=col)
    dr.rectangle([x,yt,x+6,yb],fill=col)
    i+=1
-  cap=S+' '+str(round(p,4))+' RSI:'+str(int(rr))+' AUTO:'+str(ON)+' V220'
+  hr=(datetime.utcnow()-timedelta(hours=6)).strftime('%I:%M %p')
+  e9v=str(round(e9[-1],2)) if e9 else '--'
+  e21v=str(round(e21[-1],2)) if e21 else '--'
+  sgn='+' if pc>=0 else ''
+  cap=S+' '+str(round(p,4))+' | '+hr+' | '+sgn+str(round(pc,2))+'%\n'
+  cap+='EMA9:'+e9v+' EMA21:'+e21v+'\n'
+  cap+='RSI:'+str(round(rr,1))+' PRED:'+pred+'\n'
+  cap+='SENAL:'+sg+' V221 AUTO:'+str(ON)
   bio=io.BytesIO()
   bio.name='g.png'
   im.save(bio,'PNG')
   bio.seek(0)
   requests.post('https://api.telegram.org/bot'+T+'/sendPhoto',data={'chat_id':cid,'caption':cap},files={'photo':bio},timeout=12)
-  m=trd(S,ON)
-  if m:
-   snd(cid,'🚨 '+m+' 🚨')
+  if 'FUERTE' in sg:
+   snd(cid,'🚨🚨🚨 '+sg+' '+S+' 🚨🚨🚨\nPRECIO: '+str(round(p,4))+'\nRSI: '+str(round(rr,1))+'\n'+pred)
   return 'ok',200
  if 'COMPRAR' in txt:
   E[S]={'entry':pn}
   open(F,'w').write(json.dumps({'ENTS':E}))
-  snd(cid,'COMPRA OK')
+  snd(cid,'COMPRA '+S+' OK')
   return 'ok',200
  if 'VENDER' in txt:
   if S in E:
+   pnl=(pn/E[S]['entry']-1)*100
    del E[S]
    open(F,'w').write(json.dumps({'ENTS':E}))
-   snd(cid,'VENTA OK')
+   snd(cid,'VENTA '+str(round(pnl,2))+'%')
   return 'ok',200
  snd(cid,S+' '+str(round(pn,4)))
  return 'ok',200
-print('V220 START BIND',flush=True)
-A.run(host='0.0.0.0',port=int(os.getenv('PORT','10000')),debug=False,use_reloader=False)
+print('V
