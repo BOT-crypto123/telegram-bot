@@ -19,12 +19,11 @@ async def G(i,t,m):
  async with httpx.AsyncClient() as c:
   k={"inline_keyboard":[[{"text":"GRAF","callback_data":"GRAF_"+m}],[{"text":"BUY","callback_data":"BUY_"+m},{"text":"SELL","callback_data":"SELL_"+m}]]}
   await c.post(B+"/sendMessage",json={"chat_id":i,"text":t,"reply_markup":k})
-@app.get("/")
-def home():return{"v":"V895 FIXED"}
 @app.get("/dashboard",response_class=HTMLResponse)
 async def d():
  s=L()
- return HTMLResponse(f"<body style='background:#000;color:#fff;font-family:monospace;padding:20px'><h3>V895 WALL ST PRO</h3>SALDO ${s['b']:.2f}<br>POS: {list(s['h'].keys())}</body></html>")
+ b=s["b"]
+ return HTMLResponse("<body style='background:#000;color:#fff;font-family:monospace;padding:20px'><h3>V896 WALL ST</h3>SALDO "+str(b)+"</body></html>")
 @app.post("/webhook")
 @app.post("/")
 async def w(r:Request):
@@ -32,12 +31,19 @@ async def w(r:Request):
  if "callback_query" in q:
   c=q["callback_query"];i=c["message"]["chat"]["id"];a,m=c["data"].split("_");s=L()
   if a=="GRAF":
-   b=s["b"];hh=s["h"];tot=b;txt=""
+   b=s["b"];hh=s["h"];tot=b
    for k in hh:
     v=hh[k]
-    try:pr=await P(k);tot+=v["a"]*pr
-    except:tot+=100
+    try:
+     pr=await P(k)
+     tot=tot+v["a"]*pr
+    except:tot=tot+100
    pnl=tot-1000
    try:pr=await P(m)
    except:pr=0
-   txt=f"WALL ST PRO - {m}\n\nSALDO ${b:.
+   txt="WALL ST PRO - "+m+"\n\n"
+   txt=txt+"SALDO $"+str(round(b,2))+"\n"
+   txt=txt+"TOTAL $"+str(round(tot,2))+"\n"
+   txt=txt+"PNL $"+str(round(pnl,2))+"\n\n"
+   txt=txt+m+" $"+str(round(pr,0))+"\n\n"
+   txt=txt+"POSICIONES:\
