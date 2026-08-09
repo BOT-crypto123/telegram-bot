@@ -1,42 +1,40 @@
 from flask import Flask, jsonify, request
 import os, json, requests
 from datetime import datetime
-
-TOKEN = os.getenv('TELEGRAM_TOKEN', '')
-CHAT_FILE = 'trades.json'
 app = Flask(__name__)
-
+TOKEN = os.getenv('TELEGRAM_TOKEN','')
+FILE='trades.json'
 def load():
-    try:
-        with open(CHAT_FILE,'r') as f:
-            return json.load(f)
-    except:
-        return {'trades':[],'balance':1000.0,'hoy':0.0,'ganados':0,'perdidos':0,'chat_id':None,'auto_on':False,'coin':'BTC','signal':'ESPERA'}
-
+ try:
+  import json as js
+  return js.load(open(FILE))
+ except:
+  return {'coin':'BTC','auto_on':False,'balance':1000,'signal':'ESPERA','trades':[],'chat_id':None}
 def save(d):
-    with open(CHAT_FILE,'w') as f:
-        json.dump(d,f)
-
-def send_msg(cid, txt):
-    if not TOKEN or not cid:
-        return
-    kb = {'keyboard':[['BTC','ETH'],['SOL','XRP'],['COMPRAR','VENDER'],['AUTO']],'resize_keyboard':True}
-    payload = {'chat_id':cid,'text':txt,'reply_markup':json.dumps(kb)}
-    try:
-        requests.post('https://api.telegram.org/bot' + TOKEN + '/sendMessage', json=payload, timeout=10)
-    except:
-        pass
-
-def resumen_text():
-    d = load()
-    now = datetime.now().strftime('%d/%m %H:%M')
-    auto = 'AUTO ON' if d.get('auto_on') else 'AUTO OFF'
-    bal = str(d.get('balance',0))
-    coin = d.get('coin','BTC')
-    sig = d.get('signal','ESPERA')
-    return 'RESUMEN ' + now + ' PRACTICA\nBalance: $' + bal + '\nCoin: ' + coin + ' | ' + sig + '\n' + auto
-
+ json.dump(d, open(FILE,'w'))
+def send(cid,t):
+ if not TOKEN or not cid: return
+ kb={'keyboard':[['BTC','ETH'],['SOL','XRP'],['AUTO']],'resize_keyboard':True}
+ requests.post('https://api.telegram.org/bot'+TOKEN+'/sendMessage',json={'chat_id':cid,'text':t,'reply_markup':json.dumps(kb)},timeout=10)
 @app.route('/')
-def home():
-    if os.path.exists('bot/templates/index.html'):
-        with open('bot/templates/index.html',
+def home(): return '<h1>BOT V511 LIVE</h1>'
+@app.route('/api/status')
+def st(): return jsonify(load())
+@app.route('/api/set',methods=['POST'])
+def setc():
+ d=load(); j=request.get_json() or {}
+ for k in ['coin','auto_on','signal']:
+  if k in j: d[k]=j[k]
+ save(d); return jsonify({'ok':True})
+@app.route('/webhook',methods=['POST'])
+def wh():
+ data=request.get_json(silent=True) or {}
+ cid=data.get('message',{}).get('chat',{}).get('id')
+ txt=(data.get('message',{}).get('text','') or '').upper().strip()
+ d=load()
+ if cid: d['chat_id']=cid
+ if txt in ['BTC','ETH','SOL','XRP']: d['coin']=txt; send(cid,'Coin '+txt)
+ elif txt=='AUTO': d['auto_on']=not d.get('auto_on',False); send(cid,'AUTO '+str(d['auto_on']))
+ elif txt in ['/START','START','/BALANCE','BALANCE']: send(cid,'RESUMEN '+d['coin']+' '+str(d['balance']))
+ save(d); return 'ok'
+if __name__=='__main__': app.run(host='0.0.0.0',port=int(os.getenv('PORT',10000)))
