@@ -3,12 +3,12 @@ from flask import Flask,request
 from datetime import datetime,timedelta
 
 TOKEN=os.getenv("TELE_TOKEN") or ""
-print("V117 TOKEN",len(TOKEN),flush=True)
+print("V199 TOKEN",len(TOKEN),flush=True)
 
 app=Flask(__name__)
 SEL="XRP"
 ENTS={}
-FILE="/tmp/b117.json"
+FILE="/tmp/b199.json"
 
 def load():
     if os.path.exists(FILE):
@@ -16,7 +16,7 @@ def load():
         ENTS.update(d.get("ENTS",{}))
 
 load()
-print("V117 LOADED",flush=True)
+print("V199 LOADED",flush=True)
 
 def price(s):
     u="https://api.coinbase.com/v2/prices/"
@@ -33,7 +33,7 @@ def candles(sym):
     r=requests.get(u,headers=h,timeout=10).json()
     if isinstance(r,list):
         r=sorted(r)
-        return r[-60:]
+        return r[-70:]
     return []
 
 def ema(prices,n):
@@ -66,12 +66,19 @@ def rsi(prices):
 
 def send(cid,txt):
     url="https://api.telegram.org/bot"+TOKEN+"/sendMessage"
-    kb={"keyboard":[["BTC","ETH"],["SOL","XRP"],["COMPRAR 100","VENDER"],["GRAF","PRO"]],"resize_keyboard":True}
-    requests.post(url,json={"chat_id":cid,"text":txt,"reply_markup":kb},timeout=12)
+    kb={"keyboard":[["BTC","ETH"],
+    ["SOL","XRP"],
+    ["COMPRAR 100","VENDER"],
+    ["GRAF","PRO"]],
+    "resize_keyboard":True}
+    requests.post(url,
+    json={"chat_id":cid,
+    "text":txt,"reply_markup":kb},
+    timeout=12)
 
 @app.get("/")
 def home():
-    return "V117 LIVE",200
+    return "V199 LIVE GOD",200
 
 @app.post("/webhook")
 def wh():
@@ -122,4 +129,32 @@ def wh():
                 sen="COMPRA"
                 score=68
             if p<a and a<b:
-                pred="
+                pred="BAJADA"
+                sen="VENTA"
+                score=66
+            if r<30:
+                pred="SUBIDA FUERTE"
+                sen="COMPRA FUERTE"
+                score=92
+            if r>70:
+                pred="BAJADA FUERTE"
+                sen="VENTA FUERTE"
+                score=91
+        mn=min(closes)
+        mx=max(closes)
+        if mn==mx:
+            mn=mn*0.998
+            mx=mx*1.002
+        W=1000
+        H=580
+        img=Image.new("RGB",(W,H),(10,14,21))
+        dr=ImageDraw.Draw(img)
+        idx=0
+        for c in cl:
+            x=20+idx*13
+            lo=c[1]
+            hi=c[2]
+            o=c[3]
+            cc=c[4]
+            y1=H-80-(lo-mn)/(mx-mn)*(H-110)
+            y2=H-80-(hi-mn)/(mx-mn)*(H-110)
