@@ -57,8 +57,8 @@ def m(x,t):
   b=a+T+"/sendMessage"
   requests.post(b,json={"chat_id":x,"text":t,"reply_markup":kb},timeout=8)
  except:
-  pass
-   def chk():
+    pass
+def chk():
  while True:
   time.sleep(180)
   if not O or not C:
