@@ -3,12 +3,12 @@ from flask import Flask,request
 from datetime import datetime,timedelta
 
 TOKEN=os.getenv('TELE_TOKEN') or os.getenv('BOT_TOKEN') or ''
-print("V103 TOKEN", len(TOKEN), flush=True)
+print("V104 TOKEN", len(TOKEN), flush=True)
 
 app=Flask(__name__)
 SEL='XRP'
 ENTS={}
-FILE='/tmp/bot_103.json'
+FILE='/tmp/bot_104.json'
 CONFIG={'AUTO':False,'LAST_CID':0}
 
 def load():
@@ -81,7 +81,7 @@ def send_text(cid,txt):
 
 @app.route('/')
 def home():
-    return 'V103 LIVE',200
+    return 'V104 LIVE',200
 
 @app.route('/webhook',methods=['POST'])
 def wh():
@@ -143,7 +143,7 @@ def wh():
                     score=91
             W=900
             H=520
-            img=Image.new('RGB',(W,H),'#0a0e15')
+            img=Image.new('RGB',(W,H),(10,14,21))
             dr=ImageDraw.Draw(img)
             mn=p
             mx=p
@@ -171,4 +171,11 @@ def wh():
                 y_bot=max(yo,yc)
                 if y_top.__eq__(y_bot):
                     y_bot=y_top+2
-                col='#00
+                col=(0,230,118)
+                if cl.__lt__(o):
+                    col=(255,61,87)
+                dr.line([x+3,y1,x+3,y2],fill=col,width=1)
+                dr.rectangle([x,y_top,x+6,y_bot],fill=col)
+                idx+=1
+            hora_mx=(datetime.utcnow()-timedelta(hours=6)).strftime('%I:%M %p')
+            txt_head=SEL+' '+
