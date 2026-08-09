@@ -3,12 +3,12 @@ from flask import Flask,request
 from datetime import datetime,timedelta
 
 TOKEN=os.getenv("TELE_TOKEN") or ""
-print("V210 TOKEN",len(TOKEN),flush=True)
+print("V211 TOKEN",len(TOKEN),flush=True)
 
 app=Flask(__name__)
 SEL="XRP"
 ENTS={}
-FILE="/tmp/b210.json"
+FILE="/tmp/b211.json"
 
 def load():
     if os.path.exists(FILE):
@@ -16,7 +16,7 @@ def load():
         ENTS.update(d.get("ENTS",{}))
 
 load()
-print("V210 LOADED",flush=True)
+print("V211 LOADED",flush=True)
 
 def price(s):
     u="https://api.coinbase.com/v2/prices/"
@@ -76,7 +76,7 @@ def send(c,t):
 
 @app.route("/")
 def home():
-    return "V210 LIVE",200
+    return "V211 LIVE",200
 
 @app.route("/webhook",methods=["POST"])
 def wh():
@@ -105,7 +105,7 @@ def wh():
         from PIL import Image,ImageDraw
         cl=candles(SEL)
         if len(cl)==0:
-            send(cid,"Sin datos")
+            send(cid,"X")
             return "ok",200
         cs=[]
         for c in cl:
@@ -126,17 +126,69 @@ def wh():
                 b=e21[-1]
                 if p>a:
                     if a>b:
-                        pr="SUBE"
-                        se="COMPRA"
+                        pr="S"
+                        se="C"
                         sc=68
                 if p<a:
                     if a<b:
-                        pr="BAJA"
-                        se="VENTA"
+                        pr="B"
+                        se="V"
                         sc=66
                 if rr<30:
-                    pr="FUERTE"
-                    se="COMPRA"
+                    pr="F"
+                    se="C"
                     sc=92
                 if rr>70:
-                    pr="FUERTE
+                    pr="F"
+                    se="V"
+                    sc=91
+        mn=min(cs)
+        mx=max(cs)
+        if mn==mx:
+            mn=mn*0.998
+            mx=mx*1.002
+        W=1000
+        H=560
+        im=Image.new("RGB",(W,H),(10,14,21))
+        dr=ImageDraw.Draw(im)
+        i=0
+        for c in cl:
+            x=20+i*13
+            lo=c[1]
+            hi=c[2]
+            o=c[3]
+            cc=c[4]
+            y1=H-70-(lo-mn)/(mx-mn)*(H-100)
+            y2=H-70-(hi-mn)/(mx-mn)*(H-100)
+            yo=H-70-(o-mn)/(mx-mn)*(H-100)
+            yc=H-70-(cc-mn)/(mx-mn)*(H-100)
+            yt=min(yo,yc)
+            yb=max(yo,yc)
+            if yt==yb:
+                yb=yt+2
+            col=(0,230,118)
+            if cc<o:
+                col=(255,61,87)
+            dr.line([x+3,y1,x+3,y2],fill=col)
+            dr.rectangle([x,yt,x+6,yb],fill=col)
+            i+=1
+        if SEL in ENTS:
+            en=ENTS[SEL]["entry"]
+            ye=H-70-(en-mn)/(mx-mn)*(H-100)
+            dr.line([0,ye,W,ye],fill=(255,234,0),width=2)
+        hr=datetime.utcnow()-timedelta(hours=6)
+        hr=hr.strftime("%H:%M")
+        e9s="--"
+        e21s="--"
+        if len(e9)>0:
+            e9s=str(round(e9[-1],1))
+        if len(e21)>0:
+            e21s=str(round(e21[-1],1))
+        dr.text((10,10),SEL,fill=(255,255,255))
+        cap=SEL+" "
+        cap+=str(round(p,2))
+        cap+=" "
+        cap+=hr
+        cap+="\n"
+        cap+="E9:"
+        cap+=e
