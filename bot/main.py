@@ -53,15 +53,13 @@ def loop():
    cl=cnd(s)
    if not cl:
     continue
-   cs=[]
-   for a in cl:
-    cs.append(a[4])
+   cs=[a[4] for a in cl]
    if rsi(cs)<30:
     snd(CID,"AUTO COMPRA FUERTE "+s)
 threading.Thread(target=loop,daemon=True).start()
 @A.route("/")
 def home():
- return "V223 LIVE",200
+ return "V230 LIVE",200
 @A.route("/webhook",methods=["POST"])
 def wh():
  global S,ON,CID
@@ -91,9 +89,7 @@ def wh():
  if "GRAF" in txt:
   from PIL import Image,ImageDraw
   cl=cnd(S)
-  cs=[]
-  for a in cl:
-   cs.append(a[4])
+  cs=[a[4] for a in cl]
   p=prc(S)
   if p==0:
    p=cs[-1]
@@ -125,26 +121,32 @@ def wh():
   i=0
   for c in cl:
    x=20+i*13
-   y1=490-(c[1]-mn)/(mx-mn)*460
-   y2=490-(c[2]-mn)/(mx-mn)*460
-   yo=490-(c[3]-mn)/(mx-mn)*460
-   yc=490-(c[4]-mn)/(mx-mn)*460
    col=(0,230,118) if c[4]>=c[3] else (255,61,87)
-   dr.line([x+3,y1,x+3,y2],fill=col)
-   dr.rectangle([x,min(yo,yc),x+6,max(yo,yc)],fill=col)
+   dr.line([x+3,490-(c[1]-mn)/(mx-mn)*460,x+3,490-(c[2]-mn)/(mx-mn)*460],fill=col)
+   dr.rectangle([x,490-(min(c[3],c[4])-mn)/(mx-mn)*460,x+6,490-(max(c[3],c[4])-mn)/(mx-mn)*460],fill=col)
    i+=1
   hr=(datetime.utcnow()-timedelta(hours=6)).strftime("%I:%M %p")
   e9v=str(round(e9[-1],2)) if e9 else "--"
   e21v=str(round(e21[-1],2)) if e21 else "--"
   sg2="+" if pc>=0 else ""
-  cap=S+" "+str(round(p,4))+" | "+hr+" | "+sg2+str(round(pc,2))+"%\n"
-  cap+="EMA9:"+e9v+" EMA21:"+e21v+"\n"
-  cap+="RSI:"+str(round(rr,1))+" PRED:"+pr+"\n"
-  cap+="SENAL:"+sg+" V223 AUTO:"+str(ON)
+  cap=S+" "+str(round(p,4))+" | "+hr+" | "+sg2+str(round(pc,2))+"%\nEMA9:"+e9v+" EMA21:"+e21v+"\nRSI:"+str(round(rr,1))+" PRED:"+pr+"\nSENAL:"+sg+" V230"
   bio=io.BytesIO()
   bio.name="g.png"
   im.save(bio,"PNG")
   bio.seek(0)
   requests.post("https://api.telegram.org/bot"+T+"/sendPhoto",data={"chat_id":cid,"caption":cap},files={"photo":bio},timeout=12)
   return "ok",200
- if "
+ if "COMPRAR" in txt:
+  E[S]={"entry":pn}
+  open(F,"w").write(json.dumps({"ENTS":E}))
+  snd(cid,"COMPRA OK")
+  return "ok",200
+ if "VENDER" in txt:
+  if S in E:
+   del E[S]
+   open(F,"w").write(json.dumps({"ENTS":E}))
+   snd(cid,"VENTA OK")
+  return "ok",200
+ snd(cid,S+" "+str(round(pn,4)))
+ return "ok",200
+A.run(host="0.0.0.0",port=int(os.getenv("PORT","10000")))
