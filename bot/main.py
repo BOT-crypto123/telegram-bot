@@ -1,6 +1,5 @@
 import os,requests,io
 from flask import Flask,request
-from datetime import datetime,timedelta
 T=os.getenv("TELE_TOKEN")or""
 A=Flask(__name__)
 S="XRP"
@@ -23,12 +22,12 @@ def rsi(a):
  return 100-100/(1+g/l) if l else 88
 @A.route("/")
 def h():
- return "V237 LIVE",200
+ return "V238 LIVE",200
 @A.route("/webhook",methods=["POST"])
 def w():
  global S
- d=request.get_json(force=True,silent=True)or{}
- m=d.get("message",{})
+ j=request.get_json(force=True,silent=True)or{}
+ m=j.get("message",{})
  cid=m["chat"]["id"]
  t=m.get("text","").upper()
  if "BTC" in t:
@@ -51,10 +50,6 @@ def w():
   sg="COMPRA FUERTE"
  elif rr>70:
   sg="VENTA FUERTE"
- elif rr<45:
-  sg="COMPRA"
- elif rr>55:
-  sg="VENTA"
  from PIL import Image,ImageDraw
  mn=min(cs)
  mx=max(cs)
@@ -71,4 +66,19 @@ def w():
   dr.line([xx,y1,xx,y2],fill=co)
   dr.rectangle([xx,yt,xx+4,yb],fill=co)
   i+=1
- hr=(datetime.utcnow()-timedelta(hours=
+ sgn="+" if pc>=0 else ""
+ a1=S+" "+str(round(pr,4))
+ a2=sgn+str(round(pc,2))+"%"
+ a3="RSI:"+str(round(rr,1))
+ a4="SENAL:"+sg+" V238"
+ cap=a1+"\n"+a2+" "+a3+"\n"+a4
+ b=io.BytesIO()
+ b.name="g.png"
+ im.save(b,"PNG")
+ b.seek(0)
+ requests.post(
+  "https://api.telegram.org/bot"+T+"/sendPhoto",
+  data={"chat_id":cid,"caption":cap},
+  files={"photo":b},timeout=12)
+ return "ok",200
+A.run(host="0.0.0.0",port=int(os.getenv("PORT","10000")))
