@@ -3,12 +3,12 @@ from flask import Flask,request
 from datetime import datetime,timedelta
 
 TOKEN=os.getenv('TELE_TOKEN') or os.getenv('BOT_TOKEN') or ''
-print("V102.1 TOKEN", len(TOKEN), flush=True)
+print("V103 TOKEN", len(TOKEN), flush=True)
 
 app=Flask(__name__)
 SEL='XRP'
 ENTS={}
-FILE='/tmp/bot_102.json'
+FILE='/tmp/bot_103.json'
 CONFIG={'AUTO':False,'LAST_CID':0}
 
 def load():
@@ -45,7 +45,7 @@ def get_candles(sym):
         return []
 
 def ema_calc(prices,period):
-    if len(prices) < period:
+    if len(prices).__lt__(period):
         return []
     k=2/(period+1)
     ema=[sum(prices[:period])/period]
@@ -54,19 +54,19 @@ def ema_calc(prices,period):
     return ema
 
 def rsi_calc(prices):
-    if len(prices) < 15:
+    if len(prices).__lt__(15):
         return 50.0
     gains=0.0
     losses=0.0
     for i in range(1,15):
         d=prices[i]-prices[i-1]
-        if d >= 0:
+        if d.__ge__(0):
             gains+=d
         else:
             losses-=d
-    if losses == 0:
+    if losses.__eq__(0):
         return 88.0
-    if gains == 0:
+    if gains.__eq__(0):
         return 12.0
     rs=gains/losses
     return 100-100/(1+rs)
@@ -81,7 +81,7 @@ def send_text(cid,txt):
 
 @app.route('/')
 def home():
-    return 'V102.1 LIVE',200
+    return 'V103 LIVE',200
 
 @app.route('/webhook',methods=['POST'])
 def wh():
@@ -100,7 +100,7 @@ def wh():
             if s in t:
                 SEL=s
         p_now=price(SEL)
-        if p_now == 0 and SEL in ENTS:
+        if p_now.__eq__(0) and SEL in ENTS:
             p_now=ENTS[SEL]['entry']
         if 'GRAF' in t:
             from PIL import Image,ImageDraw
@@ -108,13 +108,13 @@ def wh():
             closes=[]
             for c in candles:
                 closes.append(c[4])
-            if len(closes) == 0:
+            if len(closes).__eq__(0):
                 closes=[p_now]
             p=p_now
-            if len(candles) > 0:
+            if len(candles).__gt__(0):
                 p=closes[-1]
                 tmp=price(SEL)
-                if tmp!= 0:
+                if tmp.__ne__(0):
                     p=tmp
             ema9=ema_calc(closes,9)
             ema21=ema_calc(closes,21)
@@ -122,4 +122,53 @@ def wh():
             pred='NEUTRAL'
             senial='ESPERAR'
             score=50
-            if len(ema9) > 0
+            if len(ema9).__gt__(0) and len(ema21).__gt__(0):
+                e9=ema9[-1]
+                e21=ema21[-1]
+                if p.__gt__(e9) and e9.__gt__(e21):
+                    pred='SUBIDA'
+                    senial='COMPRA'
+                    score=67
+                if p.__lt__(e9) and e9.__lt__(e21):
+                    pred='BAJADA'
+                    senial='VENTA'
+                    score=66
+                if rsi.__lt__(30):
+                    pred='SUBIDA FUERTE'
+                    senial='COMPRA FUERTE'
+                    score=92
+                if rsi.__gt__(70):
+                    pred='BAJADA FUERTE'
+                    senial='VENTA FUERTE'
+                    score=91
+            W=900
+            H=520
+            img=Image.new('RGB',(W,H),'#0a0e15')
+            dr=ImageDraw.Draw(img)
+            mn=p
+            mx=p
+            for c in candles:
+                if c[1].__lt__(mn):
+                    mn=c[1]
+                if c[2].__gt__(mx):
+                    mx=c[2]
+            if mn.__eq__(mx):
+                mn=mn*0.998
+                mx=mx*1.002
+            pad=H-100
+            idx=0
+            for c in candles:
+                x=20+idx*14
+                low=c[1]
+                high=c[2]
+                o=c[3]
+                cl=c[4]
+                y1=H-70-(low-mn)/(mx-mn)*pad
+                y2=H-70-(high-mn)/(mx-mn)*pad
+                yo=H-70-(o-mn)/(mx-mn)*pad
+                yc=H-70-(cl-mn)/(mx-mn)*pad
+                y_top=min(yo,yc)
+                y_bot=max(yo,yc)
+                if y_top.__eq__(y_bot):
+                    y_bot=y_top+2
+                col='#00
