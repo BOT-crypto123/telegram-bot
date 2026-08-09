@@ -26,7 +26,29 @@ def save_state(s):
     with open(STATE_FILE,"w") as f:
         json.dump(s,f)
 
+MAPA = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana", "XRP": "ripple"}
+
 async def get_data(sym):
+    try:
+        async with httpx.AsyncClient(timeout=15) as c:
+            # Intento 1: Binance
+            try:
+                r = await c.get(f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}USDT", headers={"User-Agent": "Mozilla/5.0"})
+                d = r.json()
+                if "lastPrice" in d:
+                    return float(d["lastPrice"]), float(d["priceChangePercent"])
+            except:
+                pass
+            # Intento 2: CoinGecko (respaldo)
+            cg_id = MAPA.get(sym, "bitcoin")
+            r2 = await c.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cg_id}&vs_currencies=usd&include_24hr_change=true")
+            d2 = r2.json()
+            price = float(d2[cg_id]["usd"])
+            change = float(d2[cg_id].get("usd_24h_change", 0))
+            return price, change
+    except:
+        return 0,0
+    return 0,0:
     try:
         async with httpx.AsyncClient(timeout=10) as c:
             r = await c.get(f"https://api.binance.com/api/v3/ticker/24hr?symbol={sym}USDT")
