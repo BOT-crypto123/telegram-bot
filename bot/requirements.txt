@@ -1,4 +1,4 @@
-flask
-requests
-pillow
-pytz
+fastapi
+uvicorn[standard]
+httpx
+python-dotenv
