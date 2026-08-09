@@ -65,8 +65,8 @@ def w():
  if "VENDER"in t:
   if E.get(S):ms="VENDIDO";del E[S]
   else:ms="NO"
- from PIL import Image,ImageDraw;mn=min(v);mx=max(v)
- if mn==mx:mx*=1.001
+  from PIL import Image,ImageDraw;mn=float(min(v));mx=float(max(v))
+ if mn==mx:mx=mn+1.0
  im=Image.new("RGB",(800,400),(10,14,21));dr=ImageDraw.Draw(im);n=0
  for b in z:
   x=10+n*12;y1=380-(b[1]-mn)/(mx-mn)*350;y2=380-(b[2]-mn)/(mx-mn)*350;yt=380-(max(b[3],b[4])-mn)/(mx-mn)*350;yb=380-(min(b[3],b[4])-mn)/(mx-mn)*350;co=(0,230,118) if b[4]>=b[3] else (255,61,87)
