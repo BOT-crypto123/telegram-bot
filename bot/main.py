@@ -24,7 +24,7 @@ def load_state():
 
 def save_state(s):
     with open(STATE_FILE,"w") as f:
-        json.dump(f,s)
+        json.dump(s,f)
 
 async def get_data(sym):
     try:
