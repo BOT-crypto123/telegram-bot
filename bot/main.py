@@ -6,21 +6,6 @@ S="XRP"
 E={}
 ON=False
 CID=None
-F="/tmp/b.json"
-G="/tmp/a.json"
-try:
- if os.path.exists(F):
-  E=json.load(open(F))
-except:
- E={}
-try:
- if os.path.exists(G):
-  d=json.load(open(G))
-  ON=d.get("ON",0)
-  CID=d.get("CID")
-except:
- ON=False
- CID=None
 def p(s):
  try:
   r=requests.get(
@@ -46,16 +31,11 @@ def rsi(a):
   g+=d if d>0 else 0
   l+=-d if d<0 else 0
  return 100-100/(1+g/l) if l else 88
-def sav():
- try:
-  open(F,"w").write(json.dumps(E))
- except:
-  pass
 def s2(x,t):
+ kb={"keyboard":[["BTC","ETH"],["SOL","XRP"],
+  ["COMPRAR","VENDER"],["AUTO"]],
+  "resize_keyboard":True}
  try:
-  kb={"keyboard":[["BTC","ETH"],["SOL","XRP"],
-   ["COMPRAR","VENDER"],["AUTO"]],
-   "resize_keyboard":True}
   requests.post(
    "https://api.telegram.org/bot"+T+"/sendMessage",
    json={"chat_id":x,"text":t,"reply_markup":kb},
@@ -65,9 +45,9 @@ def s2(x,t):
 def lp():
  while True:
   time.sleep(300)
+  if not ON or not CID:
+   continue
   try:
-   if not ON or not CID:
-    continue
    for sy in ["BTC","ETH","SOL","XRP"]:
     cl=c(sy)
     if not cl:
@@ -79,19 +59,17 @@ def lp():
     pr=p(sy)
     if rr<30 and not E.get(sy):
      E[sy]=pr
-     sav()
      s2(CID,"AUTO COMPRO "+sy+" RSI "+str(round(rr,1)))
     if rr>70 and E.get(sy):
      pf=(pr/E[sy]-1)*100
      del E[sy]
-     sav()
      s2(CID,"AUTO VENDIO "+sy+" PROFIT "+str(round(pf,2))+"%")
   except:
    time.sleep(60)
 threading.Thread(target=lp,daemon=True).start()
 @A.route("/")
 def h():
- return "V241 LIVE AUTO:"+str(ON),200
+ return "V242 LIVE",200
 @A.route("/webhook",methods=["POST"])
 def w():
  global S,E,ON,CID
@@ -112,18 +90,13 @@ def w():
  if "AUTO" in t:
   ON=not ON
   CID=cid
-  try:
-   open(G,"w").write(json.dumps({"ON":ON,"CID":cid}))
-  except:
-   pass
-  s2(cid,"AUTO ON - COMPRA RSI<30 VENDE RSI>70" if ON else "AUTO OFF")
+  s2(cid,"AUTO ON RSI<30 COMPRA RSI>70 VENDE" if ON else "AUTO OFF")
   return "ok",200
  cl=c(S)
  cs=[]
  for q in cl:
   cs.append(q[4])
  if not cs:
-  s2(cid,"SIN DATOS")
   return "ok",200
  pr=p(S) or cs[-1]
  rr=rsi(cs)
@@ -136,15 +109,12 @@ def w():
  msg=""
  if "COMPRAR" in t:
   E[S]=pr
-  sav()
-  msg="COMPRADO "+S+" EN "+str(pr)
+  msg="COMPRADO "+S
  if "VENDER" in t:
-  en=E.get(S,0)
-  if en:
-   pf=(pr/en-1)*100
-   msg="VENDIDO "+S+" PROFIT "+str(round(pf,2))+"%"
+  if E.get(S):
+   pf=(pr/E[S]-1)*100
+   msg="VENDIDO "+S+" "+str(round(pf,2))+"%"
    del E[S]
-   sav()
   else:
    msg="NO TIENES "+S
  from PIL import Image,ImageDraw
@@ -166,5 +136,24 @@ def w():
   dr.rectangle([xx,yt,xx+4,yb],fill=co)
   i+=1
  sgn="+" if pc>=0 else ""
+ st="ON" if ON else "OFF"
  a1=S+" "+str(round(pr,4))
- a2
+ a2=sgn+str(round(pc,2))+"% RSI:"+str(round(rr,1))
+ a3="SENAL:"+sg+" AUTO:"+st+" V242"
+ if msg:
+  a3=msg+"\n"+a3
+ cap=a1+"\n"+a2+"\n"+a3
+ b=io.BytesIO()
+ b.name="g.png"
+ im.save(b,"PNG")
+ b.seek(0)
+ kb={"keyboard":[["BTC","ETH"],["SOL","XRP"],
+  ["COMPRAR","VENDER"],["AUTO"]],
+  "resize_keyboard":True}
+ requests.post(
+  "https://api.telegram.org/bot"+T+"/sendPhoto",
+  data={"chat_id":cid,"caption":cap,
+  "reply_markup":json.dumps(kb)},
+  files={"photo":b},timeout=12)
+ return "ok",200
+A.run(host="0.0.0.0",port=int(os.getenv("PORT","10000")))
