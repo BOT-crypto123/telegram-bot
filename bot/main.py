@@ -3,12 +3,12 @@ from flask import Flask,request
 from datetime import datetime,timedelta
 
 TOKEN=os.getenv("TELE_TOKEN") or ""
-print("V116 TOKEN",len(TOKEN),flush=True)
+print("V117 TOKEN",len(TOKEN),flush=True)
 
 app=Flask(__name__)
 SEL="XRP"
 ENTS={}
-FILE="/tmp/b116.json"
+FILE="/tmp/b117.json"
 
 def load():
     if os.path.exists(FILE):
@@ -16,7 +16,7 @@ def load():
         ENTS.update(d.get("ENTS",{}))
 
 load()
-print("V116 LOADED",flush=True)
+print("V117 LOADED",flush=True)
 
 def price(s):
     u="https://api.coinbase.com/v2/prices/"
@@ -65,20 +65,61 @@ def rsi(prices):
     return 100-100/(1+rs)
 
 def send(cid,txt):
-    url="https://api.telegram.org/bot"
-    url=url+TOKEN+"/sendMessage"
-    kb={"keyboard":[["BTC","ETH"],
-    ["SOL","XRP"],
-    ["COMPRAR 100","VENDER"],
-    ["GRAF","PRO"]],
-    "resize_keyboard":True}
-    requests.post(url,
-    json={"chat_id":cid,
-    "text":txt,"reply_markup":kb},
-    timeout=12)
+    url="https://api.telegram.org/bot"+TOKEN+"/sendMessage"
+    kb={"keyboard":[["BTC","ETH"],["SOL","XRP"],["COMPRAR 100","VENDER"],["GRAF","PRO"]],"resize_keyboard":True}
+    requests.post(url,json={"chat_id":cid,"text":txt,"reply_markup":kb},timeout=12)
 
-@app.route("/")
+@app.get("/")
 def home():
-    return "V116 LIVE",200
+    return "V117 LIVE",200
 
-@app.route("/webhook",methods
+@app.post("/webhook")
+def wh():
+    global SEL
+    d=request.get_json(force=True,silent=True)
+    if not d:
+        return "ok",200
+    if "message" not in d:
+        return "ok",200
+    cid=d["message"]["chat"]["id"]
+    t=d["message"].get("text","").upper().strip()
+    if "BTC" in t:
+        SEL="BTC"
+    if "ETH" in t:
+        SEL="ETH"
+    if "SOL" in t:
+        SEL="SOL"
+    if "XRP" in t:
+        SEL="XRP"
+    p_now=price(SEL)
+    if p_now==0:
+        if SEL in ENTS:
+            p_now=ENTS[SEL]["entry"]
+    if "GRAF" in t:
+        from PIL import Image,ImageDraw
+        cl=candles(SEL)
+        if len(cl)==0:
+            send(cid,"Sin datos "+SEL)
+            return "ok",200
+        closes=[]
+        for c in cl:
+            closes.append(c[4])
+        p=closes[-1]
+        tmp=price(SEL)
+        if tmp!=0:
+            p=tmp
+        e9=ema(closes,9)
+        e21=ema(closes,21)
+        r=rsi(closes)
+        pred="NEUTRAL"
+        sen="ESPERAR"
+        score=50
+        if len(e9)>0 and len(e21)>0:
+            a=e9[-1]
+            b=e21[-1]
+            if p>a and a>b:
+                pred="SUBIDA"
+                sen="COMPRA"
+                score=68
+            if p<a and a<b:
+                pred="
