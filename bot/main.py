@@ -64,8 +64,8 @@ def w():
  if "COMPRAR"in t:E[S]=pr;ms="COMPRADO"
  if "VENDER"in t:
   if E.get(S):ms="VENDIDO";del E[S]
-  else:ms="NO"
-  from PIL import Image,ImageDraw;mn=float(min(v));mx=float(max(v))
+  from PIL import Image,ImageDraw
+ v=[float(c[4]) for c in z];mn=min(v);mx=max(v)
  if mn==mx:mx=mn+1.0
  im=Image.new("RGB",(800,400),(10,14,21));dr=ImageDraw.Draw(im);n=0
  for b in z:
