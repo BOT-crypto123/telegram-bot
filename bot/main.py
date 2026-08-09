@@ -1,7 +1,7 @@
 import os,requests,io,json,time,threading
 from flask import Flask,request
 from datetime import datetime,timedelta
-T=os.getenv("TELE_TOKEN") or ""
+T=os.getenv("TELE_TOKEN")or""
 A=Flask(__name__)
 S="XRP"
 E={}
@@ -9,141 +9,104 @@ ON=False
 CID=None
 F="/tmp/b.json"
 G="/tmp/a.json"
-if os.path.exists(F):
- E=json.load(open(F)).get("ENTS",{})
-if os.path.exists(G):
- d=json.load(open(G))
- ON=d.get("ON",False)
- CID=d.get("CID",None)
-def prc(s):
+def L():
+ global E,ON,CID
+ if os.path.exists(F):
+  E=json.load(open(F)).get("ENTS",{})
+ if os.path.exists(G):
+  d=json.load(open(G))
+  ON=d.get("ON",0)
+  CID=d.get("CID")
+L()
+def p(s):
  r=requests.get("https://api.coinbase.com/v2/prices/"+s+"-USD/spot",timeout=8).json()
- return float(r.get("data",{}).get("amount","0") or 0)
-def cnd(sym):
- r=requests.get("https://api.exchange.coinbase.com/products/"+sym+"-USD/candles?granularity=60",headers={"User-Agent":"M"},timeout=10).json()
+ return float(r.get("data",{}).get("amount","0")or 0)
+def c(s):
+ r=requests.get("https://api.exchange.coinbase.com/products/"+s+"-USD/candles?granularity=60",headers={"User-Agent":"M"},timeout=10).json()
  return sorted(r)[-60:] if isinstance(r,list) else []
-def ema(p,n):
- if len(p)<n:
-  return []
- k=2/(n+1)
- m=sum(p[:n])/n
- o=[m]
- for x in p[n:]:
-  o.append(x*k+o[-1]*(1-k))
- return o
-def rsi(p):
- if len(p)<15:
+def rsi(a):
+ if len(a)<15:
   return 50
  g=l=0
  for i in range(1,15):
-  d=p[i]-p[i-1]
-  if d>0:
-   g+=d
-  else:
-   l+=-d
+  d=a[i]-a[i-1]
+  g+=d if d>0 else 0
+  l+=-d if d<0 else 0
  return 88 if l==0 else 12 if g==0 else 100-100/(1+g/l)
-def snd(c,t):
- k={"keyboard":[["BTC","ETH"],["SOL","XRP"],["COMPRAR","VENDER"],["GRAF","AUTO"]],"resize_keyboard":True}
- requests.post("https://api.telegram.org/bot"+T+"/sendMessage",json={"chat_id":c,"text":t,"reply_markup":k},timeout=10)
-def loop():
+def snd(x,t):
+ k={"keyboard":[["BTC","ETH"],["SOL","XRP"],["GRAF","AUTO"]],"resize_keyboard":True}
+ requests.post("https://api.telegram.org/bot"+T+"/sendMessage",json={"chat_id":x,"text":t,"reply_markup":k},timeout=10)
+def lp():
  while True:
   time.sleep(600)
-  if not ON or not CID:
-   continue
-  for s in ["BTC","ETH","SOL","XRP"]:
-   cl=cnd(s)
-   if not cl:
-    continue
-   cs=[a[4] for a in cl]
-   if rsi(cs)<30:
-    snd(CID,"AUTO COMPRA FUERTE "+s)
-threading.Thread(target=loop,daemon=True).start()
+  if ON and CID:
+   for s in ["BTC","ETH","SOL","XRP"]:
+    cl=c(s)
+    if cl and rsi([a[4] for a in cl])<30:
+     snd(CID,"AUTO COMPRA FUERTE "+s)
+threading.Thread(target=lp,daemon=True).start()
 @A.route("/")
-def home():
- return "V231 LIVE",200
+def h():
+ return "V233 MINI LIVE",200
 @A.route("/webhook",methods=["POST"])
-def wh():
+def w():
  global S,ON,CID
- d=request.get_json(force=True,silent=True)
- if not d:
-  return "ok",200
+ d=request.get_json(force=True,silent=True) or {}
  m=d.get("message",{})
- if not m:
-  return "ok",200
  cid=m.get("chat",{}).get("id",0)
- txt=m.get("text","").upper()
- if "BTC" in txt:
+ t=m.get("text","").upper()
+ if "BTC" in t:
   S="BTC"
- if "ETH" in txt:
+ if "ETH" in t:
   S="ETH"
- if "SOL" in txt:
+ if "SOL" in t:
   S="SOL"
- if "XRP" in txt:
+ if "XRP" in t:
   S="XRP"
- pn=prc(S)
- if "AUTO" in txt:
+ if "AUTO" in t:
   ON=not ON
   CID=cid
   open(G,"w").write(json.dumps({"ON":ON,"CID":cid}))
   snd(cid,"AUTO ON" if ON else "AUTO OFF")
   return "ok",200
- if "GRAF" in txt:
-  from PIL import Image,ImageDraw
-  cl=cnd(S)
-  cs=[a[4] for a in cl]
-  p=prc(S)
-  if p==0:
-   p=cs[-1]
-  rr=rsi(cs)
-  e9=ema(cs,9)
-  e21=ema(cs,21)
-  pc=(p/cs[-2]-1)*100 if len(cs)>1 else 0
-  sg="ESPERA"
-  pr="LATERAL 50%"
-  if rr<30:
-   sg="COMPRA FUERTE"
-   pr="SUBIDA FUERTE 85%"
-  elif rr>70:
-   sg="VENTA FUERTE"
-   pr="BAJADA FUERTE 85%"
-  elif e9 and e21 and e9[-1]>e21[-1]:
-   sg="COMPRA"
-   pr="SUBIDA 68%"
-  elif e9 and e21 and e9[-1]<e21[-1]:
-   sg="VENTA"
-   pr="BAJADA 66%"
-  mn=min(cs)
-  mx=max(cs)
-  if mn==mx:
-   mn*=0.998
-   mx*=1.002
-  im=Image.new("RGB",(1000,560),(10,14,21))
-  dr=ImageDraw.Draw(im)
-  i=0
-  for c in cl:
-   x=20+i*13
-   lo=c[1]
-   hi=c[2]
-   op=c[3]
-   cc=c[4]
-   y_lo=490-(lo-mn)/(mx-mn)*460
-   y_hi=490-(hi-mn)/(mx-mn)*460
-   y_op=490-(op-mn)/(mx-mn)*460
-   y_cc=490-(cc-mn)/(mx-mn)*460
-   y_top=min(y_op,y_cc)
-   y_bot=max(y_op,y_cc)
-   if y_top==y_bot:
-    y_bot+=2
-   col=(0,230,118) if cc>=op else (255,61,87)
-   dr.line([x+3,y_lo,x+3,y_hi],fill=col)
-   dr.rectangle([x,y_top,x+6,y_bot],fill=col)
-   i+=1
-  hr=(datetime.utcnow()-timedelta(hours=6)).strftime("%I:%M %p")
-  e9v=str(round(e9[-1],2)) if e9 else "--"
-  e21v=str(round(e21[-1],2)) if e21 else "--"
-  sg2="+" if pc>=0 else ""
-  cap=S+" "+str(round(p,4))+" | "+hr+" | "+sg2+str(round(pc,2))+"%\nEMA9:"+e9v+" EMA21:"+e21v+"\nRSI:"+str(round(rr,1))+" PRED:"+pr+"\nSENAL:"+sg+" V231"
-  bio=io.BytesIO()
-  bio.name="g.png"
-  im.save(bio,"PNG")
-  bio.seek(0)
-  requests.post("https://api.telegram.org/bot"+T+"/sendPhoto",
+ cl=c(S)
+ cs=[a[4] for a in cl]
+ pr=p(S) or cs[-1]
+ rr=rsi(cs)
+ pc=(pr/cs[-2]-1)*100 if len(cs)>1 else 0
+ sg="ESPERA"
+ if rr<30:
+  sg="COMPRA FUERTE"
+ elif rr>70:
+  sg="VENTA FUERTE"
+ elif rr<45:
+  sg="COMPRA"
+ elif rr>55:
+  sg="VENTA"
+ from PIL import Image,ImageDraw
+ mn=min(cs)
+ mx=max(cs)
+ if mn==mx:
+  mx*=1.001
+ im=Image.new("RGB",(1000,560),(10,14,21))
+ dr=ImageDraw.Draw(im)
+ i=0
+ for x in cl:
+  xx=20+i*13
+  y1=490-(x[1]-mn)/(mx-mn)*460
+  y2=490-(x[2]-mn)/(mx-mn)*460
+  yt=490-(max(x[3],x[4])-mn)/(mx-mn)*460
+  yb=490-(min(x[3],x[4])-mn)/(mx-mn)*460
+  co=(0,230,118) if x[4]>=x[3] else (255,61,87)
+  dr.line([xx+3,y1,xx+3,y2],fill=co)
+  dr.rectangle([xx,yt,xx+6,yb],fill=co)
+  i+=1
+ hr=(datetime.utcnow()-timedelta(hours=6)).strftime("%I:%M %p")
+ cap=S+" "+str(round(pr,4))+" | "+hr+" | "+("+" if pc>=0 else "")+str(round(pc,2))+"%\nRSI:"+str(round(rr,1))+" SENAL:"+sg+"\nV233 MINI AUTO:"+str(ON)
+ b=io.BytesIO()
+ b.name="g.png"
+ im.save(b,"PNG")
+ b.seek(0)
+ requests.post("https://api.telegram.org/bot"+T+"/sendPhoto",data={"chat_id":cid,"caption":cap},files={"photo":b},timeout=12)
+ return "ok",200
+A.run(host="0.0.0.0",port=int(os.getenv("PORT","10000")))
