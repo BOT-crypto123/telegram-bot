@@ -9,10 +9,11 @@ FILE='/tmp/bot.json'
 CONFIG={'AUTO':False,'LAST_CID':0}
 def load():
  try:
-  if os.path.exists(FILE):
-   d=json.load(open(FILE))
-   ENTS.update(d.get('ENTS',{}))
-   CONFIG.update(d.get('CONFIG',{}))
+  for old in ['/tmp/bot95.json','/tmp/bot93.json','/tmp/bot99.json','/tmp/bot.json']:
+   if os.path.exists(old):
+    d=json.load(open(old))
+    ENTS.update(d.get('ENTS',{}))
+    CONFIG.update(d.get('CONFIG',{}))
  except: pass
 def save():
  try:
@@ -86,7 +87,7 @@ def auto_loop():
   except: time.sleep(60)
 threading.Thread(target=auto_loop,daemon=True).start()
 @app.route('/')
-def home(): return 'V99 OK',200
+def home(): return 'V99.1 OK',200
 @app.route('/webhook',methods=['POST'])
 def wh():
  global SEL
@@ -95,9 +96,9 @@ def wh():
  msg=d.get('message');cid=msg.get('chat').get('id');t=msg.get('text','').upper().strip()
  CONFIG['LAST_CID']=cid;save()
  if 'AUTO ON' in t:
-  CONFIG['AUTO']=True;save();send_text(cid,'V99 AUTO ON - Revisando cada 5min SENALES FUERTES');return 'ok',200
+  CONFIG['AUTO']=True;save();send_text(cid,'V99.1 AUTO ON - Revisando cada 5min SENALES FUERTES');return 'ok',200
  if 'AUTO OFF' in t:
-  CONFIG['AUTO']=False;save();send_text(cid,'V99 AUTO OFF');return 'ok',200
+  CONFIG['AUTO']=False;save();send_text(cid,'V99.1 AUTO OFF');return 'ok',200
  for s in ['BTC','ETH','SOL','XRP']:
   if s in t: SEL=s
  p=price(SEL)
@@ -121,58 +122,4 @@ def wh():
    e9=ema9[-1];e21=ema21[-1]
    if p>e9 and e9>e21: pred='SUBIDA';score=68;senial='COMPRA'
    elif p<e9 and e9<e21: pred='BAJADA';score=65;senial='VENTA'
-   if rsi<30: pred='SUBIDA FUERTE';score=85;senial='COMPRA FUERTE'
-   if rsi>70: pred='BAJADA FUERTE';score=82;senial='VENTA FUERTE'
-  if candles:
-   i=0
-   for c in candles:
-    x=20+i*17
-    low=c[1];high=c[2];o=c[3];cl=c[4]
-    y1=H-70-(low-mn)/(mx-mn)*(H-110)
-    y2=H-70-(high-mn)/(mx-mn)*(H-110)
-    yo=H-70-(o-mn)/(mx-mn)*(H-110)
-    yc=H-70-(cl-mn)/(mx-mn)*(H-110)
-    y_top=min(yo,yc);y_bot=max(yo,yc)
-    if y_top==y_bot: y_bot=y_top+1
-    col='#00ff88' if cl>=o else '#ff4444'
-    dr.line([x+3,y1,x+3,y2],fill=col,width=1)
-    dr.rectangle([x,y_top,x+6,y_bot],fill=col)
-    i+=1
-  hora_mx=(datetime.utcnow()-timedelta(hours=6)).strftime('%I:%M %p')
-  txt=SEL+' '+str(round(p,2))+' | '+hora_mx
-  if SEL in ENTS:
-   entry=ENTS[SEL]['entry'];pnl=(p/entry-1)*100
-   sgn='+' if pnl>=0 else ''
-   txt=txt+' | '+sgn+str(round(pnl,2))+'%'
-   ye=H-70-(entry-mn)/(mx-mn)*(H-110)
-   dr.line([0,ye,W,ye],fill='#ffcc00',width=2)
-  dr.text((10,10),txt,fill='white')
-  cap=txt+'\n'
-  cap=cap+'EMA9:'+str(round(ema9[-1],2) if ema9 else 0)+' EMA21:'+str(round(ema21[-1],2) if ema21 else 0)+'\n'
-  cap=cap+'RSI:'+str(round(rsi,1))+' PRED:'+pred+' '+str(score)+'%\n'
-  cap=cap+'SENAL:'+senial+' V99'
-  bio=io.BytesIO();bio.name='g.png';img.save(bio,'PNG');bio.seek(0)
-  requests.post('https://api.telegram.org/bot'+TOKEN+'/sendPhoto',data={'chat_id':cid,'caption':cap},files={'photo':bio},timeout=20)
-  return 'ok',200
- if 'COMPRAR' in t:
-  nums=re.findall(r'[\d\.]+',t);m=float(nums[0]) if nums else 100.0
-  ENTS[SEL]={'entry':p,'chat':cid,'usd':m};save();send_text(cid,'COMPRADA '+SEL+' V99');return 'ok',200
- if 'VENDER' in t:
-  if SEL in ENTS:
-   e=ENTS[SEL]['entry'];pnl=(p/e-1)*100;del ENTS[SEL];save()
-   send_text(cid,'CERRADA '+SEL+' '+str(round(pnl,2))+'% V99')
-  else: send_text(cid,'Sin partida '+SEL)
-  return 'ok',200
- if 'PRO' in t:
-  if not ENTS: send_text(cid,'Sin partidas V99')
-  else:
-   out=''
-   for k,v in ENTS.items():
-    pp=price(k) or v['entry'];pnl=(pp/v['entry']-1)*100
-    out=out+k+' '+str(round(pnl,2))+'% | '
-   send_text(cid,out)
-  return 'ok',200
- send_text(cid,SEL+' '+str(round(p,4))+' V99')
- return 'ok',200
-if __name__=='__main__':
- app.run(host='0.0.0.0',port=int(os.getenv('PORT','10000')))
+   if rsi
