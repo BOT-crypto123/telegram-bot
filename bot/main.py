@@ -42,8 +42,7 @@ def chk():
     v=[b[4] for b in z]
     u=rsi(v); w=p(y)
     j=em(v,9); k=em(v,21)
-    key=y+str(round(u))
     if u<30 and j>k:
-     if LC.get(y)!="COMPRA":
-      LC[y]="COMPRA"
-      m(C,"🚨 "+y+" "+str(round(w,2))+"\nCOMPRA FUERTE
+     if LC.get(y)!="C":
+      LC[y]="C"
+      m(C,y+" "+str(round(w,2))+" COMPRA FUERTE RSI "+str(round
