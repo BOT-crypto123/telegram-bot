@@ -7,7 +7,17 @@ TOKEN = os.getenv("TELEGRAM_TOKEN", "")
 CHAT_FILE = "trades.json"
 app = Flask(__name__)
 
-def load():
+def load_trades():
+ try:
+  if os.path.exists(FILE):
+   with open(FILE,"r") as f:
+    d=json.load(f)
+    # si está vacío o es {} lo reseteamos
+    if not isinstance(d, dict) or "trades" not in d:
+     return {"trades":[],"balance":0,"ganancia_hoy":0,"ganados":0,"perdidos":0}
+    return d
+ except: pass
+ return {"trades":[],"balance":0,"ganancia_hoy":0,"ganados":0,"perdidos":0}
     try:
         with open(CHAT_FILE,"r") as f:
             return json.load(f)
