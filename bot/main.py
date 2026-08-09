@@ -5,7 +5,7 @@ TOKEN=os.getenv('TELE_TOKEN') or os.getenv('BOT_TOKEN') or ''
 app=Flask(__name__)
 SEL='XRP'
 ENTS={}
-FILE='/tmp/bot99.json'
+FILE='/tmp/bot.json'
 CONFIG={'AUTO':False,'LAST_CID':0}
 def load():
  try:
