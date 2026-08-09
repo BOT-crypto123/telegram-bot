@@ -1,8 +1,34 @@
-if "BTC"in t:S="BTC"
-if "ETH"in t:S="ETH"
-if "SOL"in t:S="SOL"
-if "XRP"in t:S="XRP"
-if "AUTO"in t:
- O=not O;C=i
- m(i,"AUTO ON" if O else "AUTO OFF")
- return "ok",200
+import os,requests,io,json,time,threading as th
+from flask import Flask,request
+B=''
+B+='T=os.getenv(\'TELE_TOKEN\')or\'\'\n'
+B+='A=Flask(__name__)\n'
+B+='S=\'XRP\';E={};O=False;C=0;LC={}\n'
+B+='def p(s):\n'
+B+=' try:\n'
+B+=' u=\'https://api.coinbase.com/v2/prices/\'+s+\'-USD/spot\'\n'
+B+=' j=requests.get(u,timeout=8).json()\n'
+B+=' return float(j[\'data\'][\'amount\'])\n'
+B+=' except: return 0\n'
+B+='def q(s):\n'
+B+=' try:\n'
+B+=' u=\'https://api.exchange.coinbase.com/products/\'+s+\'-USD/candles?granularity=60\'\n'
+B+=' j=requests.get(u,headers={\'User-Agent\':\'M\'},timeout=10).json()\n'
+B+=' return sorted(j)[-60:]\n'
+B+=' except: return []\n'
+B+='def rsi(a):\n'
+B+=' if len(a)<15: return 50\n'
+B+=' g=l=0\n'
+B+=' for i in range(1,15):\n'
+B+=' d=a[i]-a[i-1]\n'
+B+=' if d>0: g+=d\n'
+B+=' else: l+=-d\n'
+B+=' return 100-100/(1+g/l) if l else 88\n'
+B+='def em(a,n):\n'
+B+=' if len(a)<n: return a[-1]\n'
+B+=' k=2/(n+1);e=a[0]\n'
+B+=' for x in a[1:]: e=x*k+e*(1-k)\n'
+B+=' return e\n'
+B+='def m(x,t):\n'
+B+=' kb={\'keyboard\':[[\'BTC\',\'ETH\'],[\'SOL\',\'XRP\'],[\'COMPRAR\',\'VENDER\'],[\'AUTO\']],\'resize_keyboard\':True}\n'
+B+=' try: requests.post(\'https://api.telegram.org/b
