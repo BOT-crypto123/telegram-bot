@@ -37,14 +37,14 @@ def chk():
    for y in ["BTC","ETH","SOL","XRP"]:
     z=q(y)
     if not z:continue
-    v=[c[4] for c in z];u=rsi(v);j=em(v,9);k=em(v,21)
+    v=[float(c[4]) for c in z];u=rsi(v);j=em(v,9);k=em(v,21)
     if u<30 and j>k and LC.get(y)!="C":LC[y]="C";m(C,y+" COMPRA")
     if u>70 and j<k and LC.get(y)!="V":LC[y]="V";m(C,y+" VENTA")
     if 30<=u<=70:LC[y]="E"
   except:time.sleep(30)
 th.Thread(target=chk,daemon=True).start()
 @A.route("/")
-def h():return "V267 LIVE",200
+def h():return "V268 LIVE",200
 @A.route("/webhook",methods=["POST"])
 def w():
  global S,E,O,C;d=request.json or {};g=d.get("message",{});i=g.get("chat",{}).get("id",0)
@@ -55,7 +55,7 @@ def w():
  if "SOL"in t:S="SOL"
  if "XRP"in t:S="XRP"
  if "AUTO"in t:O=not O;C=i;m(i,"ON" if O else "OFF");return "ok",200
- z=q(S);v=[c[4] for c in z]
+ z=q(S);v=[float(c[4]) for c in z]
  if not v:return "ok",200
  pr=p(S) or v[-1];u=rsi(v);j=em(v,9);k=em(v,21);pc=(pr/v[-2]-1)*100 if len(v)>1 else 0
  sg="COMPRA" if u<30 else "VENTA" if u>70 else "ESPERA"
@@ -64,14 +64,16 @@ def w():
  if "COMPRAR"in t:E[S]=pr;ms="COMPRADO"
  if "VENDER"in t:
   if E.get(S):ms="VENDIDO";del E[S]
-  from PIL import Image,ImageDraw
- v=[float(c[4]) for c in z];mn=min(v);mx=max(v)
+  else:ms="NO"
+ from PIL import Image,ImageDraw
+ mn=min(v);mx=max(v)
  if mn==mx:mx=mn+1.0
  im=Image.new("RGB",(800,400),(10,14,21));dr=ImageDraw.Draw(im);n=0
  for b in z:
-  x=10+n*12;y1=380-(b[1]-mn)/(mx-mn)*350;y2=380-(b[2]-mn)/(mx-mn)*350;yt=380-(max(b[3],b[4])-mn)/(mx-mn)*350;yb=380-(min(b[3],b[4])-mn)/(mx-mn)*350;co=(0,230,118) if b[4]>=b[3] else (255,61,87)
+  bf=float(b[4]);bh=float(b[2]);bl=float(b[1]);bo=float(b[3])
+  x=10+n*12;y1=380-(bh-mn)/(mx-mn)*350;y2=380-(bl-mn)/(mx-mn)*350;yt=380-(max(bo,bf)-mn)/(mx-mn)*350;yb=380-(min(bo,bf)-mn)/(mx-mn)*350;co=(0,230,118) if bf>=bo else (255,61,87)
   dr.line([x,y1,x,y2],fill=co);dr.rectangle([x,yt,x+4,yb],fill=co);n+=1
- c1=S+" "+str(round(pr,2));c2=str(round(pc,2))+" RSI:"+str(round(u,1));c3="EMA9:"+str(round(j,2))+" 21:"+str(round(k,2));c4="SENAL:"+sg+" ON" if O else sg+" OFF";c5="PRED:"+pd
+ c1=S+" "+str(round(pr,2));c2=str(round(pc,2))+"% RSI:"+str(round(u,1));c3="EMA9:"+str(round(j,2))+" 21:"+str(round(k,2));c4="SENAL:"+sg+" ON" if O else sg+" OFF";c5="PRED:"+pd+" V268"
  if ms:c4=ms+" "+c4
  cp=c1+"\n"+c2+"\n"+c3+"\n"+c4+"\n"+c5;b=io.BytesIO();b.name="g.png";im.save(b,"PNG");b.seek(0);a="https://api.telegram.org/bot";b1=a+T+"/sendPhoto"
  k1=[["BTC","ETH"]];k1+=[["SOL","XRP"]];k2=[["COMPRAR","VENDER"]];k2+=[["AUTO"]];kb={"keyboard":k1+k2,"resize_keyboard":True}
