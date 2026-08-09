@@ -59,7 +59,7 @@ def loop():
 threading.Thread(target=loop,daemon=True).start()
 @A.route("/")
 def home():
- return "V230 LIVE",200
+ return "V231 LIVE",200
 @A.route("/webhook",methods=["POST"])
 def wh():
  global S,ON,CID
@@ -121,32 +121,29 @@ def wh():
   i=0
   for c in cl:
    x=20+i*13
-   col=(0,230,118) if c[4]>=c[3] else (255,61,87)
-   dr.line([x+3,490-(c[1]-mn)/(mx-mn)*460,x+3,490-(c[2]-mn)/(mx-mn)*460],fill=col)
-   dr.rectangle([x,490-(min(c[3],c[4])-mn)/(mx-mn)*460,x+6,490-(max(c[3],c[4])-mn)/(mx-mn)*460],fill=col)
+   lo=c[1]
+   hi=c[2]
+   op=c[3]
+   cc=c[4]
+   y_lo=490-(lo-mn)/(mx-mn)*460
+   y_hi=490-(hi-mn)/(mx-mn)*460
+   y_op=490-(op-mn)/(mx-mn)*460
+   y_cc=490-(cc-mn)/(mx-mn)*460
+   y_top=min(y_op,y_cc)
+   y_bot=max(y_op,y_cc)
+   if y_top==y_bot:
+    y_bot+=2
+   col=(0,230,118) if cc>=op else (255,61,87)
+   dr.line([x+3,y_lo,x+3,y_hi],fill=col)
+   dr.rectangle([x,y_top,x+6,y_bot],fill=col)
    i+=1
   hr=(datetime.utcnow()-timedelta(hours=6)).strftime("%I:%M %p")
   e9v=str(round(e9[-1],2)) if e9 else "--"
   e21v=str(round(e21[-1],2)) if e21 else "--"
   sg2="+" if pc>=0 else ""
-  cap=S+" "+str(round(p,4))+" | "+hr+" | "+sg2+str(round(pc,2))+"%\nEMA9:"+e9v+" EMA21:"+e21v+"\nRSI:"+str(round(rr,1))+" PRED:"+pr+"\nSENAL:"+sg+" V230"
+  cap=S+" "+str(round(p,4))+" | "+hr+" | "+sg2+str(round(pc,2))+"%\nEMA9:"+e9v+" EMA21:"+e21v+"\nRSI:"+str(round(rr,1))+" PRED:"+pr+"\nSENAL:"+sg+" V231"
   bio=io.BytesIO()
   bio.name="g.png"
   im.save(bio,"PNG")
   bio.seek(0)
-  requests.post("https://api.telegram.org/bot"+T+"/sendPhoto",data={"chat_id":cid,"caption":cap},files={"photo":bio},timeout=12)
-  return "ok",200
- if "COMPRAR" in txt:
-  E[S]={"entry":pn}
-  open(F,"w").write(json.dumps({"ENTS":E}))
-  snd(cid,"COMPRA OK")
-  return "ok",200
- if "VENDER" in txt:
-  if S in E:
-   del E[S]
-   open(F,"w").write(json.dumps({"ENTS":E}))
-   snd(cid,"VENTA OK")
-  return "ok",200
- snd(cid,S+" "+str(round(pn,4)))
- return "ok",200
-A.run(host="0.0.0.0",port=int(os.getenv("PORT","10000")))
+  requests.post("https://api.telegram.org/bot"+T+"/sendPhoto",
