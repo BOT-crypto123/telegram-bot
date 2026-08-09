@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>JOHAN V505</title>
+<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+body{background:#050508;color:#fff;margin:0;font-family:Arial}
+.top{padding:12px;background:#0e0e14;display:flex;justify-content:space-between;border-bottom:1px solid #222}
+.live{background:#ff2b2b;padding:5px 10px;border-radius:8px;font-weight:900}
+.box{display:flex;justify-content:space-between;padding:16px;background:#0a0a0f}
+.v{font-size:28px;font-weight:900}
+#chartWrap{height:46vh;margin:10px;background:#0e0e14;border-radius:16px;border:1px solid #222}
+#chart{width:100%;height:100%}
+.stats{display:flex;gap:8px;padding:0 12px}
+.st{flex:1;background:#12121a;border-radius:10px;padding:8px;border:1px solid #1e1e2a}
+small{color:#666;font-size:11px}b{font-size:13px;display:block}
+.btns{display:flex;gap:10px;padding:14px}
+.b{flex:1;padding:18px;border-radius:14px;border:none;font-weight:900;font-size:18px}
+.up{background:#7ef7cc;color:#000}
+.down{background:#ff4d5a;color:#fff}
+.sig{margin:10px;padding:12px;text-align:center;border-radius:12px;font-weight:800}
+</style>
+</head>
+<body>
+<div class="top"><div><span class="live">● LIVE</span> <b>BTC 15min</b></div><div>⚡ <span id="lat">--</span>ms</div></div>
+<div class="box"><div><small>Price to beat</small><div class="v" id="beat">$0.00</div></div><div style="text-align:right"><small>Current</small><div class="v" id="cur">$0.00</div></div></div>
+<div id="chartWrap"><div id="chart"></div></div>
+<div class="sig" id="signal" style="background:#1a1a22;color:#777">ANALIZANDO...</div>
+<div class="stats"><div class="st"><small>EMA 9</small><b id="ema9">--</b></div><div class="st"><small>EMA 21</small><b id="ema21">--</b></div><div class="st"><small>SEÑAL</small><b id="txtSig">--</b></div><div class="st"><small>BALANCE</small><b id="bal">$0.00</b></div></div>
+<div class="btns"><button class="b up" id="upBtn">Up</button><button class="b down" id="downBtn">Down</button></div>
+<script>
+const chart=LightweightCharts.createChart(document.getElementById("chart"),{layout:{background:{color:"#0e0e14"},textColor:"#555"},grid:{vertLines:{color:"#15151e"},horzLines:{color:"#15151e"}},width:document.getElementById("chartWrap").clientWidth,height:document.getElementById("chartWrap").clientHeight});
+const line=chart.addLineSeries({color:"#ffb020",lineWidth:2});const e9L=chart.addLineSeries({color:"#a855f7",lineWidth:1});const e21L=chart.addLineSeries({color:"#fff",lineWidth:1});
+let priceBeat=0;
+async function init(){let r=await fetch("https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=60");let j=await r.json();j=j.reverse();priceBeat=j[Math.floor(j.length/2)][4];document.getElementById("beat").innerText="$"+priceBeat.toFixed(2);let d=j.map(c=>({time:c[0],value:c[4]}));line.setData(d);calcEMA(j);}
+function calcEMA(c){let k9=2/10,k21=2/22,e9=c[0][4],e21=c[0][4],a9=[],a21=[];c.forEach(x=>{e9=x[4]*k9+e9*(1-k9);e21=x[4]*k21+e21*(1-k21);a9.push({time:x[0],value:e9});a21.push({time:x[0],value:e21})});e9L.setData(a9);e21L.setData(a21);document.getElementById("ema9").innerText="$"+e9.toFixed(2);document.getElementById("ema21").innerText="$"+e21.toFixed(2);let s=e9>e21?"COMPRA":"VENTA";document.getElementById("txtSig").innerText=s;document.getElementById("signal").innerText=s;document.getElementById("signal").style.background=s=="COMPRA"?"#00ff8844":"#ff4d4a44";document.getElementById("signal").style.color=s=="COMPRA"?"#00ff88":"#ff4d5a";}
+let ws=new WebSocket("wss://ws-feed.exchange.coinbase.com");ws.onopen=()=>ws.send(JSON.stringify({type:"subscribe",product_ids:["BTC-USD"],channels:["ticker"]}));ws.onmessage=e=>{let m=JSON.parse(e.data);if(!m.price)return;let p=parseFloat(m.price);document.getElementById("cur").innerText="$"+p.toFixed(2);line.update({time:Math.floor(Date.now()/1000),value:p});};
+init();
+</script>
+</body>
+</html>
