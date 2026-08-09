@@ -1,30 +1,32 @@
-import os,requests,re,io,json,time,threading
+import os,requests,re,io,json
 from flask import Flask,request
 from datetime import datetime,timedelta
 
 TOKEN=os.getenv('TELE_TOKEN') or os.getenv('BOT_TOKEN') or ''
-print("V101 TOKEN", len(TOKEN))
+print("V102 TOKEN", len(TOKEN), flush=True)
 
 app=Flask(__name__)
 SEL='XRP'
 ENTS={}
-FILE='/tmp/bot_101.json'
-CONFIG={'AUTO':False,'LAST_CID':0,'LAST_ALERT':''}
+FILE='/tmp/bot_102.json'
+CONFIG={'AUTO':False,'LAST_CID':0}
 
 def load():
     try:
         if os.path.exists(FILE):
-            d=json.load(open(FILE))
+            import json as js
+            d=js.load(open(FILE))
             ENTS.update(d.get('ENTS',{}))
             CONFIG.update(d.get('CONFIG',{}))
-    except Exception as e:
-        print("LOAD",e)
+    except:
+        pass
 
 def save():
     try:
-        open(FILE,'w').write(json.dumps({'ENTS':ENTS,'CONFIG':CONFIG}))
-    except Exception as e:
-        print("SAVE",e)
+        import json as js
+        open(FILE,'w').write(js.dumps({'ENTS':ENTS,'CONFIG':CONFIG}))
+    except:
+        pass
 
 load()
 
@@ -39,8 +41,8 @@ def price(s):
 def get_candles(sym):
     try:
         u='https://api.exchange.coinbase.com/products/'+sym+'-USD/candles?granularity=60'
-        r=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=12).json()
-        return sorted(r)[-80:]
+        r=requests.get(u,headers={'User-Agent':'Mozilla/5.0'},timeout=10).json()
+        return sorted(r)[-60:]
     except:
         return []
 
@@ -74,25 +76,126 @@ def rsi_calc(prices):
 def send_text(cid,txt):
     try:
         url='https://api.telegram.org/bot'+TOKEN+'/sendMessage'
-        kb={'keyboard':[['BTC','ETH'],['SOL','XRP'],['COMPRAR 100','VENDER'],['GRAF','PRO'],['AUTO ON','AUTO OFF']],'resize_keyboard':True}
-        requests.post(url,json={'chat_id':cid,'text':txt,'reply_markup':kb},timeout=15)
-    except Exception as e:
-        print("SEND",e)
+        kb={'keyboard':[['BTC','ETH'],['SOL','XRP'],['COMPRAR 100','VENDER'],['GRAF','PRO']],'resize_keyboard':True}
+        requests.post(url,json={'chat_id':cid,'text':txt,'reply_markup':kb},timeout=12)
+    except:
+        pass
 
-def analyze(sym):
-    candles=get_candles(sym)
-    if len(candles) == 0:
-        return None
-    closes=[]
-    for c in candles:
-        closes.append(c[4])
-    p=price(sym)
-    if p == 0:
-        p=closes[-1]
-    ema9=ema_calc(closes,9)
-    ema21=ema_calc(closes,21)
-    rsi=rsi_calc(closes)
-    if len(ema9) == 0 or len(ema21) == 0:
-        return None
-    e9=ema9[-1]
-    e21=ema21
+@app.route('/')
+def home():
+    return 'V102 LIVE',200
+
+@app.route('/webhook',methods=['POST'])
+def wh():
+    global SEL
+    try:
+        d=request.get_json(force=True,silent=True)
+        if not d or 'message' not in d:
+            return 'ok',200
+        msg=d.get('message')
+        cid=msg.get('chat').get('id')
+        text_raw=msg.get('text','')
+        t=text_raw.upper().strip()
+        CONFIG['LAST_CID']=cid
+        save()
+        for s in ['BTC','ETH','SOL','XRP']:
+            if s in t:
+                SEL=s
+        p_now=price(SEL)
+        if p_now == 0 and SEL in ENTS:
+            p_now=ENTS[SEL]['entry']
+        if 'GRAF' in t:
+            from PIL import Image,ImageDraw
+            candles=get_candles(SEL)
+            closes=[]
+            for c in candles:
+                closes.append(c[4])
+            if len(closes) == 0:
+                closes=[p_now]
+            p=p_now
+            if len(candles) > 0:
+                p=closes[-1]
+                if price(SEL)!= 0:
+                    p=price(SEL)
+            ema9=ema_calc(closes,9)
+            ema21=ema_calc(closes,21)
+            rsi=rsi_calc(closes)
+            pred='NEUTRAL'
+            senial='ESPERAR'
+            score=50
+            if len(ema9) > 0 and len(ema21) > 0:
+                e9=ema9[-1]
+                e21=ema21[-1]
+                if p > e9 and e9 > e21:
+                    pred='SUBIDA'
+                    senial='COMPRA'
+                    score=67
+                if p < e9 and e9 < e21:
+                    pred='BAJADA'
+                    senial='VENTA'
+                    score=66
+                if rsi < 30:
+                    pred='SUBIDA FUERTE'
+                    senial='COMPRA FUERTE'
+                    score=92
+                if rsi > 70:
+                    pred='BAJADA FUERTE'
+                    senial='VENTA FUERTE'
+                    score=91
+            W=900
+            H=520
+            img=Image.new('RGB',(W,H),'#0a0e15')
+            dr=ImageDraw.Draw(img)
+            mn=p
+            mx=p
+            for c in candles:
+                if c[1] < mn:
+                    mn=c[1]
+                if c[2] > mx:
+                    mx=c[2]
+            if mn == mx:
+                mn=mn*0.998
+                mx=mx*1.002
+            pad=H-100
+            idx=0
+            for c in candles:
+                x=20+idx*14
+                low=c[1]
+                high=c[2]
+                o=c[3]
+                cl=c[4]
+                y1=H-70-(low-mn)/(mx-mn)*pad
+                y2=H-70-(high-mn)/(mx-mn)*pad
+                yo=H-70-(o-mn)/(mx-mn)*pad
+                yc=H-70-(cl-mn)/(mx-mn)*pad
+                y_top=min(yo,yc)
+                y_bot=max(yo,yc)
+                if y_top == y_bot:
+                    y_bot=y_top+2
+                col='#00e676'
+                if cl < o:
+                    col='#ff3d57'
+                dr.line([x+3,y1,x+3,y2],fill=col,width=1)
+                dr.rectangle([x,y_top,x+6,y_bot],fill=col)
+                idx+=1
+            hora_mx=(datetime.utcnow()-timedelta(hours=6)).strftime('%I:%M %p')
+            txt_head=SEL+' '+str(round(p,4))+' '+hora_mx
+            if SEL in ENTS:
+                entry=ENTS[SEL]['entry']
+                pnl=(p/entry-1)*100
+                sgn='+'
+                if pnl < 0:
+                    sgn=''
+                txt_head=txt_head+' '+sgn+str(round(pnl,2))+' pct'
+            dr.text((12,10),txt_head,fill='white')
+            cap=txt_head+' RSI '+str(round(rsi,1))+' PRED '+pred+' SENAL '+senial+' V102'
+            bio=io.BytesIO()
+            bio.name='g.png'
+            img.save(bio,'PNG')
+            bio.seek(0)
+            requests.post('https://api.telegram.org/bot'+TOKEN+'/sendPhoto',data={'chat_id':cid,'caption':cap},files={'photo':bio},timeout=15)
+            return 'ok',200
+        if 'COMPRAR' in t:
+            nums=re.findall(r'[\d\.]+',text_raw)
+            m=100.0
+            if len(nums) > 0:
