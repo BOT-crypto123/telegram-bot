@@ -32,15 +32,15 @@ async def candles():
    d=sorted(r.json())[-40:]
    return [x[4] for x in d]
  except:
-  return [65000,65200,65100,65300,65250,65400,65500,65450,65600,65153]
+  return [65000,65200,65300,65153]
 
 async def send(cid,txt,mon="BTC",buy=False):
  async with httpx.AsyncClient(timeout=10) as c:
   u="https://www.tradingview.com/symbols/"+mon+"USDT/"
   if buy:
-   kb={"inline_keyboard":[[{"text":"📈 GRAFICA","url":u},{"text":"💻 DASHBOARD","url":DASH}],[{"text":"✅ COMPRAR","callback_data":"BUY_"+mon},{"text":"❌ VENDER","callback_data":"SELL_"+mon}]]}
+   kb={"inline_keyboard":[[{"text":"GRAFICA","url":u},{"text":"DASHBOARD","url":DASH}],[{"text":"COMPRAR","callback_data":"BUY_"+mon},{"text":"VENDER","callback_data":"SELL_"+mon}]]}
   else:
-   kb={"inline_keyboard":[[{"text":"📈 GRAFICA","url":u},{"text":"💻 DASHBOARD","url":DASH}]]}
+   kb={"inline_keyboard":[[{"text":"GRAFICA","url":u},{"text":"DASHBOARD","url":DASH}]]}
   km={"keyboard":[[{"text":"BTC"},{"text":"ETH"},{"text":"SOL"},{"text":"XRP"}],[{"text":"PORTAFOLIO"}]],"resize_keyboard":True}
   await c.post(BASE+"/sendMessage",json={"chat_id":cid,"text":txt,"reply_markup":kb})
   await c.post(BASE+"/sendMessage",json={"chat_id":cid,"text":"Menu","reply_markup":km})
@@ -59,45 +59,26 @@ async def dash():
   amt=v.get('a',0)
   ent=v.get('e',0)
   val=amt*p
-  tot=tot+val
-  if ent>0:
-   gn=(p/ent-1)*100
-  else:
-   gn=0
-  if gn>=0:
-   col="#00d395"
-   sign="+"
-  else:
-   col="#ff4d4d"
-   sign=""
-  rows=rows+"<tr><td><b>"+k+"</b></td><td>"+str(round(amt,5))+"</td><td>$"+str(round(ent,2))+"</td><td>$"+str(round(p,2))+"</td><td style='color:"+col+";font-weight:bold'>"+sign+str(round(gn,2))+"%</td><td>$"+str(round(val,2))+"</td></tr>"
+  tot+=val
+  gn=(p/ent-1)*100 if ent>0 else 0
+  col="#00e676" if gn>=0 else "#ff5252"
+  rows+=f"<tr><td>{k}</td><td>{round(amt,5)}</td>"
+  rows+=f"<td>${round(ent,1)}</td><td>${round(p,1)}</td>"
+  rows+=f"<td style='color:{col}'>{round(gn,1)}%</td>"
+  rows+=f"<td>${round(val,1)}</td></tr>"
  if rows=="":
-  rows="<tr><td colspan=6 style='text-align:center;color:#666'>Sin posiciones - Compra BTC en Telegram</td></tr>"
+  rows="<tr><td colspan=6>Sin posiciones</td></tr>"
  hrows=""
  for x in hist[-15:][::-1]:
   t=x.get('t','')
-  m=x.get('m','')
-  prc=x.get('p',0)
-  f=x.get('f','')
-  if t=="VENTA":
-   co="#00d395"
-  else:
-   co="#ffb020"
-  hrows=hrows+"<tr><td>"+f+"</td><td style='color:"+co+"'>"+t+"</td><td>"+m+"</td><td>$"+str(round(prc,2))+"</td></tr>"
+  co="#00e676" if t=="VENTA" else "#ffab40"
+  hrows+=f"<tr><td>{x.get('f','')}</td>"
+  hrows+=f"<td style='color:{co}'>{t}</td>"
+  hrows+=f"<td>{x.get('m','')}</td>"
+  hrows+=f"<td>${x.get('p',0)}</td></tr>"
  if hrows=="":
-  hrows="<tr><td colspan=4 style='text-align:center;color:#666'>Sin trades</td></tr>"
- bal_s=str(round(bal,2))
- tot_s=str(round(tot,2))
- pnl=tot-1000.0
- pnl_s=str(round(pnl,2))
- if pnl>=0:
-  pnl_col="#00d395"
- else:
-  pnl_col="#ff4d4d"
- labels=""
- data=""
- for i in range(len(pr)):
-  labels=labels+str(i)+","
-  data=data+str(pr[i])+","
- html="<html><head><meta name='viewport' content='width=device-width,initial-scale=1'><script src='https://cdn.jsdelivr.net/npm/chart.js'></script>"
- html=html+"<style>body{background:#0b0e11;color:#e6
+  hrows="<tr><td colspan=4>Sin trades</td></tr>"
+ h1="<html><head><meta name='viewport' content='width=device-width'>"
+ h2="<script src='https://cdn.jsdelivr.net/npm/chart.js'></script>"
+ h3="<style>body{background:#0b0e11;color:#fff;font-family:monospace;padding:12px}"
+ h4=".card{background:#151a21;border:1px solid #222;border-radius:14px;padding:12px;margin
