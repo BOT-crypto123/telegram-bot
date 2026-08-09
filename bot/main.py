@@ -12,6 +12,15 @@ if not os.path.exists(FILE): FILE="trades.json"
 def load_trades():
  try:
   if os.path.exists(FILE):
+   with open(FILE,"r") as f:
+    d=json.load(f)
+    if not isinstance(d, dict) or "trades" not in d:
+     return {"trades":[],"balance":0,"ganancia_hoy":0,"ganados":0,"perdidos":0}
+    return d
+ except: pass
+ return {"trades":[],"balance":0,"ganancia_hoy":0,"ganados":0,"perdidos":0}
+ try:
+  if os.path.exists(FILE):
    with open(FILE,"r") as f: return json.load(f)
  except: pass
  return {"trades":[],"balance":0,"ganancia_hoy":0,"ganados":0,"perdidos":0}
