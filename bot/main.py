@@ -12,28 +12,37 @@ def L():
     except: return {'b':1000,'h':{},'hs':[],'auto':False}
 def S(s): json.dump(s, open(F,'w'))
 
-# BINANCE ES EL UNICO QUE NO BLOQUEA RENDER
+# FIX USA - BINANCE.VISION ES EL MIRROR QUE NO BLOQUEA RENDER
 async def P(m):
-    try:
-        async with httpx.AsyncClient(timeout=8) as c:
-            r=await c.get(f'https://api.binance.com/api/v3/ticker/price?symbol={m}USDT')
-            return float(r.json()['price'])
-    except:
+    urls=[
+        f'https://data-api.binance.vision/api/v3/ticker/price?symbol={m}USDT',
+        f'https://api.binance.com/api/v3/ticker/price?symbol={m}USDT',
+        f'https://api.coinbase.com/v2/prices/{m}-USD/spot'
+    ]
+    for url in urls:
         try:
-            async with httpx.AsyncClient(timeout=6) as c:
-                r=await c.get(f'https://api.coinbase.com/v2/prices/{m}-USD/spot')
-                return float(r.json()['data']['amount'])
-        except: return 0
+            async with httpx.AsyncClient(timeout=8) as c:
+                r=await c.get(url, headers={'User-Agent':'Mozilla/5.0'})
+                j=r.json()
+                if 'price' in j: return float(j['price'])
+                if 'data' in j: return float(j['data']['amount'])
+        except: continue
+    return 0
 
 async def C(sym):
-    try:
-        async with httpx.AsyncClient(timeout=8) as c:
-            r=await c.get(f'https://api.binance.com/api/v3/klines?symbol={sym}USDT&interval=1h&limit=80')
-            d=r.json()
-            # Binance: [openTime, open, high, low, close,...]
-            return [[x[0],0,0,0,float(x[4])] for x in d]
-    except:
-        return []
+    urls=[
+        f'https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=80',
+        f'https://api.binance.com/api/v3/klines?symbol={sym}USDT&interval=1h&limit=80'
+    ]
+    for url in urls:
+        try:
+            async with httpx.AsyncClient(timeout=8) as c:
+                r=await c.get(url, headers={'User-Agent':'Mozilla/5.0'})
+                d=r.json()
+                if isinstance(d,list) and len(d)>10:
+                    return [[x[0],0,0,0,float(x[4])] for x in d]
+        except: continue
+    return []
 
 def ema(pr,n):
     if len(pr)<n: return []
@@ -63,13 +72,13 @@ async def AN(sym):
     rr=rsi(cs); p=cs[-1]; a=e9[-1]; b=e21[-1]
     tend='SUBE' if p>a and a>b else 'BAJA' if p<a and a<b else 'LATERAL'
     senal='COMPRA FUERTE' if rr<32 else 'VENTA FUERTE' if rr>70 else 'COMPRA' if p>a and rr<42 else 'VENTA' if p<a and rr>62 else 'NADA'
-    return {'p':p,'rsi':rr,'tend':tend,'senal':senal,'cs':cs,'e9':e9,'e21':e21,'e50':e50}
+    return {'p':p,'rsi':rr,'tend':tend,'senal':senal}
 
 async def G(cid,txt):
     async with httpx.AsyncClient(timeout=10) as c:
         h=os.getenv('RENDER_EXTERNAL_HOSTNAME','')
-        link=f'https://{h}/dashboard' if h else ''
-        kb={'inline_keyboard':[[{'text':'📊 ABRIR DASHBOARD V935','url':link}],[{'text':'🟢 AUTO ON','callback_data':'auto_on'},{'text':'🔴 AUTO OFF','callback_data':'auto_off'}]]}
+        link=f'https://{h}/dashboard'
+        kb={'inline_keyboard':[[{'text':'📊 ABRIR DASHBOARD V936','url':link}],[{'text':'🟢 AUTO ON','callback_data':'auto_on'},{'text':'🔴 AUTO OFF','callback_data':'auto_off'}]]}
         try: await c.post(B+'/sendMessage',json={'chat_id':cid,'text':txt,'reply_markup':kb,'parse_mode':'Markdown'})
         except: pass
 
@@ -96,18 +105,21 @@ async def dash():
     s=L()
     an_btc, an_eth, an_sol, an_xrp = await asyncio.gather(AN('BTC'), AN('ETH'), AN('SOL'), AN('XRP'))
     def fmt(an):
-        if not an: return {'p':0,'rsi':50,'tend':'LATERAL','senal':'NADA','cs':[]}
+        if not an: return {'p':0,'rsi':50,'tend':'ERROR','senal':'SIN DATOS'}
         return an
     an_btc=fmt(an_btc); an_eth=fmt(an_eth); an_sol=fmt(an_sol); an_xrp=fmt(an_xrp)
 
-    btc_p=int(an_btc['p']); eth_p=int(an_eth['p']); sol_p=int(an_sol['p']); xrp_p=round(an_xrp['p'],2)
+    # DEBUG PARA VER SI BINANCE.VISION FUNCIONA
+    print(f"PRECIOS: BTC={an_btc['p']} ETH={an_eth['p']} SOL={an_sol['p']} XRP={an_xrp['p']}")
+
+    btc_p=int(an_btc['p']); eth_p=int(an_eth['p']); sol_p=int(an_sol['p']); xrp_p=round(an_xrp['p'],3)
 
     pos_html=""
     if s['h']:
         for k,v in s['h'].items():
             an = {'BTC':an_btc,'ETH':an_eth,'SOL':an_sol,'XRP':an_xrp}.get(k)
             chg=(an['p']/v['e']-1)*100 if an and an['p']>0 else 0
-            pos_html+=f"<div class=card style=border-color:#00ff88>{k} {round(chg,1)}%<br><b style=color:#00ff88>${int(an['p'])}</b><br>Entrada ${int(v['e'])}</div>"
+            pos_html+=f"<div class=card style=border-color:#00ff88>{k} {round(chg,1)}%<br><b style=color:#00ff88>${int(an['p'])}</b></div>"
     else:
         pos_html="<div class=card style=grid-column:1/-1>Sin posiciones abiertas</div>"
 
@@ -123,13 +135,13 @@ body{{background:#0a0e1a;color:white;font-family:monospace;padding:12px}}
 #c{{background:#0f1420;border-radius:16px;padding:10px}}
 button{{background:#1e252f;color:#58a6ff;padding:8px 14px;border-radius:10px;margin:3px;border:1px solid #2a3446;font-size:11px}}
 </style></head><body>
-<h3 style=text-align:center;color:#2a7fff>V935 BINANCE REAL $1000 MXN</h3>
+<h3 style=text-align:center;color:#2a7fff>V936 BINANCE.VISION REAL $1000 MXN</h3>
 <div style=text-align:center;margin-bottom:8px><span style=background:{auto_color};color:black;padding:4px 10px;border-radius:20px>{auto_txt}</span> Saldo <b class=mxn>${int(s["b"])} MXN</b></div>
 <div class=grid>
-<div class=card>BTC BINANCE<br><b class=blue>${btc_p}</b><br>RSI {int(an_btc["rsi"])}<br>{an_btc["senal"]}<br>{an_btc["tend"]}</div>
-<div class=card>ETH BINANCE<br><b class=blue>${eth_p}</b><br>RSI {int(an_eth["rsi"])}<br>{an_eth["senal"]}<br>{an_eth["tend"]}</div>
-<div class=card>SOL BINANCE<br><b class=blue>${sol_p}</b><br>RSI {int(an_sol["rsi"])}<br>{an_sol["senal"]}<br>{an_sol["tend"]}</div>
-<div class=card>XRP BINANCE<br><b class=blue>${xrp_p}</b><br>RSI {int(an_xrp["rsi"])}<br>{an_xrp["senal"]}<br>{an_xrp["tend"]}</div>
+<div class=card>BTC REAL<br><b class=blue>${btc_p}</b><br>RSI {int(an_btc["rsi"])}<br>{an_btc["senal"]}<br>{an_btc["tend"]}</div>
+<div class=card>ETH REAL<br><b class=blue>${eth_p}</b><br>RSI {int(an_eth["rsi"])}<br>{an_eth["senal"]}<br>{an_eth["tend"]}</div>
+<div class=card>SOL REAL<br><b class=blue>${sol_p}</b><br>RSI {int(an_sol["rsi"])}<br>{an_sol["senal"]}<br>{an_sol["tend"]}</div>
+<div class=card>XRP REAL<br><b class=blue>${xrp_p}</b><br>RSI {int(an_xrp["rsi"])}<br>{an_xrp["senal"]}<br>{an_xrp["tend"]}</div>
 </div>
 <h3 style=color:#2a7fff;text-align:center;margin-top:12px>📦 Posiciones (Telegram = Dashboard)</h3>
 <div class=grid>{pos_html}</div>
@@ -139,7 +151,7 @@ button{{background:#1e252f;color:#58a6ff;padding:8px 14px;border-radius:10px;mar
 <script>
 let ch; function ema(pr,n){{if(pr.length<n)return[];let k=2/(n+1),s=pr.slice(0,n).reduce((a,b)=>a+b)/n,o=[s];for(let i=n;i<pr.length;i++)o.push(pr[i]*k+o[o.length-1]*(1-k));return o;}}
 async function sM(sym){{
- let r=await fetch("https://api.binance.com/api/v3/klines?symbol="+sym+"&interval=1h&limit=70").then(r=>r.json());
+ let r=await fetch("https://data-api.binance.vision/api/v3/klines?symbol="+sym+"&interval=1h&limit=70").then(r=>r.json());
  let cs=r.map(x=>parseFloat(x[4]));
  let e9=ema(cs,9), e21=ema(cs,21), e50=ema(cs,50);
  let pad=(arr,len)=>Array(len-arr.length).fill(null).concat(arr);
@@ -177,10 +189,10 @@ async def wh(req:Request):
     if 'RESET' in t: S({'b':1000,'h':{},'hs':[],'auto':False}); await G(cid,'💰 *RESET $1000 MXN*'); return {'ok':1}
     if 'AUTO ON' in t: s['auto']=True; S(s); await G(cid,f'🚀 *AUTO ON* ${int(s["b"])} MXN'); await BRAIN(cid); return {'ok':1}
     if 'AUTO OFF' in t: s['auto']=False; S(s); await G(cid,'🔴 *AUTO OFF*'); return {'ok':1}
-    if 'DASHBOARD' in t or 'DASH' in t: await G(cid,'📊 *Dashboard V935*'); return {'ok':1}
+    if 'DASHBOARD' in t or 'DASH' in t: await G(cid,'📊 *Dashboard V936*'); return {'ok':1}
     if t in ['BTC','ETH','SOL','XRP']:
         an=await AN(t)
-        if an: await G(cid,f'*{t} BINANCE* ${int(an["p"])} RSI {int(an["rsi"])} {an["senal"]} Saldo ${int(s["b"])} MXN')
+        if an: await G(cid,f'*{t} REAL* ${int(an["p"])} RSI {int(an["rsi"])} {an["senal"]} Saldo ${int(s["b"])} MXN')
         return {'ok':1}
-    await G(cid,f'💰 *V935 BINANCE REAL* ${int(s["b"])} MXN\nPrecios reales Binance\nBTC/ETH/SOL/XRP\nAUTO ON/OFF/RESET/DASHBOARD')
+    await G(cid,f'💰 *V936 BINANCE.VISION REAL* ${int(s["b"])} MXN\nPrecios reales\nAUTO ON/OFF/RESET/DASHBOARD')
     return {'ok':1}
