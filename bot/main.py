@@ -5,12 +5,42 @@ from fastapi.responses import HTMLResponse
 app = FastAPI()
 T = os.getenv('TELEGRAM_TOKEN','')
 B = 'https://api.telegram.org/bot' + T
-F = '/tmp/b.json'
+
+# PERSISTENCIA REAL - INTELIGENTE
+def get_file_path():
+    # Si tienes disco en Render en /data, lo usa (persistente para siempre)
+    # Si no, usa /tmp pero con backup en memoria
+    if os.path.exists('/data') or os.path.isdir('/data'):
+        return '/data/bot_data.json'
+    return '/tmp/bot_data.json'
+
+F = get_file_path()
 
 def L():
-    try: return json.load(open(F))
-    except: return {'b':1000,'h':{},'hs':[],'auto':False}
-def S(s): json.dump(s, open(F,'w'))
+    try:
+        if os.path.exists(F):
+            data=json.load(open(F))
+            # asegura campos
+            if 'b' not in data: data['b']=1000
+            if 'h' not in data: data['h']={}
+            if 'hs' not in data: data['hs']=[]
+            if 'auto' not in data: data['auto']=False
+            if 'total_trades' not in data: data['total_trades']=0
+            if 'ganancia_total' not in data: data['ganancia_total']=0
+            return data
+    except Exception as e:
+        print(f"Error load {e}")
+    return {'b':1000,'h':{},'hs':[],'auto':False,'total_trades':0,'ganancia_total':0,'inicial':1000}
+
+def S(s):
+    try:
+        json.dump(s, open(F,'w'))
+        # backup secundario
+        json.dump(s, open('/tmp/bot_backup.json','w'))
+    except Exception as e:
+        print(f"Error save {e}")
+
+MONTO_MXN = 50
 
 async def P(m):
     ts=int(time.time())
@@ -20,14 +50,6 @@ async def P(m):
             j=r.json()
             if 'USD' in j and float(j['USD'])>0:
                 return float(j['USD'])
-    except: pass
-    try:
-        async with httpx.AsyncClient(timeout=8) as c:
-            pairs={'BTC':'XBTUSD','ETH':'ETHUSD','SOL':'SOLUSD','XRP':'XRPUSD'}
-            r=await c.get(f'https://api.kraken.com/0/public/Ticker?pair={pairs[m]}&t={ts}')
-            j=r.json()
-            if 'result' in j:
-                return float(list(j['result'].values())[0]['c'][0])
     except: pass
     return {'BTC':114800,'ETH':3450,'SOL':172,'XRP':1.021}.get(m,0)
 
@@ -82,8 +104,6 @@ async def AN(sym):
         candles=make_candles(p_real, 100)
     else:
         candles[-1]['close']=p_real
-        candles[-1]['high']=max(candles[-1]['high'],p_real)
-        candles[-1]['low']=min(candles[-1]['low'],p_real)
     cs=[c['close'] for c in candles]
     e9=ema(cs,9); e21=ema(cs,21); e50=ema(cs,50)
     rr=rsi(cs); p=p_real
@@ -94,22 +114,53 @@ async def AN(sym):
 
 def do_buy(s, sym, price):
     if sym in s['h']: return False, f"Ya tienes {sym}"
-    if s['b'] < 200: return False, "Saldo insuficiente"
-    s['h'][sym]={'a':(200/17.5*0.998)/price,'e':price}
-    s['b']-=200
-    return True, f"COMPRADO {sym}"
-def do_sell(s, sym, price):
-    if sym not in s['h']: return False, f"No tienes {sym}"
-    chg=(price/s['h'][sym]['e']-1)*100
-    s['b']+=s['h'][sym]['a']*price*0.998*17.5
-    del s['h'][sym]
-    return True, f"VENDIDO {sym} {round(chg,2)}%"
+    if s['b'] < MONTO_MXN: return False, f"Saldo insuficiente ${MONTO_MXN}"
+    monto_usd=MONTO_MXN/17.5
+    s['h'][sym]={'a':(monto_usd*0.998)/price,'e':price,'t':int(time.time())}
+    s['b']-=MONTO_MXN
+    return True, f"✅ COMPRADO {sym} ${price:.2f}"
 
-async def G(cid,txt):
+def do_sell(s, sym, price):
+    if sym not in s['h']: return False, f"No tienes {sym}", 0
+    entry=s['h'][sym]['e']
+    amount=s['h'][sym]['a']
+    chg=(price/entry-1)*100
+    ganancia_mxn = (amount*price*0.998*17.5) - MONTO_MXN
+    s['b']+= amount*price*0.998*17.5
+    s['total_trades']+=1
+    s['ganancia_total']+=ganancia_mxn
+    # HISTORIAL REAL QUE SE CONSERVA
+    s['hs'].insert(0,{
+        'sym':sym,
+        'entry':entry,
+        'exit':price,
+        'pct':round(chg,2),
+        'ganancia':round(ganancia_mxn,2),
+        'fecha':time.strftime('%d/%m %H:%M')
+    })
+    s['hs']=s['hs'][:50] # guarda ultimas 50
+    del s['h'][sym]
+    return True, f"💸 VENDIDO {sym} {round(chg,2)}% {'GANASTE' if ganancia_mxn>=0 else 'PERDISTE'} ${round(ganancia_mxn,2)} MXN", ganancia_mxn
+
+async def G(cid, txt, sym_focus=None):
     async with httpx.AsyncClient(timeout=10) as c:
         h=os.getenv('RENDER_EXTERNAL_HOSTNAME','')
         link=f'https://{h}/dashboard'
-        kb={'inline_keyboard':[[{'text':'📊 DASHBOARD V945','url':link}]]}
+        if sym_focus in ['BTC','ETH','SOL','XRP']:
+            kb = {'inline_keyboard':[
+                    [{'text':f'🟢 COMPRAR {sym_focus} ${MONTO_MXN}','callback_data':f'buy_{sym_focus}'},{'text':f'🔴 VENDER {sym_focus}','callback_data':f'sell_{sym_focus}'}],
+                    [{'text':'🟢 AUTO ON','callback_data':'auto_on'},{'text':'🔴 AUTO OFF','callback_data':'auto_off'}],
+                    [{'text':'📊 DASHBOARD','url':link}],
+                ]}
+        else:
+            kb = {'inline_keyboard':[
+                    [{'text':f'🟢 BTC ${MONTO_MXN}','callback_data':'buy_BTC'},{'text':f'🔴 VENDER BTC','callback_data':'sell_BTC'}],
+                    [{'text':f'🟢 ETH ${MONTO_MXN}','callback_data':'buy_ETH'},{'text':f'🔴 VENDER ETH','callback_data':'sell_ETH'}],
+                    [{'text':f'🟢 SOL ${MONTO_MXN}','callback_data':'buy_SOL'},{'text':f'🔴 VENDER SOL','callback_data':'sell_SOL'}],
+                    [{'text':f'🟢 XRP ${MONTO_MXN}','callback_data':'buy_XRP'},{'text':f'🔴 VENDER XRP','callback_data':'sell_XRP'}],
+                    [{'text':'🟢 AUTO ON','callback_data':'auto_on'},{'text':'🔴 AUTO OFF','callback_data':'auto_off'}],
+                    [{'text':'📊 DASHBOARD V948 REAL','url':link}]
+                ]}
         try: await c.post(B+'/sendMessage',json={'chat_id':cid,'text':txt,'reply_markup':kb,'parse_mode':'Markdown'})
         except: pass
 
@@ -128,85 +179,98 @@ async def dash():
     sol_e9=js.dumps(an_sol['e9']); sol_e21=js.dumps(an_sol['e21']); sol_e50=js.dumps(an_sol['e50'])
     xrp_e9=js.dumps(an_xrp['e9']); xrp_e21=js.dumps(an_xrp['e21']); xrp_e50=js.dumps(an_xrp['e50'])
     btc_p=int(an_btc['p']); eth_p=int(an_eth['p']); sol_p=int(an_sol['p']); xrp_p=round(an_xrp['p'],3)
+
     pos_html=""
     if s['h']:
         for k,v in s['h'].items():
             an = {'BTC':an_btc,'ETH':an_eth,'SOL':an_sol,'XRP':an_xrp}.get(k)
             chg=(an['p']/v['e']-1)*100 if an else 0
             col="#00ff88" if chg>=0 else "#ff4444"
-            pos_html+=f"<div class=card style=border-color:{col}>{k} <b style=color:{col}>{round(chg,2)}%</b><br>${int(an['p'])}<br><button onclick=\"trade('sell','{k}')\" style=background:{col};color:black>VENDER</button></div>"
+            pos_html+=f"<div class=card style=border-color:{col}>{k} <b style=color:{col}>{round(chg,2)}%</b><br>${an['p']:.2f}<br><button onclick=\"trade('sell','{k}')\" style=background:{col};color:black>VENDER</button></div>"
     else:
-        pos_html="<div class=card style=grid-column:1/-1>Sin posiciones - Toca una tarjeta arriba para ver su grafica</div>"
+        pos_html="<div class=card style=grid-column:1/-1>Sin posiciones abiertas</div>"
+
+    # HISTORIAL REAL DE GANANCIA/PERDIDA
+    hist_html=""
+    if s.get('hs'):
+        for h in s['hs'][:10]:
+            col="#00ff88" if h['ganancia']>=0 else "#ff4444"
+            hist_html+=f"<div class=card style=border-color:{col};font-size:10px>{h['sym']} {h['pct']}%<br><b style=color:{col}>${h['ganancia']} MXN</b><br>{h['fecha']}<br><span style=color:#666>{h['entry']:.2f}->{h['exit']:.2f}</span></div>"
+    else:
+        hist_html="<div class=card style=grid-column:1/-1>Sin historial aún - Conserva si ganas o pierdes</div>"
+
+    total = s['b'] + sum([ s['h'][k]['a']*{'BTC':an_btc,'ETH':an_eth,'SOL':an_sol,'XRP':an_xrp}[k]['p']*17.5 for k in s['h'] ]) if s['h'] else s['b']
+    gan_total = s.get('ganancia_total',0)
+    trades = s.get('total_trades',0)
+
     auto_txt="AUTO ON" if s.get('auto') else "AUTO OFF"
     auto_color="#00ff88" if s.get('auto') else "#ff4444"
 
-    html = """
+    html = f"""
 <html><head><meta name=viewport content="width=device-width,initial-scale=1">
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
 <style>
-body{background:#0b0e14;color:#d1d4dc;font-family:sans-serif;padding:0;margin:0}
-.header{padding:12px;background:#151a29;text-align:center;border-bottom:1px solid #1e2532;position:sticky;top:0;z-index:20}
-.grid4{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
-.card{background:#1a1f30;border:2px solid #2a3446;border-radius:16px;padding:12px;text-align:center;font-size:11px;cursor:pointer;transition:0.2s}
-.card:hover{border-color:#3a4a6a;transform:scale(1.02)}
-.card.active{border-color:#2a7fff!important;background:#1e2a45!important;box-shadow:0 0 15px rgba(42,127,255,0.4)}
-.card b{font-size:15px;color:#2a7fff;display:block}
-.mxn{color:#00ff88}
-#chart{width:100%;height:480px;background:#0f1420}
-.ley{display:flex;gap:12px;justify-content:center;padding:8px;font-size:11px;background:#0f1420}
-.buy{background:#00ff88;color:#000;font-weight:bold;padding:16px 20px;border-radius:12px;font-size:15px;width:48%;border:none}
-.sell{background:#ff4444;color:#fff;font-weight:bold;padding:16px 20px;border-radius:12px;font-size:15px;width:48%;border:none}
+body{{background:#0b0e14;color:#d1d4dc;font-family:sans-serif;padding:0;margin:0}}
+.header{{padding:12px;background:#151a29;text-align:center;border-bottom:1px solid #1e2532;position:sticky;top:0;z-index:20}}
+.grid4{{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}}
+.card{{background:#1a1f30;border:2px solid #2a3446;border-radius:16px;padding:12px;text-align:center;font-size:11px;cursor:pointer}}
+.card.active{{border-color:#2a7fff!important;background:#1e2a45!important;box-shadow:0 0 15px rgba(42,127,255,0.4)}}
+.card b{{font-size:15px;color:#2a7fff;display:block}}
+.mxn{{color:#00ff88}}
+#chart{{width:100%;height:460px;background:#0f1420}}
+.ley{{display:flex;gap:12px;justify-content:center;padding:8px;font-size:11px;background:#0f1420}}
+.buy{{background:#00ff88;color:#000;font-weight:bold;padding:16px 20px;border-radius:12px;font-size:15px;width:48%;border:none}}
+.sell{{background:#ff4444;color:#fff;font-weight:bold;padding:16px 20px;border-radius:12px;font-size:15px;width:48%;border:none}}
+.stats{{background:#151a29;padding:10px;display:flex;justify-content:space-around;font-size:12px;border-bottom:1px solid #1e2532}}
 </style></head><body>
-<div class=header><b style=color:#2a7fff>V945 MITRADE $1000 MXN</b><br><span style="background:__AUTO_COLOR__;color:black;padding:4px 12px;border-radius:20px;font-size:11px">__AUTO_TXT__</span> Saldo <b class=mxn>$__SALDO__ MXN</b> <span id=priceLive style=color:#2a7fff;margin-left:8px></span></div>
-
+<div class=header><b style=color:#2a7fff>V948 REAL PERSISTENTE $50</b><br><span style="background:{auto_color};color:black;padding:4px 12px;border-radius:20px;font-size:11px">{auto_txt}</span> Saldo <b class=mxn>${int(s['b'])} MXN</b> <span id=priceLive style=color:#2a7fff;margin-left:8px></span></div>
+<div class=stats><div>Total: <b style=color:#00ff88>${int(total)} MXN</b></div><div>Trades: <b>{trades}</b></div><div>G/P: <b style=color:{'#00ff88' if gan_total>=0 else '#ff4444'}>${round(gan_total,2)} MXN</b></div></div>
 <div class=grid4>
-<div id=cBTC class=card onclick="loadSym('BTC')">BTC<br><b>$__BTC_P__</b><div style=font-size:10px;color:#aaa>RSI __BTC_RSI__<br>__BTC_SENAL__<br>__BTC_TEND__</div></div>
-<div id=cETH class=card onclick="loadSym('ETH')">ETH<br><b>$__ETH_P__</b><div style=font-size:10px;color:#aaa>RSI __ETH_RSI__<br>__ETH_SENAL__<br>__ETH_TEND__</div></div>
-<div id=cSOL class=card onclick="loadSym('SOL')">SOL<br><b>$__SOL_P__</b><div style=font-size:10px;color:#aaa>RSI __SOL_RSI__<br>__SOL_SENAL__<br>__SOL_TEND__</div></div>
-<div id=cXRP class=card onclick="loadSym('XRP')">XRP<br><b>$__XRP_P__</b><div style=font-size:10px;color:#aaa>RSI __XRP_RSI__<br>__XRP_SENAL__<br>__XRP_TEND__</div></div>
+<div id=cBTC class=card onclick="loadSym('BTC')">BTC<br><b>${btc_p}</b><div style=font-size:10px;color:#aaa>RSI {int(an_btc['rsi'])}<br>{an_btc['senal']}</div></div>
+<div id=cETH class=card onclick="loadSym('ETH')">ETH<br><b>${eth_p}</b><div style=font-size:10px;color:#aaa>RSI {int(an_eth['rsi'])}<br>{an_eth['senal']}</div></div>
+<div id=cSOL class=card onclick="loadSym('SOL')">SOL<br><b>${sol_p}</b><div style=font-size:10px;color:#aaa>RSI {int(an_sol['rsi'])}<br>{an_sol['senal']}</div></div>
+<div id=cXRP class=card onclick="loadSym('XRP')">XRP<br><b>${xrp_p}</b><div style=font-size:10px;color:#aaa>RSI {int(an_xrp['rsi'])}<br>{an_xrp['senal']}</div></div>
 </div>
-
 <div class=ley><span style=color:#26a69a>● Velas</span><span style=color:#ffcc00>● EMA9</span><span style=color:#ef5350>● EMA21</span><span style=color:#00ff88>● EMA50</span> <span id=selTxt style=color:#2a7fff;margin-left:10px>BTC</span></div>
 <div id=chart></div>
-
 <div style=text-align:center;padding:12px;display:flex;gap:10px;justify-content:center>
-<button class=buy onclick="trade('buy',current)">🟢 COMPRAR <span id=symTxt>BTC</span></button>
+<button class=buy onclick="trade('buy',current)">🟢 COMPRAR <span id=symTxt>BTC</span> $50</button>
 <button class=sell onclick="trade('sell',current)">🔴 VENDER <span id=symTxt2>BTC</span></button>
 </div>
 <div id=msg style=text-align:center;padding:8px;color:#00ff88;font-weight:bold;min-height:20px></div>
-<div style=padding:10px><b style=color:#2a7fff>📦 Posiciones (Telegram = Dashboard)</b><div class=grid4 style=padding:6px 0>__POS__</div></div>
-
+<div style=padding:10px><b style=color:#2a7fff>📦 Posiciones abiertas (Real)</b><div class=grid4 style=padding:6px 0>{pos_html}</div></div>
+<div style=padding:10px><b style=color:#ffcc00>📜 Historial REAL - Se conserva si ganas o pierdes</b><div class=grid4 style=padding:6px 0>{hist_html}</div></div>
 <script>
 let current='BTC';
-const DATA = {
- BTC: {candles: __BTC_C__, e9: __BTC_E9__, e21: __BTC_E21__, e50: __BTC_E50__, price: __BTC_P__},
- ETH: {candles: __ETH_C__, e9: __ETH_E9__, e21: __ETH_E21__, e50: __ETH_E50__, price: __ETH_P__},
- SOL: {candles: __SOL_C__, e9: __SOL_E9__, e21: __SOL_E21__, e50: __SOL_E50__, price: __SOL_P__},
- XRP: {candles: __XRP_C__, e9: __XRP_E9__, e21: __XRP_E21__, e50: __XRP_E50__, price: __XRP_P__}
-};
+const DATA = {{
+ BTC: {{candles: {btc_c}, e9: {btc_e9}, e21: {btc_e21}, e50: {btc_e50}, price: {btc_p}}},
+ ETH: {{candles: {eth_c}, e9: {eth_e9}, e21: {eth_e21}, e50: {eth_e50}, price: {eth_p}}},
+ SOL: {{candles: {sol_c}, e9: {sol_e9}, e21: {sol_e21}, e50: {sol_e50}, price: {sol_p}}},
+ XRP: {{candles: {xrp_c}, e9: {xrp_e9}, e21: {xrp_e21}, e50: {xrp_e50}, price: {xrp_p}}}
+}};
 let chart, candleSeries, e9S, e21S, e50S;
-function createChart(){
+function createChart(){{
  const el=document.getElementById('chart');
  el.innerHTML='';
- chart=LightweightCharts.createChart(el,{width:el.clientWidth,height:480,layout:{background:{type:'solid',color:'#0f1420'},textColor:'#8a8d97'},grid:{vertLines:{color:'#1a1f2e'},horzLines:{color:'#1a1f2e'}},timeScale:{borderColor:'#2a3446',timeVisible:true},rightPriceScale:{borderColor:'#2a3446'}});
- candleSeries=chart.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',borderVisible:false,wickUpColor:'#26a69a',wickDownColor:'#ef5350'});
- e9S=chart.addLineSeries({color:'#ffcc00',lineWidth:1});
- e21S=chart.addLineSeries({color:'#ef5350',lineWidth:1});
- e50S=chart.addLineSeries({color:'#00ff88',lineWidth:1.2});
-}
-function toLine(candles, arr){
+ chart=LightweightCharts.createChart(el,{{width:el.clientWidth,height:460,layout:{{background:{{type:'solid',color:'#0f1420'}},textColor:'#8a8d97'}},grid:{{vertLines:{{color:'#1a1f2e'}},horzLines:{{color:'#1a1f2e'}}}},timeScale:{{borderColor:'#2a3446',timeVisible:true}},rightPriceScale:{{borderColor:'#2a3446'}}}});
+ candleSeries=chart.addCandlestickSeries({{upColor:'#26a69a',downColor:'#ef5350',borderVisible:false,wickUpColor:'#26a69a',wickDownColor:'#ef5350'}});
+ e9S=chart.addLineSeries({{color:'#ffcc00',lineWidth:1}});
+ e21S=chart.addLineSeries({{color:'#ef5350',lineWidth:1}});
+ e50S=chart.addLineSeries({{color:'#00ff88',lineWidth:1.2}});
+}}
+function toLine(candles, arr){{
  let out=[]; let start=candles.length - arr.length;
  if(start<0) start=0;
- for(let i=0;i<arr.length;i++){ let idx=start+i; if(idx>=0 && idx<candles.length && arr[i]) out.push({time:candles[idx].time, value:arr[i]}); }
+ for(let i=0;i<arr.length;i++){{ let idx=start+i; if(idx>=0 && idx<candles.length && arr[i]) out.push({{time:candles[idx].time, value:arr[i]}}); }}
  return out;
-}
-function loadSym(sym){
+}}
+function loadSym(sym){{
  current=sym;
  document.getElementById('symTxt').innerText=sym;
  document.getElementById('symTxt2').innerText=sym;
  document.getElementById('selTxt').innerText=sym+' $'+DATA[sym].price;
  document.getElementById('priceLive').innerText=sym+' $'+DATA[sym].price;
- ['BTC','ETH','SOL','XRP'].forEach(s=>{ let el=document.getElementById('c'+s); if(el) el.classList.remove('active'); });
+ ['BTC','ETH','SOL','XRP'].forEach(s=>{{ let el=document.getElementById('c'+s); if(el) el.classList.remove('active'); }});
  document.getElementById('c'+sym).classList.add('active');
  createChart();
  const d=DATA[sym];
@@ -215,32 +279,21 @@ function loadSym(sym){
  e21S.setData(toLine(d.candles, d.e21));
  e50S.setData(toLine(d.candles, d.e50));
  chart.timeScale().fitContent();
-}
-async function trade(action,sym){
+}}
+async function trade(action,sym){{
  if(!sym) sym=current;
- document.getElementById('msg').innerText='⏳ '+action.toUpperCase()+' '+sym+'...';
- try{
+ document.getElementById('msg').innerText='⏳ '+action.toUpperCase()+' '+sym+' $50...';
+ try{{
   let r=await fetch('/trade/'+action+'?sym='+sym+'&t='+Date.now());
   let j=await r.json();
   document.getElementById('msg').innerText=j.msg+' | Saldo $'+j.saldo+' MXN';
   setTimeout(()=>location.reload(), 1200);
- }catch(e){ document.getElementById('msg').innerText='Error'; }
-}
+ }}catch(e){{ document.getElementById('msg').innerText='Error'; }}
+}}
 createChart(); loadSym('BTC');
 </script>
 </body></html>
 """
-    html = html.replace("__AUTO_COLOR__", auto_color).replace("__AUTO_TXT__", auto_txt).replace("__SALDO__", str(int(s["b"])))
-    html = html.replace("__BTC_P__", str(btc_p)).replace("__ETH_P__", str(eth_p)).replace("__SOL_P__", str(sol_p)).replace("__XRP_P__", str(xrp_p))
-    html = html.replace("__BTC_RSI__", str(int(an_btc["rsi"]))).replace("__ETH_RSI__", str(int(an_eth["rsi"]))).replace("__SOL_RSI__", str(int(an_sol["rsi"]))).replace("__XRP_RSI__", str(int(an_xrp["rsi"])))
-    html = html.replace("__BTC_SENAL__", an_btc["senal"]).replace("__ETH_SENAL__", an_eth["senal"]).replace("__SOL_SENAL__", an_sol["senal"]).replace("__XRP_SENAL__", an_xrp["senal"])
-    html = html.replace("__BTC_TEND__", an_btc["tend"]).replace("__ETH_TEND__", an_eth["tend"]).replace("__SOL_TEND__", an_sol["tend"]).replace("__XRP_TEND__", an_xrp["tend"])
-    html = html.replace("__POS__", pos_html)
-    html = html.replace("__BTC_C__", btc_c).replace("__ETH_C__", eth_c).replace("__SOL_C__", sol_c).replace("__XRP_C__", xrp_c)
-    html = html.replace("__BTC_E9__", btc_e9).replace("__BTC_E21__", btc_e21).replace("__BTC_E50__", btc_e50)
-    html = html.replace("__ETH_E9__", eth_e9).replace("__ETH_E21__", eth_e21).replace("__ETH_E50__", eth_e50)
-    html = html.replace("__SOL_E9__", sol_e9).replace("__SOL_E21__", sol_e21).replace("__SOL_E50__", sol_e50)
-    html = html.replace("__XRP_E9__", xrp_e9).replace("__XRP_E21__", xrp_e21).replace("__XRP_E50__", xrp_e50)
     return HTMLResponse(html, headers={"Cache-Control":"no-cache"})
 
 @app.get('/trade/{action}')
@@ -253,7 +306,7 @@ async def trade_api(action: str, sym: str):
         if ok: S(s)
         return {"msg":msg,"saldo":int(s['b'])}
     else:
-        ok,msg=do_sell(s,sym.upper(),an['p'])
+        ok,msg,_=do_sell(s,sym.upper(),an['p'])
         if ok: S(s)
         return {"msg":msg,"saldo":int(s['b'])}
 
@@ -265,37 +318,63 @@ async def wh(req:Request):
     try: q=await req.json()
     except: q={}
     if 'callback_query' in q:
-        cid=q['callback_query']['message']['chat']['id']; s=L()
-        data=q['callback_query']['data']
-        if data=='auto_on': s['auto']=True; S(s); await G(cid,'AUTO ON')
-        else: s['auto']=False; S(s); await G(cid,'AUTO OFF')
+        cq=q['callback_query']; cid=cq['message']['chat']['id']; data=cq.get('data',''); s=L()
+        try:
+            if data=='auto_on':
+                s['auto']=True; S(s)
+                await G(cid,f'🚀 AUTO ON\nCompra auto ${MONTO_MXN} si RSI<30\nSaldo ${int(s["b"])}', None)
+            elif data=='auto_off':
+                s['auto']=False; S(s)
+                await G(cid,f'🔴 AUTO OFF - Solo manual\nSaldo ${int(s["b"])}', None)
+            elif data.startswith('buy_'):
+                sym=data.split('_')[1]
+                an=await AN(sym)
+                ok,msg=do_buy(s,sym,an['p'])
+                if ok: S(s); await G(cid,f'{msg}\nSaldo ${int(s["b"])}\nTotal ${int(s["b"]+sum([s["h"][k]["a"]* (await P(k))*17.5 for k in s["h"]]))} MXN', sym)
+                else: await G(cid,f'⚠️ {msg}', sym)
+            elif data.startswith('sell_'):
+                sym=data.split('_')[1]
+                an=await AN(sym)
+                ok,msg,gan=do_sell(s,sym,an['p'])
+                if ok: S(s); await G(cid,f'{msg}\nGanancia ${round(gan,2)} MXN\nSaldo ${int(s["b"])} MXN\nTotal G/P ${round(s["ganancia_total"],2)}', sym)
+                else: await G(cid,f'⚠️ {msg}', sym)
+            elif data.startswith('info_'):
+                sym=data.split('_')[1]
+                an=await AN(sym)
+                await G(cid,f'*{sym} ${an["p"]:.2f}* RSI {int(an["rsi"])} {an["senal"]}\nSaldo ${int(s["b"])}', sym)
+        except: pass
         return {'ok':1}
     msg=q.get('message',{}); cid=msg.get('chat',{}).get('id')
     if not cid: return {'ok':1}
     t=(msg.get('text') or '').upper(); s=L()
-    if 'RESET' in t: S({'b':1000,'h':{},'hs':[],'auto':False}); await G(cid,'RESET $1000 MXN'); return {'ok':1}
-    if 'AUTO ON' in t: s['auto']=True; S(s); await G(cid,f'AUTO ON ${int(s["b"])} MXN'); return {'ok':1}
-    if 'AUTO OFF' in t: s['auto']=False; S(s); await G(cid,'AUTO OFF'); return {'ok':1}
-    if 'DASHBOARD' in t: await G(cid,'Dashboard V945'); return {'ok':1}
-    if t.startswith('COMPRAR ') or t.startswith('BUY '):
-        sym=t.split()[-1]
-        if sym in ['BTC','ETH','SOL','XRP']:
-            an=await AN(sym)
-            ok,msg=do_buy(s,sym,an['p'])
-            if ok: S(s); await G(cid,f'{msg} Saldo ${int(s["b"])}')
-            else: await G(cid,msg)
+    if 'RESET' in t:
+        S({'b':1000,'h':{},'hs':[],'auto':False,'total_trades':0,'ganancia_total':0,'inicial':1000})
+        await G(cid,f'♻️ RESET\nBorrado TODO\nSaldo $1000 MXN\nHistorial borrado\nUsa RESET solo si quieres empezar de cero', None)
         return {'ok':1}
-    if t.startswith('VENDER ') or t.startswith('SELL '):
-        sym=t.split()[-1]
-        if sym in ['BTC','ETH','SOL','XRP']:
-            an=await AN(sym)
-            ok,msg=do_sell(s,sym,an['p'])
-            if ok: S(s); await G(cid,f'{msg} Saldo ${int(s["b"])}')
-            else: await G(cid,msg)
+    if 'AUTO ON' in t:
+        s['auto']=True; S(s); await G(cid,f'🚀 AUTO ON ${MONTO_MXN} MXN\nSaldo ${int(s["b"])}', None); return {'ok':1}
+    if 'AUTO OFF' in t:
+        s['auto']=False; S(s); await G(cid,f'🔴 AUTO OFF\nSaldo ${int(s["b"])}', None); return {'ok':1}
+    if 'DASHBOARD' in t or 'HISTORIAL' in t or 'PORTAFOLIO' in t or 'BALANCE' in t or 'SALDO' in t:
+        total = s['b'] + (sum([s['h'][k]['a']*(await P(k))*17.5 for k in s['h']]) if s['h'] else 0)
+        txt=f'💰 Saldo ${int(s["b"])} MXN\nTotal ${int(total)} MXN\nG/P Total ${round(s.get("ganancia_total",0),2)} MXN\nTrades {s.get("total_trades",0)}\n\n'
+        if s['h']:
+            for k,v in s['h'].items():
+                an=await AN(k)
+                txt+=f'{k} {(an["p"]/v["e"]-1)*100:.1f}% '
+            txt+='\n\n'
+        if s.get('hs'):
+            txt+='Ultimos:\n'
+            for h in s['hs'][:5]:
+                txt+=f'{h["sym"]} {h["pct"]}% ${h["ganancia"]} {h["fecha"]}\n'
+        else:
+            txt+='Sin historial aún'
+        txt+='\n\nEste dato se conserva si ganas o pierdes'
+        await G(cid,txt, None)
         return {'ok':1}
     if t in ['BTC','ETH','SOL','XRP']:
         an=await AN(t)
-        await G(cid,f'{t} ${an["p"]} RSI {int(an["rsi"])} {an["senal"]} Saldo ${int(s["b"])}')
+        await G(cid,f'*{t} ${an["p"]:.2f}* RSI {int(an["rsi"])} {an["senal"]}\nCompra ${MONTO_MXN}\nSaldo ${int(s["b"])} MXN', t)
         return {'ok':1}
-    await G(cid,f'V945 ${int(s["b"])} MXN\nToca tarjetas arriba para grafica\nCOMPRAR/VENDER')
+    await G(cid,f'V948 REAL $1000 MXN\nCompras ${MONTO_MXN}\nSaldo ${int(s["b"])} Total G/P ${round(s.get("ganancia_total",0),2)}\n\nTodo se conserva: si pierdes o ganas queda guardado\n\nPORTAFOLIO = ver historial real\nRESET = borrar todo y volver a $1000', None)
     return {'ok':1}
