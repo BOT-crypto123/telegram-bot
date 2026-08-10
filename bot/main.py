@@ -44,7 +44,6 @@ async def C_FULL(sym):
             keys=[k for k in result.keys() if k!='last']
             if not keys: return []
             data=result[keys[0]]
-            # time, open, high, low, close, vwap, volume, count
             out=[]
             for x in data[-100:]:
                 out.append({'time':int(x[0]), 'open':float(x[1]), 'high':float(x[2]), 'low':float(x[3]), 'close':float(x[4])})
@@ -73,7 +72,8 @@ async def AN(sym):
     candles=await C_FULL(sym)
     p_real=await P(sym)
     if not candles or len(candles)<21:
-        return {'p':p_real,'rsi':54,'tend':'LATERAL','senal':'NADA','candles':[{'time':int(time.time())-i*3600,'open':p_real,'high':p_real,'low':p_real,'close':p_real} for i in range(60,0,-1)], 'cs':[p_real]*60,'e9':[p_real]*60,'e21':[p_real]*60,'e50':[p_real]*60}
+        base=[{'time':int(time.time())-i*3600,'open':p_real,'high':p_real,'low':p_real,'close':p_real} for i in range(60,0,-1)]
+        return {'p':p_real,'rsi':54,'tend':'LATERAL','senal':'NADA','candles':base, 'cs':[p_real]*60,'e9':[p_real]*60,'e21':[p_real]*60,'e50':[p_real]*60}
     cs=[c['close'] for c in candles]
     e9=ema(cs,9); e21=ema(cs,21); e50=ema(cs,50)
     rr=rsi(cs); p=p_real
@@ -86,7 +86,7 @@ async def G(cid,txt):
     async with httpx.AsyncClient(timeout=10) as c:
         h=os.getenv('RENDER_EXTERNAL_HOSTNAME','')
         link=f'https://{h}/dashboard'
-        kb={'inline_keyboard':[[{'text':'📊 VER GRAFICA MITRADE V940','url':link}],[{'text':'🟢 AUTO ON','callback_data':'auto_on'},{'text':'🔴 AUTO OFF','callback_data':'auto_off'}]]}
+        kb={'inline_keyboard':[[{'text':'📊 VER GRAFICA MITRADE V941','url':link}],[{'text':'🟢 AUTO ON','callback_data':'auto_on'},{'text':'🔴 AUTO OFF','callback_data':'auto_off'}]]}
         try: await c.post(B+'/sendMessage',json={'chat_id':cid,'text':txt,'reply_markup':kb,'parse_mode':'Markdown'})
         except: pass
 
@@ -100,12 +100,12 @@ async def BRAIN(cid):
             if chg>=2.5 or chg<=-3 or an['rsi']>=72:
                 s['b']+=s['h'][sym]['a']*an['p']*0.998*usd_mxn
                 del s['h'][sym]; S(s)
-                await G(cid,f'💸 *VENTA {sym}* {round(chg,1)}% RSI {int(an["rsi"])} Saldo ${int(s["b"])} MXN')
+                await G(cid,f'💸 VENTA {sym} {round(chg,1)}% Saldo ${int(s["b"])} MXN')
                 s=L()
         if s.get('auto') and sym not in s['h'] and s['b']>=monto_mxn and an['rsi']<32:
             s['h'][sym]={'a':(monto_usd*0.998)/an['p'],'e':an['p']}
             s['b']-=monto_mxn; S(s)
-            await G(cid,f'🟢 *COMPRA {sym}* ${int(an["p"])} RSI {int(an["rsi"])} {an["senal"]} Saldo ${int(s["b"])} MXN')
+            await G(cid,f'🟢 COMPRA {sym} ${int(an["p"])} RSI {int(an["rsi"])} Saldo ${int(s["b"])} MXN')
             s=L()
 
 @app.get('/dashboard', response_class=HTMLResponse)
@@ -117,7 +117,18 @@ async def dash():
         return an
     an_btc=fmt(an_btc,114800); an_eth=fmt(an_eth,3480); an_sol=fmt(an_sol,149); an_xrp=fmt(an_xrp,1.05)
     if an_btc['p']<80000: an_btc['p']=114800
+
     import json as js
+    # datos para el front
+    btc_candles = js.dumps(an_btc['candles'])
+    eth_candles = js.dumps(an_eth['candles'])
+    sol_candles = js.dumps(an_sol['candles'])
+    xrp_candles = js.dumps(an_xrp['candles'])
+
+    btc_e9 = js.dumps(an_btc['e9']); btc_e21 = js.dumps(an_btc['e21']); btc_e50 = js.dumps(an_btc['e50'])
+    eth_e9 = js.dumps(an_eth['e9']); eth_e21 = js.dumps(an_eth['e21']); eth_e50 = js.dumps(an_eth['e50'])
+    sol_e9 = js.dumps(an_sol['e9']); sol_e21 = js.dumps(an_sol['e21']); sol_e50 = js.dumps(an_sol['e50'])
+    xrp_e9 = js.dumps(an_xrp['e9']); xrp_e21 = js.dumps(an_xrp['e21']); xrp_e50 = js.dumps(an_xrp['e50'])
 
     btc_p=int(an_btc['p']); eth_p=int(an_eth['p']); sol_p=int(an_sol['p']); xrp_p=round(an_xrp['p'],3)
     pos_html=""
@@ -128,78 +139,79 @@ async def dash():
             pos_html+=f"<div class=card style=border-color:#00ff88>{k} {round(chg,1)}%<br><b style=color:#00ff88>${int(an['p'])}</b></div>"
     else:
         pos_html="<div class=card style=grid-column:1/-1>Sin posiciones abiertas</div>"
-    auto_txt="🟢 AUTO ON" if s.get('auto') else "🔴 AUTO OFF"
+
+    auto_txt="AUTO ON" if s.get('auto') else "AUTO OFF"
     auto_color="#00ff88" if s.get('auto') else "#ff4444"
 
-    html=f'''<html><head><meta name=viewport content="width=device-width,initial-scale=1">
+    html = """
+<html><head><meta name=viewport content="width=device-width,initial-scale=1">
 <script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script>
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <style>
-body{{background:#0b0e14;color:#d1d4dc;font-family:-apple-system,BlinkMacSystemFont,sans-serif;padding:0;margin:0}}
-.header{{padding:12px;background:#151a29;text-align:center;border-bottom:1px solid #1e2532}}
-.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}}
-.card{{background:#1a1f30;border:1px solid #2a3446;border-radius:12px;padding:10px;text-align:center;font-size:11px}}
-.card b{{font-size:14px;color:#2a7fff}}.mxn{{color:#00ff88!important}}
-#chart{{width:100%;height:420px;background:#0f1420}}
-.ley{{display:flex;gap:12px;justify-content:center;padding:6px;font-size:10px;background:#0f1420}}
-button{{background:#1e252f;color:#58a6ff;padding:7px 14px;border-radius:8px;margin:3px;border:1px solid #2a3446;font-size:12px}}
-.s-COMPRA{{color:#26a69a}}.s-VENTA{{color:#ef5350}}.s-FUERTE{{color:#ffcc00;font-weight:bold}}
+body{background:#0b0e14;color:#d1d4dc;font-family:sans-serif;padding:0;margin:0}
+.header{padding:12px;background:#151a29;text-align:center;border-bottom:1px solid #1e2532}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:10px}
+.card{background:#1a1f30;border:1px solid #2a3446;border-radius:12px;padding:10px;text-align:center;font-size:11px}
+.card b{font-size:14px;color:#2a7fff}.mxn{color:#00ff88}
+#chart{width:100%;height:420px;background:#0f1420}
+.ley{display:flex;gap:12px;justify-content:center;padding:6px;font-size:10px;background:#0f1420}
+button{background:#1e252f;color:#58a6ff;padding:7px 14px;border-radius:8px;margin:3px;border:1px solid #2a3446;font-size:12px}
 </style></head><body>
-<div class=header><b style=color:#2a7fff>V940 MITRADE STYLE $1000 MXN</b><br><span style=background:{auto_color};color:black;padding:3px 10px;border-radius:20px;font-size:11px>{auto_txt}</span> Saldo <b class=mxn>${int(s["b"])} MXN</b></div>
-
+<div class=header><b style=color:#2a7fff>V941 MITRADE STYLE $1000 MXN</b><br><span style="background:__AUTO_COLOR__;color:black;padding:3px 10px;border-radius:20px;font-size:11px">__AUTO_TXT__</span> Saldo <b class=mxn>$__SALDO__ MXN</b></div>
 <div class=grid>
-<div class=card>BTC<br><b>${btc_p}</b><br>RSI {int(an_btc["rsi"])}<br><span class=s-{an_btc["senal"].split()[0]}>{an_btc["senal"]}</span><br>{an_btc["tend"]}</div>
-<div class=card>ETH<br><b>${eth_p}</b><br>RSI {int(an_eth["rsi"])}<br><span class=s-{an_eth["senal"].split()[0]}>{an_eth["senal"]}</span><br>{an_eth["tend"]}</div>
-<div class=card>SOL<br><b>${sol_p}</b><br>RSI {int(an_sol["rsi"])}<br><span class=s-{an_sol["senal"].split()[0]}>{an_sol["senal"]}</span><br>{an_sol["tend"]}</div>
-<div class=card>XRP<br><b>${xrp_p}</b><br>RSI {int(an_xrp["rsi"])}<br><span class=s-{an_xrp["senal"].split()[0]}>{an_xrp["senal"]}</span><br>{an_xrp["tend"]}</div>
+<div class=card>BTC<br><b>$__BTC_P__</b><br>RSI __BTC_RSI__<br>__BTC_SENAL__<br>__BTC_TEND__</div>
+<div class=card>ETH<br><b>$__ETH_P__</b><br>RSI __ETH_RSI__<br>__ETH_SENAL__<br>__ETH_TEND__</div>
+<div class=card>SOL<br><b>$__SOL_P__</b><br>RSI __SOL_RSI__<br>__SOL_SENAL__<br>__SOL_TEND__</div>
+<div class=card>XRP<br><b>$__XRP_P__</b><br>RSI __XRP_RSI__<br>__XRP_SENAL__<br>__XRP_TEND__</div>
 </div>
-
 <div class=ley><span style=color:#26a69a>● Velas</span><span style=color:#ffcc00>● EMA9</span><span style=color:#ef5350>● EMA21</span><span style=color:#00ff88>● EMA50</span></div>
 <div id=chart></div>
-<div style=text-align:center;padding:6px><button onclick="load('BTC')">BTC</button><button onclick="load('ETH')">ETH</button><button onclick="load('SOL')">SOL</button><button onclick="load('XRP')">XRP</button></div>
-
-<div style=padding:10px><b style=color:#2a7fff>📦 Posiciones (Telegram = Dashboard)</b><div class=grid style=padding:6px 0>{pos_html}</div></div>
-
+<div style=text-align:center;padding:6px><button onclick="loadSym('BTC')">BTC</button><button onclick="loadSym('ETH')">ETH</button><button onclick="loadSym('SOL')">SOL</button><button onclick="loadSym('XRP')">XRP</button></div>
+<div style=padding:10px><b style=color:#2a7fff>📦 Posiciones (Telegram = Dashboard)</b><div class=grid style=padding:6px 0>__POS__</div></div>
 <script>
-const DATA={{
- BTC: {{candles: {js.dumps(an_btc['candles'])}, e9: {js.dumps(an_btc['e9'])}, e21: {js.dumps(an_btc['e21'])}, e50: {js.dumps(an_btc['e50'])}} }},
- ETH: {{candles: {js.dumps(an_eth['candles'])}, e9: {js.dumps(an_eth['e9'])}, e21: {js.dumps(an_eth['e21'])}, e50: {js.dumps(an_eth['e50'])}} }},
- SOL: {{candles: {js.dumps(an_sol['candles'])}, e9: {js.dumps(an_sol['e9'])}, e21: {js.dumps(an_sol['e21'])}, e50: {js.dumps(an_sol['e50'])}} }},
- XRP: {{candles: {js.dumps(an_xrp['candles'])}, e9: {js.dumps(an_xrp['e9'])}, e21: {js.dumps(an_xrp['e21'])}, e50: {js.dumps(an_xrp['e50'])}} }}
-}};
-
-let chart, candleSeries, ema9Series, ema21Series, ema50Series;
-function initChart(){{
+const DATA = {
+ BTC: {candles: __BTC_C__, e9: __BTC_E9__, e21: __BTC_E21__, e50: __BTC_E50__},
+ ETH: {candles: __ETH_C__, e9: __ETH_E9__, e21: __ETH_E21__, e50: __ETH_E50__},
+ SOL: {candles: __SOL_C__, e9: __SOL_E9__, e21: __SOL_E21__, e50: __SOL_E50__},
+ XRP: {candles: __XRP_C__, e9: __XRP_E9__, e21: __XRP_E21__, e50: __XRP_E50__}
+};
+let chart, candleSeries, e9S, e21S, e50S;
+function init(){
  const el=document.getElementById('chart');
- chart=LightweightCharts.createChart(el, {{
-  width: el.clientWidth, height: 420,
-  layout: {{background:{{type:'solid',color:'#0f1420'}}, textColor:'#8a8d97'}},
-  grid: {{vertLines:{{color:'#1a1f2e'}}, horzLines:{{color:'#1a1f2e'}}}},
-  timeScale:{{borderColor:'#2a3446', timeVisible:true}},
-  rightPriceScale:{{borderColor:'#2a3446'}}
- }});
- candleSeries=chart.addCandlestickSeries({{upColor:'#26a69a', downColor:'#ef5350', borderVisible:false, wickUpColor:'#26a69a', wickDownColor:'#ef5350'}});
- ema9Series=chart.addLineSeries({{color:'#ffcc00', lineWidth:1}});
- ema21Series=chart.addLineSeries({{color:'#ef5350', lineWidth:1}});
- ema50Series=chart.addLineSeries({{color:'#00ff88', lineWidth:1.2}});
- window.addEventListener('resize', ()=>{{chart.applyOptions({{width:el.clientWidth}})}});
-}}
-function load(sym){{
+ chart=LightweightCharts.createChart(el,{width:el.clientWidth,height:420,layout:{background:{type:'solid',color:'#0f1420'},textColor:'#8a8d97'},grid:{vertLines:{color:'#1a1f2e'},horzLines:{color:'#1a1f2e'}},timeScale:{borderColor:'#2a3446',timeVisible:true},rightPriceScale:{borderColor:'#2a3446'}});
+ candleSeries=chart.addCandlestickSeries({upColor:'#26a69a',downColor:'#ef5350',borderVisible:false,wickUpColor:'#26a69a',wickDownColor:'#ef5350'});
+ e9S=chart.addLineSeries({color:'#ffcc00',lineWidth:1});
+ e21S=chart.addLineSeries({color:'#ef5350',lineWidth:1});
+ e50S=chart.addLineSeries({color:'#00ff88',lineWidth:1.2});
+}
+function toLine(candles, arr){
+ let out=[]; let start=candles.length - arr.length;
+ for(let i=0;i<arr.length;i++){ if(arr[i]) out.push({time:candles[start+i].time, value:arr[i]}); }
+ return out;
+}
+function loadSym(sym){
  const d=DATA[sym]; if(!d||!d.candles.length) return;
  candleSeries.setData(d.candles);
- function toLine(arr){{
-  let out=[]; let start=d.candles.length - arr.length;
-  for(let i=0;i<arr.length;i++){{ if(arr[i]) out.push({{time:d.candles[start+i].time, value:arr[i]}}); }}
-  return out;
- }}
- ema9Series.setData(toLine(d.e9));
- ema21Series.setData(toLine(d.e21));
- ema50Series.setData(toLine(d.e50));
+ e9S.setData(toLine(d.candles, d.e9));
+ e21S.setData(toLine(d.candles, d.e21));
+ e50S.setData(toLine(d.candles, d.e50));
  chart.timeScale().fitContent();
-}}
-initChart(); load('BTC');
+}
+init(); loadSym('BTC');
 </script>
-</body></html>'''
+</body></html>
+"""
+    html = html.replace("__AUTO_COLOR__", auto_color).replace("__AUTO_TXT__", auto_txt).replace("__SALDO__", str(int(s["b"])))
+    html = html.replace("__BTC_P__", str(btc_p)).replace("__ETH_P__", str(eth_p)).replace("__SOL_P__", str(sol_p)).replace("__XRP_P__", str(xrp_p))
+    html = html.replace("__BTC_RSI__", str(int(an_btc["rsi"]))).replace("__ETH_RSI__", str(int(an_eth["rsi"]))).replace("__SOL_RSI__", str(int(an_sol["rsi"]))).replace("__XRP_RSI__", str(int(an_xrp["rsi"])))
+    html = html.replace("__BTC_SENAL__", an_btc["senal"]).replace("__ETH_SENAL__", an_eth["senal"]).replace("__SOL_SENAL__", an_sol["senal"]).replace("__XRP_SENAL__", an_xrp["senal"])
+    html = html.replace("__BTC_TEND__", an_btc["tend"]).replace("__ETH_TEND__", an_eth["tend"]).replace("__SOL_TEND__", an_sol["tend"]).replace("__XRP_TEND__", an_xrp["tend"])
+    html = html.replace("__POS__", pos_html)
+    html = html.replace("__BTC_C__", btc_candles).replace("__ETH_C__", eth_candles).replace("__SOL_C__", sol_candles).replace("__XRP_C__", xrp_candles)
+    html = html.replace("__BTC_E9__", btc_e9).replace("__BTC_E21__", btc_e21).replace("__BTC_E50__", btc_e50)
+    html = html.replace("__ETH_E9__", eth_e9).replace("__ETH_E21__", eth_e21).replace("__ETH_E50__", eth_e50)
+    html = html.replace("__SOL_E9__", sol_e9).replace("__SOL_E21__", sol_e21).replace("__SOL_E50__", sol_e50)
+    html = html.replace("__XRP_E9__", xrp_e9).replace("__XRP_E21__", xrp_e21).replace("__XRP_E50__", xrp_e50)
+
     return HTMLResponse(html, headers={"Cache-Control":"no-cache"})
 
 @app.get('/')
@@ -211,19 +223,19 @@ async def wh(req:Request):
     except: q={}
     if 'callback_query' in q:
         cid=q['callback_query']['message']['chat']['id']; data=q['callback_query']['data']; s=L()
-        if data=='auto_on': s['auto']=True; S(s); await G(cid,'🚀 *AUTO ON*'); await BRAIN(cid)
-        else: s['auto']=False; S(s); await G(cid,'🔴 *AUTO OFF*')
+        if data=='auto_on': s['auto']=True; S(s); await G(cid,'AUTO ON'); await BRAIN(cid)
+        else: s['auto']=False; S(s); await G(cid,'AUTO OFF')
         return {'ok':1}
     msg=q.get('message',{}); cid=msg.get('chat',{}).get('id')
     if not cid: return {'ok':1}
     t=(msg.get('text') or '').upper(); s=L()
-    if 'RESET' in t: S({'b':1000,'h':{},'hs':[],'auto':False}); await G(cid,'💰 *RESET $1000 MXN*'); return {'ok':1}
-    if 'AUTO ON' in t: s['auto']=True; S(s); await G(cid,f'🚀 *AUTO ON* ${int(s["b"])} MXN'); await BRAIN(cid); return {'ok':1}
-    if 'AUTO OFF' in t: s['auto']=False; S(s); await G(cid,'🔴 *AUTO OFF*'); return {'ok':1}
-    if 'DASHBOARD' in t or 'DASH' in t: await G(cid,'📊 *Dashboard Mitrade V940*'); return {'ok':1}
+    if 'RESET' in t: S({'b':1000,'h':{},'hs':[],'auto':False}); await G(cid,'RESET $1000 MXN'); return {'ok':1}
+    if 'AUTO ON' in t: s['auto']=True; S(s); await G(cid,f'AUTO ON ${int(s["b"])} MXN'); await BRAIN(cid); return {'ok':1}
+    if 'AUTO OFF' in t: s['auto']=False; S(s); await G(cid,'AUTO OFF'); return {'ok':1}
+    if 'DASHBOARD' in t or 'DASH' in t: await G(cid,'Dashboard V941 Mitrade'); return {'ok':1}
     if t in ['BTC','ETH','SOL','XRP']:
         an=await AN(t)
-        if an: await G(cid,f'*{t}* ${int(an["p"])} RSI {int(an["rsi"])} {an["senal"]} Saldo ${int(s["b"])} MXN')
+        if an: await G(cid,f'{t} ${int(an["p"])} RSI {int(an["rsi"])} {an["senal"]} Saldo ${int(s["b"])} MXN')
         return {'ok':1}
-    await G(cid,f'💹 *V940 MITRADE STYLE* ${int(s["b"])} MXN\nVelas japonesas + EMA9/21/50\nAUTO ON/OFF/RESET/DASHBOARD')
+    await G(cid,f'V941 MITRADE STYLE ${int(s["b"])} MXN Velas japonesas + EMA')
     return {'ok':1}
