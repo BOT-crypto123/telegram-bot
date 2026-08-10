@@ -23,8 +23,7 @@ async def P(m):
 async def candles(sym):
  try:
   async with httpx.AsyncClient(timeout=10) as c:
-   url='https://api.exchange.coinbase.com/products/'+sym+'-USD/candles?granularity=3600'
-   r=await c.get(url,headers={'User-Agent':'Mozilla'})
+   r=await c.get('https://api.exchange.coinbase.com/products/'+sym+'-USD/candles?granularity=3600',headers={'User-Agent':'Mozilla'})
    d=r.json()
    if isinstance(d,list):
     d.sort()
@@ -77,3 +76,30 @@ async def ANALIZA(sym):
   tend='BAJA'
  senal='NADA'
  if rr<30:
+  senal='COMPRA FUERTE'
+ elif rr>70:
+  senal='VENTA FUERTE'
+ elif p>a and rr<42:
+  senal='COMPRA'
+ elif p<a and rr>62:
+  senal='VENTA'
+ drop=0
+ if len(cs)>=10:
+  drop=(cs[-1]/cs[-10]-1)*100
+ return {'p':p,'rsi':rr,'tend':tend,'senal':senal,'drop':drop}
+async def G(cid,txt,sym):
+ async with httpx.AsyncClient(timeout=10) as c:
+  host=os.getenv('RENDER_EXTERNAL_HOSTNAME','')
+  link='https://'+host+'/dashboard' if host else 'https://example.com'
+  kb={'inline_keyboard':[[{'text':'DASHBOARD','url':link}],[{'text':'BUY $100','callback_data':'BUY_'+sym},{'text':'SELL','callback_data':'SELL_'+sym}],[{'text':'AUTO ON','callback_data':'AUTO_ON'},{'text':'AUTO OFF','callback_data':'AUTO_OFF'}]]}
+  try:
+   await c.post(B+'/sendMessage',json={'chat_id':cid,'text':txt,'reply_markup':kb})
+  except:
+   pass
+
+@app.get('/dashboard',response_class=HTMLResponse)
+async def dash():
+ s=L()
+ prices={}
+ for k in ['BTC','ETH','SOL','XRP']:
+  an=
