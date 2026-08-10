@@ -135,4 +135,3 @@ async def wh(req:Request):
         return {'ok':1}
     await G(cid,f'💰 DEMO ${int(s["b"])} MXN | /RESET para volver a $1000')
     return {'ok':1}
-    
