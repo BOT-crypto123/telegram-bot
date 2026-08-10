@@ -23,7 +23,8 @@ async def P(m):
 async def candles(sym):
  try:
   async with httpx.AsyncClient(timeout=10) as c:
-   r=await c.get('https://api.exchange.coinbase.com/products/'+sym+'-USD/candles?granularity=3600',headers={'User-Agent':'Mozilla'})
+   url='https://api.exchange.coinbase.com/products/'+sym+'-USD/candles?granularity=3600'
+   r=await c.get(url,headers={'User-Agent':'Mozilla'})
    d=r.json()
    if isinstance(d,list):
     d.sort()
@@ -44,23 +45,25 @@ def rsi(pr):
  if len(pr)<15:
   return 50
  g=0
- l=0
+ ll=0
  for i in range(1,15):
   d=pr[i]-pr[i-1]
   if d>0:
    g+=d
   else:
-   l-=d
- if l==0:
+   ll-=d
+ if ll==0:
   return 80
  if g==0:
   return 20
- return 100-100/(1+g/l)
+ return 100-100/(1+g/ll)
 async def ANALIZA(sym):
  cl=await candles(sym)
  if not cl:
   return None
- cs=[x[4] for x in cl]
+ cs=[]
+ for x in cl:
+  cs.append(x[4])
  e9=ema(cs,9)
  e21=ema(cs,21)
  if not e9 or not e21:
@@ -72,7 +75,7 @@ async def ANALIZA(sym):
  tend='LATERAL'
  if p>a and a>b:
   tend='SUBE'
- elif p<a and a<b:
+ if p<a and a<b:
   tend='BAJA'
  senal='NADA'
  if rr<30:
@@ -90,16 +93,16 @@ async def ANALIZA(sym):
 async def G(cid,txt,sym):
  async with httpx.AsyncClient(timeout=10) as c:
   host=os.getenv('RENDER_EXTERNAL_HOSTNAME','')
-  link='https://'+host+'/dashboard' if host else 'https://example.com'
-  kb={'inline_keyboard':[[{'text':'DASHBOARD','url':link}],[{'text':'BUY $100','callback_data':'BUY_'+sym},{'text':'SELL','callback_data':'SELL_'+sym}],[{'text':'AUTO ON','callback_data':'AUTO_ON'},{'text':'AUTO OFF','callback_data':'AUTO_OFF'}]]}
+  if host:
+   link='https://'+host+'/dashboard'
+  else:
+   link='https://example.com'
+  kb={}
+  kb['inline_keyboard']=[]
+  kb['inline_keyboard'].append([{'text':'DASHBOARD','url':link}])
+  kb['inline_keyboard'].append([{'text':'BUY $100','callback_data':'BUY_'+sym},{'text':'SELL','callback_data':'SELL_'+sym}])
+  kb['inline_keyboard'].append([{'text':'AUTO ON','callback_data':'AUTO_ON'},{'text':'AUTO OFF','callback_data':'AUTO_OFF'}])
   try:
    await c.post(B+'/sendMessage',json={'chat_id':cid,'text':txt,'reply_markup':kb})
   except:
    pass
-
-@app.get('/dashboard',response_class=HTMLResponse)
-async def dash():
- s=L()
- prices={}
- for k in ['BTC','ETH','SOL','XRP']:
-  an=
