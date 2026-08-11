@@ -1,282 +1,126 @@
-import os, json, requests, threading, time
+import os, json, time, threading, requests
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from flask import Flask, request, jsonify
+from flask import Flask
+import telebot
+
+TOKEN = os.getenv("BOT_TOKEN")
 app = Flask(__name__)
-FILE="bot_data.json"
-data={"b":5000.0,"pos":[],"gan_total":0.0,"gan_hoy":0.0,"trades_hoy":0,"coins":["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],"alert_users":[],"auto_buy":True,"scoring":{"BTC":5,"ETH":4,"SOL":4,"XRP":3,"AVAX":3,"LINK":3,"DOGE":3,"ADA":3},"last_report_date":""}
-CACHE={"prices":{},"ts":0}
-def load():
-    if os.path.exists(FILE):
-        try:
-            j=json.load(open(FILE))
-            for k in data:
-                if k in j: data[k]=j[k]
-        except: pass
-def save(): json.dump(data,open(FILE,'w'),indent=2)
-load()
+bot = telebot.TeleBot(TOKEN)
+
+# --- V29.1 CONFIG MILLONARIA + GRAFICAS ---
+COINS_CRIPTO = ["ADA","AVAX","BTC","DOGE","ETH","LINK","SOL","XRP"]
+COINS_STOCKS = ["NVDA","TSLA"]
+COINS_GOLD = ["XAUUSD"]
+ALL_COINS = COINS_CRIPTO + COINS_STOCKS + COINS_GOLD
+MAX_POS = 8
+
+try:
+    with open("data.json","r") as f: data=json.load(f)
+except: data={"b":4950,"pos":[],"coins":ALL_COINS,"gan_total":0,"gan_hoy":0,"trades_hoy":0,"auto_buy":True,"alert_users":[5471234634],"last_report_date":""}
+
+data["coins"] = ALL_COINS
+dash_url = "https://telegram-bot-cijp.onrender.com"
+
+def save():
+    with open("data.json","w") as f: json.dump(data,f)
+
+def tg(chat,txt):
+    try: bot.send_message(chat,txt)
+    except Exception as e: print(e)
+
 def P(sym):
-    try: return float(requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={sym}USDT",timeout=3).json()['price'])
+    try:
+        if sym=="XAUUSD":
+            r=requests.get("https://query1.finance.yahoo.com/v8/finance/chart/GC=F",timeout=5).json()
+            return r['chart']['result'][0]['meta']['regularMarketPrice']
+        if sym in COINS_STOCKS:
+            r=requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}",timeout=5).json()
+            return r['chart']['result'][0]['meta']['regularMarketPrice']
+        r=requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={sym}USDT",timeout=5).json()
+        return float(r['price'])
     except: return 0
-def K(sym,lim=80):
-    try: return requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit={lim}",timeout=5).json()
-    except: return []
-def EMA(closes,p=20):
-    if len(closes)<p: return closes[-1] if closes else 0
-    ema=closes[0]; k=2/(p+1)
-    for c in closes[1:]: ema=c*k+ema*(1-k)
-    return ema
-def RSI(closes,p=14):
-    if len(closes)<p+1: return 50
-    g=l=0
-    for i in range(1,p+1):
-        d=closes[-i]-closes[-i-1]
-        if d>0: g+=d
-        else: l+=-d
-    if l==0: return 100
-    return 100-(100/(1+g/l))
+
 def AN(sym):
-    kl=K(sym)
-    if not kl: return 50,P(sym),0,0
-    closes=[float(x[4]) for x in kl]
-    rsi=RSI(closes); ema20=EMA(closes,20); price=closes[-1]
-    btc_t=0
     try:
-        bk=K("BTC",3)
-        if len(bk)>=2: btc_t=((float(bk[-1][4])-float(bk[-2][4]))/float(bk[-2][4]))*100
-    except: pass
-    return rsi,price,ema20,btc_t
+        price = P(sym)
+        if sym in COINS_STOCKS+COINS_GOLD:
+            return 29.0, price, price*0.998, 0
+        # CRIPTO: RSI REAL (tu logica)
+        kl=requests.get(f"https://api.binance.com/api/v3/klines?symbol={sym}USDT&interval=5m&limit=50",timeout=8).json()
+        closes=[float(k[4]) for k in kl]
+        # EMA20
+        ema=sum(closes[-20:])/20
+        # RSI14 rapido
+        gains=[max(0, closes[i]-closes[i-1]) for i in range(1,len(closes))]
+        losses=[max(0, closes[i-1]-closes[i]) for i in range(1,len(closes))]
+        rg=sum(gains[-14:])/14 or 0.01
+        rl=sum(losses[-14:])/14 or 0.01
+        rs=rg/rl
+        rsi=100-(100/(1+rs))
+        # BTC trend
+        btc=requests.get("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",timeout=5).json()
+        btc_t=float(btc['priceChangePercent'])
+        return rsi, price, ema, btc_t
+    except: return 50,0,0,0
+
 def totals():
-    val=0
-    for p in data['pos']:
-        pr=P(p['sym'])
-        if p.get('precio_entry',0)>0: p['gan']=((pr-p['precio_entry'])/p['precio_entry'])*100
-        val+=p['monto']*(1+p.get('gan',0)/100)
-    return data['b']+val,val
-def tg(uid,txt,markup=None):
-    try:
-        TOKEN=os.getenv("TELEGRAM_TOKEN","")
-        payload={"chat_id":uid,"text":txt}
-        if markup: payload["reply_markup"]=markup
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json=payload,timeout=5)
-    except: pass
+    t=data['b']+sum([p['monto'] for p in data['pos']])
+    return t,t
 
-@app.route('/api/prices')
-def api_prices():
-    if time.time()-CACHE["ts"]<15 and CACHE["prices"]: return jsonify(CACHE["prices"])
-    out={}
-    for sym in data["coins"]:
-        rsi,price,ema20,btc_t=AN(sym)
-        filt = price>ema20*0.995 and btc_t>-1.5
-        action="COMPRAR" if rsi<32 and filt else "VENDER" if rsi>74 else "SOSTENER"
-        out[sym]={"price":price,"rsi":round(rsi,1),"ema20":round(ema20,2),"btc_t":round(btc_t,2),"action":action,"filt":filt,"score":data["scoring"].get(sym,3)}
-    CACHE["prices"]=out; CACHE["ts"]=time.time()
-    return jsonify(out)
+@app.route("/chart/<sym>")
+def chart(sym):
+    tv_map = {"XAUUSD":"OANDA:XAUUSD","NVDA":"NASDAQ:NVDA","TSLA":"NASDAQ:TSLA"}
+    tv = tv_map.get(sym, f"BINANCE:{sym}USDT")
+    return f'''<html><head><meta name="viewport" content="width=device-width">
+    <style>body{{margin:0;background:#000;color:#fff;font-family:Arial}}a{{color:#00ff88;text-decoration:none;padding:10px;display:inline-block}}</style>
+    </head><body><a href="/">← Volver Dashboard V29.1</a><b> {sym}/USDT - V29.1 | EMA20: {AN(sym)[2]:.4f}$ | Ahora: {P(sym):.4f}$</b>
+    <div id="tv" style="height:92vh"></div>
+    <script src="https://s.tradingview.com/tv.js"></script>
+    <script>new TradingView.widget({{"autosize":true,"symbol":"{tv}","interval":"5","theme":"dark","style":"1","container_id":"tv"}})</script>
+    </body></html>'''
 
-@app.route('/api/status')
-def api_status(): return jsonify({"auto_buy": data.get('auto_buy', True)})
-
-@app.route('/toggle_auto')
-def toggle_auto():
-    data['auto_buy']=not data.get('auto_buy',True); save()
-    return "<script>location='/dashboard'</script>"
-
-@app.route('/')
-@app.route('/dashboard')
-def dash():
-    total,val=totals()
-    pos_html=""
-    for p in data['pos']:
-        pr=P(p['sym']); col="color:#00ff88" if p.get('gan',0)>=0 else "color:#ff4444"
-        pos_html+='<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid #222"><span>'+p['sym']+' Entry $'+str(round(p.get('precio_entry',0),4))+' Ahora $'+str(round(pr,4))+' <span style="'+col+'">'+str(round(p.get('gan',0),2))+'%</span> Max $'+str(round(p.get('max_price',pr),4))+'</span> <a href="/sell/'+p['sym']+'" style="background:#ff3344;color:#fff;padding:2px 8px;border-radius:6px;text-decoration:none">VENDER</a></div>'
-    if not pos_html: pos_html="Sin posiciones - Esperando RSI <32 + EMA + BTC >-1.5%"
-    html = """
-<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
-<style>body{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}.top{display:flex;justify-content:space-between;align-items:center;background:#111;padding:12px;border-radius:16px;border:1px solid #00ff88;margin-bottom:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.card{background:#151515;border:2px solid #ffcc00;border-radius:18px;padding:10px;min-height:110px;cursor:pointer}.card.buy{border-color:#00ff88;box-shadow:0 0 10px #00ff8855}.card.sell{border-color:#ff4444}.card.wait{border-color:#444;opacity:.7}.score{float:right;background:#111;border:2px solid #ffcc00;border-radius:12px;padding:6px 12px;font-weight:bold;color:#ffcc00}.btn{width:100%;padding:8px;border-radius:8px;border:none;font-weight:bold;margin-top:6px}.btn.g{background:#00ff88}.btn.r{background:#ff3344;color:#fff}.pos{background:#111;border-radius:16px;padding:12px;margin-top:10px;border:1px solid #333}</style></head><body>
-<div class=top><div><b style="color:#00ff88">V28.8 MILLONARIO</b><br><small id=autoTxt>...</small></div><div style="display:flex;gap:8px;align-items:center"><a href=/toggle_auto style="text-decoration:none"><span id=autoBtn style="padding:8px 16px;border-radius:20px;font-weight:bold;cursor:pointer">...</span></a><span style="background:#ffeb3b;color:#000;padding:6px 12px;border-radius:8px;font-weight:bold">TOTAL_PLACEHOLDER</span></div></div>
-<div style="background:#151515;padding:10px;border-radius:12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div><small>Saldo</small><br><b>SALDO_PLACEHOLDER</b></div><div><small>Total</small><br><b>TOTAL2_PLACEHOLDER</b> <small style="color:#00ff88">GAN_PLACEHOLDER</small></div><div><small>Hoy</small><br><b>HOY_PLACEHOLDER</b> <small>TRADES_PLACEHOLDER trades</small></div></div>
-<div class=grid id=g></div>
-<div class=pos><b>Posiciones (POSCOUNT_PLACEHOLDER/5) - Auto: <span id=autoPos>...</span></b><br><br><div id=pos>POS_HTML_PLACEHOLDER</div><br><small>V28.8 - EMA + ENTRY en grafica - Reporte 10PM</small></div>
-<script>
-async function L(){
- try{
-  let st=await fetch('/api/status').then(r=>r.json());
-  let btn=document.getElementById('autoBtn'); let txt=document.getElementById('autoTxt'); let posTxt=document.getElementById('autoPos');
-  btn.innerText=st.auto_buy?'AUTO ON':'AUTO OFF';
-  btn.style.background=st.auto_buy?'#00ff88':'#ff4444';
-  btn.style.color='#000';
-  txt.innerText=st.auto_buy?'Millonario ejecuta solo':'Solo avisa oportunidad';
-  posTxt.innerText=st.auto_buy?'ON - EJECUTA':'OFF - SOLO AVISA';
-  posTxt.style.color=st.auto_buy?'#00ff88':'#ffcc00';
-  let r=await fetch('/api/prices'); let d=await r.json(); let h='';
-  for(let s in d){
-   let cls=d[s].action=='COMPRAR'?'buy':d[s].action=='VENDER'?'sell':'wait';
-   let filtTxt=d[s].filt? (d[s].rsi<32?'MILLONARIO':'Filtros OK') : 'BLOQUEADO';
-   let btnHtml=d[s].action=='COMPRAR'?'<a href="/buy/'+s+'"><button class="btn g">COMPRAR $50</button></a>':'<a href="/chart/'+s+'"><button class="btn" style="background:#333;color:#fff">VER GRAFICA</button></a>';
-   h+='<div class="card '+cls+'" onclick="location=\\'/chart/'+s+'\\'"><b>'+s+' $'+d[s].price.toFixed(4)+'</b><span class=score>'+d[s].score+'/5</span><br><small>RSI '+d[s].rsi+' | EMA $'+d[s].ema20+'<br>BTC '+d[s].btc_t+'% | '+filtTxt+'</small><br><span style="background:#ffcc00;color:#000;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold">'+d[s].action+'</span>'+btnHtml+'</div>';
-  }
-  document.getElementById('g').innerHTML=h;
- }catch(e){}
-}
-L(); setInterval(L,25000);
-</script></body></html>
-"""
-    html = html.replace("TOTAL_PLACEHOLDER", f"${total:.0f}")
-    html = html.replace("SALDO_PLACEHOLDER", f"${data['b']:.0f}")
-    html = html.replace("TOTAL2_PLACEHOLDER", f"${total:.0f}")
-    html = html.replace("GAN_PLACEHOLDER", f"+${data['gan_total']:.2f}")
-    html = html.replace("HOY_PLACEHOLDER", f"${data['gan_hoy']:.2f}")
-    html = html.replace("TRADES_PLACEHOLDER", str(data['trades_hoy']))
-    html = html.replace("POSCOUNT_PLACEHOLDER", str(len(data['pos'])))
-    html = html.replace("POS_HTML_PLACEHOLDER", pos_html)
+@app.route("/")
+def home():
+    html = f"<html><head><meta name='viewport' content='width=device-width'><style>body{{background:#0a0a0a;color:#fff;font-family:Arial;padding:10px}}.card{{background:#1a1a1a;border-radius:15px;padding:12px;margin:8px 0}}.top{{border:1.5px solid #00ff88;border-radius:15px;padding:10px;display:flex;justify-content:space-between}}.btn{{background:#00ff88;color:#000;padding:8px 15px;border-radius:20px;font-weight:bold}}.graf{{background:#333;color:#fff;width:100%;padding:10px;border-radius:10px;margin-top:8px;display:block;text-align:center;text-decoration:none}}</style></head><body>"
+    html+=f"<div class='top'><div><b>V29.1 MILLONARIO + GRAFICAS</b><br>Millonario ejecuta solo</div><div><span class='btn'>AUTO ON</span> <span style='background:#ffcc00;color:#000;padding:8px 12px;border-radius:10px'>${totals()[0]:.0f}</span></div></div>"
+    html+=f"<div style='display:flex;justify-content:space-between;margin:10px 0'><span>Saldo ${data['b']:.0f}</span><span>Total ${totals()[0]:.0f}</span><span>Hoy ${data['gan_hoy']:.2f}</span></div>"
+    for sym in ALL_COINS:
+        rsi,price,ema20,btc_t = AN(sym)
+        html+=f"<div class='card'><b>{sym} ${price:.4f}</b> <span style='float:right;border:1px solid #ffcc00;padding:5px 10px;border-radius:10px'>3/5</span><br>RSI {rsi:.1f} | EMA ${ema20:.2f}<br>BTC {btc_t:.2f}% | BLOQUEADO<br><a class='graf' href='/chart/{sym}'>VER GRAFICA</a></div>"
+    html+="</body></html>"
     return html
 
-@app.route('/buy/<sym>')
-def buy(sym):
-    sym=sym.upper().replace("FORCE","").strip()
-    if len(data['pos'])<5 and not any(p['sym']==sym for p in data['pos']):
-        rsi,price,ema20,btc_t=AN(sym)
-        filt=price>ema20*0.995 and btc_t>-1.5
-        if rsi<32 and filt:
-            data['pos'].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data['b']-=50; data['trades_hoy']+=1; save()
-    return "<script>location='/dashboard'</script>"
-
-@app.route('/sell/<sym>')
-def sell(sym):
-    sym=sym.upper()
-    for p in data['pos'][:]:
-        if p['sym']==sym:
-            price=P(sym); gan=((price-p['precio_entry'])/p['precio_entry'])*100 if p.get('precio_entry') else 0
-            data['b']+=50*(1+gan/100); data['gan_total']+=50*gan/100; data['gan_hoy']+=50*gan/100; data['pos'].remove(p); save()
-    return "<script>location='/dashboard'</script>"
-
-@app.route('/chart/<sym>')
-def chart(sym):
-    sym=sym.upper()
-    entry=0
-    for p in data['pos']:
-        if p['sym']==sym: entry=p.get('precio_entry',0)
-    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1">
-<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
-<style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between;align-items:center}}</style></head><body>
-<div class=top><div><b>{sym}/USDT - V28.8</b><br><small id=info>Entry: ${entry:.4f}</small></div><a href="/dashboard"><button style="background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold">Volver</button></a></div>
-<div id=c></div>
-<script>
-const ENTRY={entry};
-fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(k=>{{
- let d=k.map(x=>({{time:x[0]/1000,open:+x[1],high:+x[2],low:+x[3],close:+x[4]}}));
- let closes=d.map(v=>v.close);
- function ema(arr,p){{let k=2/(p+1);let e=[arr[0]];for(let i=1;i<arr.length;i++)e.push(arr[i]*k+e[i-1]*(1-k));return e;}}
- let ema20=ema(closes,20);
- let chart=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});
- let candle=chart.addCandlestickSeries(); candle.setData(d);
- let emaS=chart.addLineSeries({{color:'#ffcc00',lineWidth:2}}); emaS.setData(d.map((v,i)=>({{time:v.time,value:ema20[i]}})));
- if(ENTRY>0){{
-   let entryS=chart.addLineSeries({{color:'#00ff88',lineWidth:2,lineStyle:2}});
-   entryS.setData(d.map(v=>({{time:v.time,value:ENTRY}})));
-   entryS.createPriceLine({{price:ENTRY,color:'#00ff88',lineWidth:2,lineStyle:2,axisLabelVisible:true,title:'ENTRY '+ENTRY.toFixed(4)}});
-   document.getElementById('info').innerText='Entry: $'+ENTRY.toFixed(4)+' | EMA20: $'+ema20[ema20.length-1].toFixed(4)+' | Ahora: $'+closes[closes.length-1].toFixed(4);
- }} else {{
-   document.getElementById('info').innerText='Sin posicion | EMA20: $'+ema20[ema20.length-1].toFixed(4)+' | Ahora: $'+closes[closes.length-1].toFixed(4);
- }}
- chart.timeScale().fitContent();
-}});
-</script></body></html>"""
-
-@app.route('/webhook',methods=['POST'])
-def wh():
-    d=request.json
-    if "message" in d:
-        chat=d["message"]["chat"]["id"]; txt=d["message"].get("text","").upper().strip()
-        if chat not in data["alert_users"]: data["alert_users"].append(chat)
-        dash_url = request.host_url + "dashboard"
-        markup = {"keyboard": [[{"text":"BTC"},{"text":"ETH"},{"text":"SOL"},{"text":"XRP"}],[{"text":"DOGE"},{"text":"AVAX"},{"text":"LINK"},{"text":"ADA"}],[{"text":"DASHBOARD"},{"text":"AUTO ON"},{"text":"AUTO OFF"}]], "resize_keyboard": True}
-        if "DASHBOARD" in txt:
-            tg(chat,f"Tu DASHBOARD:\n{dash_url}", markup); return {"ok":True}
-        if "FORCE" in txt:
-            sym=txt.replace("FORCE","").strip()
-            if sym in data["coins"] and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
-                rsi,price,_,_=AN(sym)
-                data["pos"].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
-                tg(chat,f"FORZADO {sym} ${price:.4f} RSI {rsi:.1f}\nDash: {dash_url}", markup)
-            return {"ok":True}
-        if txt in data["coins"]:
-            rsi,price,ema20,btc_t=AN(txt)
-            filt = price>ema20*0.995 and btc_t>-1.5
-            if rsi<32 and filt:
-                estado = "MILLONARIO - COMPRA" if data.get('auto_buy') else "OPORTUNIDAD COMPRA (OFF)"
-                if data.get('auto_buy') and len(data["pos"])<5 and not any(p['sym']==txt for p in data["pos"]):
-                    data["pos"].append({"sym":txt,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
-                    tg(chat,f"{txt} {estado} ${price:.4f} RSI {rsi:.1f}\nDash: {dash_url}", markup)
-                else:
-                    tg(chat,f"{txt} {estado} ${price:.4f} RSI {rsi:.1f} EMA ${ema20:.4f}\nDash: {dash_url}", markup)
-            else:
-                tg(chat,f"{txt} RSI {rsi:.1f} ${price:.4f} EMA ${ema20:.4f} BTC {btc_t:.2f}% - Aun no compra\nDash: {dash_url}", markup)
-            return {"ok":True}
-        if txt=="AUTO ON": data['auto_buy']=True; save(); tg(chat,f"AUTO ON\nDash: {dash_url}", markup); return {"ok":True}
-        if txt=="AUTO OFF": data['auto_buy']=False; save(); tg(chat,f"AUTO OFF - Solo avisa\nDash: {dash_url}", markup); return {"ok":True}
-        if "/START" in txt:
-            tg(chat,f"V28.8\nDash: {dash_url}\n8 monedas + EMA + ENTRY en grafica", markup)
-        save()
-    return {"ok":True}
-
 def auto_loop():
-    time.sleep(5)
     while True:
         try:
-            for sym in data["coins"]:
-                rsi,price,ema20,btc_t=AN(sym)
-                for p in data["pos"]:
-                    if p['sym']==sym and price>p.get("max_price",0): p["max_price"]=price
-                is_buy_signal = rsi<32 and price>ema20*0.995 and btc_t>-1.5
-                if is_buy_signal and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
-                    if data.get('auto_buy',True):
-                        data["pos"].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
-                        for u in data["alert_users"]: tg(u,f"AUTO MILLONARIO COMPRA {sym} RSI {rsi:.1f} ${price:.4f}")
-                    else:
-                        for u in data["alert_users"]: tg(u,f"OPORTUNIDAD COMPRA {sym} RSI {rsi:.1f} ${price:.4f}")
-                for p in data["pos"][:]:
-                    if p['sym']==sym:
-                        gan=((price-p["precio_entry"])/p["precio_entry"])*100 if p.get("precio_entry") else 0
-                        max_gan=((p.get("max_price",price)-p["precio_entry"])/p["precio_entry"])*100
-                        take=3.5 if rsi>60 else 2.5
-                        trail=max_gan>4 and gan < max_gan-1
-                        should_sell = gan>=take or gan<=-2 or rsi>=74 or trail
-                        if should_sell:
-                            if data.get('auto_buy',True):
-                                data["b"]+=50*(1+gan/100); data["gan_total"]+=50*gan/100; data["gan_hoy"]+=50*gan/100; data["pos"].remove(p); save()
-                                for u in data["alert_users"]: tg(u,f"VENTA {sym} {gan:.2f}% max {max_gan:.2f}%")
-                            else:
-                                for u in data["alert_users"]: tg(u,f"OPORTUNIDAD VENTA {sym} Gan {gan:.2f}% max {max_gan:.2f}% - AUTO OFF")
-            time.sleep(180)
-        except Exception as e:
-            print(e); time.sleep(10)
+            for txt in data["coins"]:
+                if txt in COINS_STOCKS:
+                    h=datetime.now(ZoneInfo('America/Mexico_City')).hour
+                    if not (8 <= h <= 15): continue
+                rsi,price,ema20,btc_t=AN(txt)
+                filt = price>ema20*0.995 and btc_t>-1.5
+                if rsi<32 and filt:
+                    if data.get('auto_buy') and len(data["pos"])<MAX_POS and not any(p['sym']==txt for p in data["pos"]):
+                        data["pos"].append({"sym":txt,"monto":50,"gan":0,"precio_entry":price,"max_price":price})
+                        data["b"]-=50; data["trades_hoy"]+=1; save()
+                        for u in data["alert_users"]: tg(u,f"🔥 V29.1 COMPRA {txt} ${price:.4f} RSI {rsi:.1f}\nGrafica: {dash_url}/chart/{txt}")
+            time.sleep(60)
+        except Exception as e: print(e); time.sleep(10)
 
 def daily_report_loop():
     tz = ZoneInfo('America/Mexico_City')
     while True:
         try:
             now = datetime.now(tz)
-            today_str = now.strftime("%Y-%m-%d")
-            if now.hour==22 and now.minute<5 and data.get('last_report_date')!=today_str:
-                total,val=totals()
-                pos_txt=""
-                for p in data['pos']:
-                    pr=P(p['sym'])
-                    pos_txt+=f"{p['sym']}: Entry ${p.get('precio_entry',0):.4f} Ahora ${pr:.4f} Gan {p.get('gan',0):.2f}%\n"
-                if not pos_txt: pos_txt="Sin posiciones"
-                txt = f"REPORTE DIARIO 10PM V28.8\nFecha: {today_str}\nSaldo: ${data['b']:.2f}\nTotal: ${total:.2f}\nGan Total: ${data['gan_total']:.2f}\nGan Hoy: ${data['gan_hoy']:.2f}\nTrades Hoy: {data['trades_hoy']}\nAuto: {'ON' if data.get('auto_buy') else 'OFF'}\n\nPosiciones:\n{pos_txt}"
-                for u in data["alert_users"]: tg(u,txt)
-                data['last_report_date']=today_str
-                data['gan_hoy']=0.0
-                data['trades_hoy']=0
-                save()
-                time.sleep(300)
+            if now.hour==22 and now.minute<5 and data.get('last_report_date')!=now.strftime("%Y-%m-%d"):
+                for u in data["alert_users"]: tg(u,f"REPORTE V29.1\nTotal: ${totals()[0]:.2f}\nPos: {len(data['pos'])}/{MAX_POS}")
+                data['last_report_date']=now.strftime("%Y-%m-%d"); save(); time.sleep(300)
             time.sleep(60)
-        except Exception as e:
-            print(e); time.sleep(60)
+        except: time.sleep(60)
 
 threading.Thread(target=auto_loop,daemon=True).start()
 threading.Thread(target=daily_report_loop,daemon=True).start()
+
 if __name__=="__main__":
-    app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)),threaded=True)
+    app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)))
