@@ -1,6 +1,6 @@
 import os, json, requests, threading, time
 from datetime import datetime
-import pytz
+from zoneinfo import ZoneInfo
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 FILE="bot_data.json"
@@ -90,14 +90,13 @@ def dash():
         pr=P(p['sym']); col="color:#00ff88" if p.get('gan',0)>=0 else "color:#ff4444"
         pos_html+='<div style="display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid #222"><span>'+p['sym']+' Entry $'+str(round(p.get('precio_entry',0),2))+' Ahora $'+str(round(pr,2))+' <span style="'+col+'">'+str(round(p.get('gan',0),2))+'%</span> Max $'+str(round(p.get('max_price',pr),2))+'</span> <a href="/sell/'+p['sym']+'" style="background:#ff3344;color:#fff;padding:2px 8px;border-radius:6px;text-decoration:none">VENDER</a></div>'
     if not pos_html: pos_html="Sin posiciones - Esperando RSI <32 + EMA + BTC >-1.5%"
-
     html = """
 <!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
 <style>body{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}.top{display:flex;justify-content:space-between;align-items:center;background:#111;padding:12px;border-radius:16px;border:1px solid #00ff88;margin-bottom:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.card{background:#151515;border:2px solid #ffcc00;border-radius:18px;padding:10px;min-height:110px;cursor:pointer}.card.buy{border-color:#00ff88;box-shadow:0 0 10px #00ff8855}.card.sell{border-color:#ff4444}.card.wait{border-color:#444;opacity:.7}.score{float:right;background:#111;border:2px solid #ffcc00;border-radius:12px;padding:6px 12px;font-weight:bold;color:#ffcc00}.btn{width:100%;padding:8px;border-radius:8px;border:none;font-weight:bold;margin-top:6px}.btn.g{background:#00ff88}.btn.r{background:#ff3344;color:#fff}.pos{background:#111;border-radius:16px;padding:12px;margin-top:10px;border:1px solid #333}</style></head><body>
-<div class=top><div><b style="color:#00ff88">V28.6 MILLONARIO</b><br><small id=autoTxt>...</small></div><div style="display:flex;gap:8px;align-items:center"><a href=/toggle_auto style="text-decoration:none"><span id=autoBtn style="padding:8px 16px;border-radius:20px;font-weight:bold;cursor:pointer">...</span></a><span style="background:#ffeb3b;color:#000;padding:6px 12px;border-radius:8px;font-weight:bold">TOTAL_PLACEHOLDER</span></div></div>
+<div class=top><div><b style="color:#00ff88">V28.7 MILLONARIO</b><br><small id=autoTxt>...</small></div><div style="display:flex;gap:8px;align-items:center"><a href=/toggle_auto style="text-decoration:none"><span id=autoBtn style="padding:8px 16px;border-radius:20px;font-weight:bold;cursor:pointer">...</span></a><span style="background:#ffeb3b;color:#000;padding:6px 12px;border-radius:8px;font-weight:bold">TOTAL_PLACEHOLDER</span></div></div>
 <div style="background:#151515;padding:10px;border-radius:12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div><small>Saldo</small><br><b>SALDO_PLACEHOLDER</b></div><div><small>Total</small><br><b>TOTAL2_PLACEHOLDER</b> <small style="color:#00ff88">GAN_PLACEHOLDER</small></div><div><small>Hoy</small><br><b>HOY_PLACEHOLDER</b> <small>TRADES_PLACEHOLDER trades</small></div></div>
 <div class=grid id=g></div>
-<div class=pos><b>Posiciones (POSCOUNT_PLACEHOLDER/5) - Auto: <span id=autoPos>...</span></b><br><br><div id=pos>POS_HTML_PLACEHOLDER</div><br><small>V28.6 - Reporte 10PM auto</small></div>
+<div class=pos><b>Posiciones (POSCOUNT_PLACEHOLDER/5) - Auto: <span id=autoPos>...</span></b><br><br><div id=pos>POS_HTML_PLACEHOLDER</div><br><small>V28.7 - Reporte 10PM auto - Sin pytz</small></div>
 <script>
 async function L(){
  try{
@@ -154,7 +153,7 @@ def sell(sym):
 @app.route('/chart/<sym>')
 def chart(sym):
     sym=sym.upper()
-    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between}}</style></head><body><div class=top><b>{sym}/USDT - V28.6</b><a href="/dashboard"><button style="background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold">Volver</button></a></div><div id=c></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(k=>{{let d=k.map(x=>({{time:x[0]/1000,open:+x[1],high:+x[2],low:+x[3],close:+x[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(d);ch.timeScale().fitContent();}})</script></body></html>"""
+    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between}}</style></head><body><div class=top><b>{sym}/USDT - V28.7</b><a href="/dashboard"><button style="background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold">Volver</button></a></div><div id=c></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(k=>{{let d=k.map(x=>({{time:x[0]/1000,open:+x[1],high:+x[2],low:+x[3],close:+x[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(d);ch.timeScale().fitContent();}})</script></body></html>"""
 
 @app.route('/webhook',methods=['POST'])
 def wh():
@@ -189,7 +188,7 @@ def wh():
         if txt=="AUTO ON": data['auto_buy']=True; save(); tg(chat,f"AUTO ON\nDash: {dash_url}", markup); return {"ok":True}
         if txt=="AUTO OFF": data['auto_buy']=False; save(); tg(chat,f"AUTO OFF - Solo avisa\nDash: {dash_url}", markup); return {"ok":True}
         if "/START" in txt:
-            tg(chat,f"V28.6\nDash: {dash_url}\n8 monedas + Auto + Reporte 10PM", markup)
+            tg(chat,f"V28.7\nDash: {dash_url}\n8 monedas + Auto + Reporte 10PM", markup)
         save()
     return {"ok":True}
 
@@ -226,7 +225,7 @@ def auto_loop():
             print(e); time.sleep(10)
 
 def daily_report_loop():
-    tz = pytz.timezone('America/Mexico_City')
+    tz = ZoneInfo('America/Mexico_City')
     while True:
         try:
             now = datetime.now(tz)
@@ -238,7 +237,7 @@ def daily_report_loop():
                     pr=P(p['sym'])
                     pos_txt+=f"{p['sym']}: Entry ${p.get('precio_entry',0):.2f} Ahora ${pr:.2f} Gan {p.get('gan',0):.2f}%\n"
                 if not pos_txt: pos_txt="Sin posiciones"
-                txt = f"REPORTE DIARIO 10PM V28.6\nFecha: {today_str}\nSaldo: ${data['b']:.2f}\nTotal: ${total:.2f}\nGan Total: ${data['gan_total']:.2f}\nGan Hoy: ${data['gan_hoy']:.2f}\nTrades Hoy: {data['trades_hoy']}\nAuto: {'ON' if data.get('auto_buy') else 'OFF'}\n\nPosiciones:\n{pos_txt}"
+                txt = f"REPORTE DIARIO 10PM V28.7\nFecha: {today_str}\nSaldo: ${data['b']:.2f}\nTotal: ${total:.2f}\nGan Total: ${data['gan_total']:.2f}\nGan Hoy: ${data['gan_hoy']:.2f}\nTrades Hoy: {data['trades_hoy']}\nAuto: {'ON' if data.get('auto_buy') else 'OFF'}\n\nPosiciones:\n{pos_txt}"
                 for u in data["alert_users"]: tg(u,txt)
                 data['last_report_date']=today_str
                 data['gan_hoy']=0.0
