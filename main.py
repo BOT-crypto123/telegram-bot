@@ -1,8 +1,10 @@
 import os, json, requests, threading, time
+from datetime import datetime
+import pytz
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 FILE="bot_data.json"
-data={"b":5000.0,"pos":[],"gan_total":0.0,"gan_hoy":0.0,"trades_hoy":0,"coins":["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],"alert_users":[],"auto_buy":True,"scoring":{"BTC":5,"ETH":4,"SOL":4,"XRP":3,"AVAX":3,"LINK":3,"DOGE":3,"ADA":3}}
+data={"b":5000.0,"pos":[],"gan_total":0.0,"gan_hoy":0.0,"trades_hoy":0,"coins":["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],"alert_users":[],"auto_buy":True,"scoring":{"BTC":5,"ETH":4,"SOL":4,"XRP":3,"AVAX":3,"LINK":3,"DOGE":3,"ADA":3},"last_report_date":""}
 CACHE={"prices":{},"ts":0}
 def load():
     if os.path.exists(FILE):
@@ -92,10 +94,10 @@ def dash():
     html = """
 <!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
 <style>body{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}.top{display:flex;justify-content:space-between;align-items:center;background:#111;padding:12px;border-radius:16px;border:1px solid #00ff88;margin-bottom:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.card{background:#151515;border:2px solid #ffcc00;border-radius:18px;padding:10px;min-height:110px;cursor:pointer}.card.buy{border-color:#00ff88;box-shadow:0 0 10px #00ff8855}.card.sell{border-color:#ff4444}.card.wait{border-color:#444;opacity:.7}.score{float:right;background:#111;border:2px solid #ffcc00;border-radius:12px;padding:6px 12px;font-weight:bold;color:#ffcc00}.btn{width:100%;padding:8px;border-radius:8px;border:none;font-weight:bold;margin-top:6px}.btn.g{background:#00ff88}.btn.r{background:#ff3344;color:#fff}.pos{background:#111;border-radius:16px;padding:12px;margin-top:10px;border:1px solid #333}</style></head><body>
-<div class=top><div><b style="color:#00ff88">V28.4 MILLONARIO</b><br><small id=autoTxt>...</small></div><div style="display:flex;gap:8px;align-items:center"><a href=/toggle_auto style="text-decoration:none"><span id=autoBtn style="padding:8px 16px;border-radius:20px;font-weight:bold;cursor:pointer">...</span></a><span style="background:#ffeb3b;color:#000;padding:6px 12px;border-radius:8px;font-weight:bold">TOTAL_PLACEHOLDER</span></div></div>
+<div class=top><div><b style="color:#00ff88">V28.5 MILLONARIO + REPORTE 10PM</b><br><small id=autoTxt>...</small></div><div style="display:flex;gap:8px;align-items:center"><a href=/toggle_auto style="text-decoration:none"><span id=autoBtn style="padding:8px 16px;border-radius:20px;font-weight:bold;cursor:pointer">...</span></a><span style="background:#ffeb3b;color:#000;padding:6px 12px;border-radius:8px;font-weight:bold">TOTAL_PLACEHOLDER</span></div></div>
 <div style="background:#151515;padding:10px;border-radius:12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px"><div><small>Saldo</small><br><b>SALDO_PLACEHOLDER</b></div><div><small>Total</small><br><b>TOTAL2_PLACEHOLDER</b> <small style="color:#00ff88">GAN_PLACEHOLDER</small></div><div><small>Hoy</small><br><b>HOY_PLACEHOLDER</b> <small>TRADES_PLACEHOLDER trades</small></div></div>
 <div class=grid id=g></div>
-<div class=pos><b>Posiciones (POSCOUNT_PLACEHOLDER/5) - Auto: <span id=autoPos>...</span> | OFF= Solo avisa oportunidad | ON= Compra/Vende solo</b><br><br><div id=pos>POS_HTML_PLACEHOLDER</div><br><small>V28.4 - OFF avisa, ON ejecuta millonario</small></div>
+<div class=pos><b>Posiciones (POSCOUNT_PLACEHOLDER/5) - Auto: <span id=autoPos>...</span></b><br><br><div id=pos>POS_HTML_PLACEHOLDER</div><br><small>V28.5 - Reporte diario 10PM MX</small></div>
 <script>
 async function L(){
  try{
@@ -152,7 +154,7 @@ def sell(sym):
 @app.route('/chart/<sym>')
 def chart(sym):
     sym=sym.upper()
-    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between}}</style></head><body><div class=top><b>{sym}/USDT - V28.4</b><a href="/dashboard"><button style="background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold">Volver</button></a></div><div id=c></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(k=>{{let d=k.map(x=>({{time:x[0]/1000,open:+x[1],high:+x[2],low:+x[3],close:+x[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(d);ch.timeScale().fitContent();}})</script></body></html>"""
+    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between}}</style></head><body><div class=top><b>{sym}/USDT - V28.5</b><a href="/dashboard"><button style="background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold">Volver</button></a></div><div id=c></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(k=>{{let d=k.map(x=>({{time:x[0]/1000,open:+x[1],high:+x[2],low:+x[3],close:+x[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(d);ch.timeScale().fitContent();}})</script></body></html>"""
 
 @app.route('/webhook',methods=['POST'])
 def wh():
@@ -169,36 +171,30 @@ def wh():
             if sym in data["coins"] and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
                 rsi,price,_,_=AN(sym)
                 data["pos"].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
-                tg(chat,f"FORZADO {sym} ${price:.2f} RSI {rsi:.1f} - SIN FILTRO\nDash: {dash_url}", markup)
+                tg(chat,f"FORZADO {sym} ${price:.2f} RSI {rsi:.1f}\nDash: {dash_url}", markup)
             return {"ok":True}
         if txt in data["coins"]:
             rsi,price,ema20,btc_t=AN(txt)
             filt = price>ema20*0.995 and btc_t>-1.5
             if rsi<32 and filt:
-                estado = "MILLONARIO - COMPRA" if data.get('auto_buy') else "OPORTUNIDAD DE COMPRA (OFF - no comprado)"
+                estado = "MILLONARIO - COMPRA" if data.get('auto_buy') else "OPORTUNIDAD COMPRA (OFF)"
                 if data.get('auto_buy') and len(data["pos"])<5 and not any(p['sym']==txt for p in data["pos"]):
                     data["pos"].append({"sym":txt,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
                     tg(chat,f"{txt} {estado} ${price:.2f} RSI {rsi:.1f}\nDash: {dash_url}", markup)
                 else:
-                    if len(data["pos"])>=5: tg(chat,f"{txt} {estado} ${price:.2f} RSI {rsi:.1f} pero 5 posiciones llenas\nDash: {dash_url}", markup)
-                    elif any(p['sym']==txt for p in data["pos"]): tg(chat,f"Ya tienes {txt} ${price:.2f} RSI {rsi:.1f}\nDash: {dash_url}", markup)
-                    else: tg(chat,f"{txt} {estado} ${price:.2f} RSI {rsi:.1f} EMA ${ema20:.1f} BTC {btc_t:.2f}%\nSi quieres comprar: {txt} FORCE\nDash: {dash_url}", markup)
+                    tg(chat,f"{txt} {estado} ${price:.2f} RSI {rsi:.1f} EMA ${ema20:.1f}\nDash: {dash_url}", markup)
             else:
-                tg(chat,f"{txt} RSI {rsi:.1f} Precio ${price:.2f} EMA ${ema20:.1f} BTC {btc_t:.2f}% - No es compra millonaria aun\nDash: {dash_url}", markup)
+                tg(chat,f"{txt} RSI {rsi:.1f} ${price:.2f} EMA ${ema20:.1f} BTC {btc_t:.2f}% - Aun no compra\nDash: {dash_url}", markup)
             return {"ok":True}
-        if txt=="AUTO ON": data['auto_buy']=True; save(); tg(chat,f"AUTO ON - Ahora compra/vende solo millonario\nDash: {dash_url}", markup); return {"ok":True}
-        if txt=="AUTO OFF": data['auto_buy']=False; save(); tg(chat,f"AUTO OFF - Solo avisara oportunidades, no ejecuta\nDash: {dash_url}", markup); return {"ok":True}
-        if "/AUTO" in txt:
-            if "ON" in txt: data['auto_buy']=True
-            elif "OFF" in txt: data['auto_buy']=False
-            else: data['auto_buy']=not data.get('auto_buy',True)
-            save(); tg(chat,f"{'AUTO ON' if data['auto_buy'] else 'AUTO OFF'}\nDash: {dash_url}", markup)
+        if txt=="AUTO ON": data['auto_buy']=True; save(); tg(chat,f"AUTO ON\nDash: {dash_url}", markup); return {"ok":True}
+        if txt=="AUTO OFF": data['auto_buy']=False; save(); tg(chat,f"AUTO OFF - Solo avisa\nDash: {dash_url}", markup); return {"ok":True}
         if "/STATUS" in txt or "/ESTADO" in txt:
-            total,val=totals(); tg(chat,f"V28.4\nAuto: {'ON-Ejecuta' if data.get('auto_buy',True) else 'OFF-Solo avisa'}\nTotal ${total:.2f}\nDash: {dash_url}", markup)
+            total,val=totals(); tg(chat,f"V28.5 Auto: {'ON' if data.get('auto_buy') else 'OFF'}\nTotal ${total:.2f}\nDash: {dash_url}", markup)
         if "/REPORTE" in txt or "PORTAFOLIO" in txt:
-            total,val=totals(); pos_txt="\n".join([f"{p['sym']} {p.get('gan',0):.2f}%" for p in data['pos']]); tg(chat,f"V28.4\nSaldo ${data['b']:.2f} Total ${total:.2f}\nGan ${data['gan_total']:.2f}\nAuto: {'ON' if data.get('auto_buy') else 'OFF'}\nPos:\n{pos_txt if pos_txt else 'Vacio'}\nDash: {dash_url}", markup)
+            total,val=totals(); pos_txt="\n".join([f"{p['sym']} {p.get('gan',0):.2f}%" for p in data['pos']])
+            tg(chat,f"REPORTE V28.5\nSaldo ${data['b']:.2f} Total ${total:.2f}\nGan total ${data['gan_total']:.2f} Hoy ${data['gan_hoy']:.2f}\nTrades hoy {data['trades_hoy']}\nAuto: {'ON' if data.get('auto_buy') else 'OFF'}\nPos:\n{pos_txt if pos_txt else 'Vacio'}\nDash: {dash_url}", markup)
         if "/START" in txt:
-            tg(chat,f"V28.4 MILLONARIO - Dashboard: {dash_url}\n8 monedas: BTC ETH SOL XRP DOGE AVAX LINK ADA\nAUTO ON=Compra/vende solo\nAUTO OFF=Solo avisa oportunidad", markup)
+            tg(chat,f"V28.5 + Reporte 10PM MX\nDash: {dash_url}\n8 monedas + Auto ON/OFF + Reporte diario 10PM", markup)
         save()
     return {"ok":True}
 
@@ -210,15 +206,13 @@ def auto_loop():
                 rsi,price,ema20,btc_t=AN(sym)
                 for p in data["pos"]:
                     if p['sym']==sym and price>p.get("max_price",0): p["max_price"]=price
-                # OPORTUNIDAD COMPRA
                 is_buy_signal = rsi<32 and price>ema20*0.995 and btc_t>-1.5
                 if is_buy_signal and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
                     if data.get('auto_buy',True):
                         data["pos"].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
                         for u in data["alert_users"]: tg(u,f"AUTO MILLONARIO COMPRA {sym} RSI {rsi:.1f} ${price:.2f}")
                     else:
-                        for u in data["alert_users"]: tg(u,f"OPORTUNIDAD COMPRA {sym} RSI {rsi:.1f} ${price:.2f} EMA ${ema20:.1f} BTC {btc_t:.2f}% - AUTO OFF, no comprado. Escribe {sym} FORCE si quieres entrar")
-                # OPORTUNIDAD VENTA
+                        for u in data["alert_users"]: tg(u,f"OPORTUNIDAD COMPRA {sym} RSI {rsi:.1f} ${price:.2f}")
                 for p in data["pos"][:]:
                     if p['sym']==sym:
                         gan=((price-p["precio_entry"])/p["precio_entry"])*100 if p.get("precio_entry") else 0
@@ -231,11 +225,36 @@ def auto_loop():
                                 data["b"]+=50*(1+gan/100); data["gan_total"]+=50*gan/100; data["gan_hoy"]+=50*gan/100; data["pos"].remove(p); save()
                                 for u in data["alert_users"]: tg(u,f"VENTA {sym} {gan:.2f}% max {max_gan:.2f}%")
                             else:
-                                for u in data["alert_users"]: tg(u,f"OPORTUNIDAD VENTA {sym} Gan {gan:.2f}% max {max_gan:.2f}% - AUTO OFF, no vendido. Ve al dashboard para vender")
+                                for u in data["alert_users"]: tg(u,f"OPORTUNIDAD VENTA {sym} Gan {gan:.2f}% max {max_gan:.2f}% - AUTO OFF")
             time.sleep(180)
         except Exception as e:
             print(e); time.sleep(10)
 
+def daily_report_loop():
+    tz = pytz.timezone('America/Mexico_City')
+    while True:
+        try:
+            now = datetime.now(tz)
+            today_str = now.strftime("%Y-%m-%d")
+            if now.hour==22 and now.minute<5 and data.get('last_report_date')!=today_str:
+                total,val=totals()
+                pos_txt=""
+                for p in data['pos']:
+                    pr=P(p['sym'])
+                    pos_txt+=f"{p['sym']}: Entry ${p.get('precio_entry',0):.2f} Ahora ${pr:.2f} Gan {p.get('gan',0):.2f}%\n"
+                if not pos_txt: pos_txt="Sin posiciones"
+                txt = f"REPORTE DIARIO 10PM V28.5\nFecha: {today_str}\nSaldo: ${data['b']:.2f}\nTotal: ${total:.2f}\nGan Total: ${data['gan_total']:.2f}\nGan Hoy: ${data['gan_hoy']:.2f}\nTrades Hoy: {data['trades_hoy']}\nAuto: {'ON' if data.get('auto_buy') else 'OFF'}\n\nPosiciones:\n{pos_txt}\nDash: /dashboard"
+                for u in data["alert_users"]: tg(u,txt)
+                data['last_report_date']=today_str
+                data['gan_hoy']=0.0
+                data['trades_hoy']=0
+                save()
+                time.sleep(300)
+            time.sleep(60)
+        except Exception as e:
+            print(e); time.sleep(60)
+
 threading.Thread(target=auto_loop,daemon=True).start()
+threading.Thread(target=daily_report_loop,daemon=True).start()
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)),threaded=True)
