@@ -4,7 +4,7 @@ from zoneinfo import ZoneInfo
 from flask import Flask, request
 import telebot
 
-TOKEN = os.getenv("BOT_TOKEN")
+TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN")
 if not TOKEN:
     TOKEN = "AQUI_TU_TOKEN_SI_NO_USAS_ENV"
     print("FALTA BOT_TOKEN")
@@ -17,21 +17,18 @@ COINS_STOCKS = ["NVDA","TSLA"]
 COINS_GOLD = ["XAUUSD"]
 ALL_COINS = COINS_CRIPTO + COINS_STOCKS + COINS_GOLD
 
-# --- CONFIG $5K REAL ---
 MAX_POS = 10
 MONTO_TRADE = 500
 SALDO_INICIAL = 5000
-# -----------------------
 
 DASH_URL = "https://telegram-bot-cijp.onrender.com"
 
 try:
     with open("data.json","r") as f: data=json.load(f)
-    # Si venia de $50, ajustamos saldo solo si es primera vez
     if data.get("b",0) < 1000 and len(data.get("pos",[]))==0:
         data["b"]=SALDO_INICIAL
 except:
-    data={"b":SALDO_INICIAL,"pos":[],"coins":ALL_COINS,"gan_total":0,"gan_hoy":0,"trades_hoy":0,"auto_buy":True,"alert_users":[5471234634],"last_report_date":""}
+    data={"b":SALDO_INICIAL,"pos":[],"coins":ALL_COINS,"gan_total":0,"gan_hoy":0,"trades_hoy":0,"auto_buy":True,"alert_users":[],"last_report_date":""}
 
 data["coins"]=ALL_COINS
 
@@ -67,14 +64,11 @@ def AN(sym):
             return 50,0,0,0
         if sym in COINS_STOCKS+COINS_GOLD:
             return 29.0, price, price*0.998, 0
-
         kl_resp = requests.get(f"https://api.binance.com/api/v3/klines?symbol={sym}USDT&interval=5m&limit=50",timeout=8)
         kl = kl_resp.json()
         if not isinstance(kl, list) or len(kl) < 20:
-            # Binance esta limitando, regresamos datos del precio actual sin RSI
-            print(f"Binance limit/wait en {sym}: {str(kl)[:100]}")
+            print(f"Binance limit en {sym}")
             return 50, price, price*0.998, 0
-
         closes=[float(k[4]) for k in kl]
         ema=sum(closes[-20:])/20
         gains=[max(0, closes[i]-closes[i-1]) for i in range(1,len(closes))]
@@ -82,7 +76,6 @@ def AN(sym):
         rg=sum(gains[-14:])/14 or 0.01
         rl=sum(losses[-14:])/14 or 0.01
         rsi=100-(100/(1+rg/rl))
-
         try:
             btc=requests.get("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",timeout=5).json()
             btc_change = float(btc.get('priceChangePercent', 0))
@@ -110,12 +103,12 @@ def home():
     tt, _ = totals()
     html=f"""<html><head><meta name='viewport' content='width=device-width'><style>
     body{{background:#0a0a0a;color:#fff;font-family:Arial;padding:10px}}
- .card{{background:#1a1a1a;border-radius:15px;padding:12px;margin:8px 0;border-left:4px solid #00ff88}}
- .top{{border:1.5px solid #00ff88;border-radius:15px;padding:12px;display:flex;justify-content:space-between;align-items:center}}
- .btn{{background:#00ff88;color:#000;padding:8px 15px;border-radius:20px;font-weight:bold}}
- .graf{{background:#00ff88;color:#000;width:100%;padding:12px;border-radius:10px;margin-top:8px;display:block;text-align:center;text-decoration:none;font-weight:bold}}
+   .card{{background:#1a1a1a;border-radius:15px;padding:12px;margin:8px 0;border-left:4px solid #00ff88}}
+   .top{{border:1.5px solid #00ff88;border-radius:15px;padding:12px;display:flex;justify-content:space-between;align-items:center}}
+   .btn{{background:#00ff88;color:#000;padding:8px 15px;border-radius:20px;font-weight:bold}}
+   .graf{{background:#00ff88;color:#000;width:100%;padding:12px;border-radius:10px;margin-top:8px;display:block;text-align:center;text-decoration:none;font-weight:bold}}
     </style></head><body>"""
-    html+=f"<div class='top'><div><b>V29.3 $5K REAL MODE</b><br>Auto ejecuta solo</div><div><span class='btn'>{'AUTO ON' if data['auto_buy'] else 'AUTO OFF'}</span> <span style='background:#ffcc00;color:#000;padding:8px 12px;border-radius:10px;font-weight:bold'>${tt:.0f}</span></div></div>"
+    html+=f"<div class='top'><div><b>V29.4 $5K REAL + GRAF</b><br>Auto ejecuta solo</div><div><span class='btn'>{'AUTO ON' if data['auto_buy'] else 'AUTO OFF'}</span> <span style='background:#ffcc00;color:#000;padding:8px 12px;border-radius:10px;font-weight:bold'>${tt:.0f}</span></div></div>"
     html+=f"<div style='display:flex;justify-content:space-between;margin:12px 0'><span>Saldo ${data['b']:.0f}</span><span>Total ${tt:.0f}</span><span>Hoy ${data['gan_hoy']:.2f}</span></div>"
     for sym in ALL_COINS:
         rsi,price,ema20,btc_t = AN(sym)
@@ -124,22 +117,55 @@ def home():
     html+=f"<div class='card'>Pos abiertas: {len(data['pos'])}/{MAX_POS} | Monto x Pos: ${MONTO_TRADE}</div></body></html>"
     return html
 
-@app.route("/dashboard")
-def dashboard_redirect():
-    return home()
-
 @app.route("/chart/<sym>")
 def chart(sym):
-    tv_map = {"XAUUSD":"OANDA:XAUUSD","NVDA":"NASDAQ:NVDA","TSLA":"NASDAQ:TSLA"}
+    tv_map = {
+        "XAUUSD":"OANDA:XAUUSD",
+        "NVDA":"NASDAQ:NVDA",
+        "TSLA":"NASDAQ:TSLA",
+        "BTC":"BINANCE:BTCUSDT",
+        "ETH":"BINANCE:ETHUSDT",
+        "SOL":"BINANCE:SOLUSDT",
+        "XRP":"BINANCE:XRPUSDT",
+        "DOGE":"BINANCE:DOGEUSDT",
+        "AVAX":"BINANCE:AVAXUSDT",
+        "LINK":"BINANCE:LINKUSDT",
+        "ADA":"BINANCE:ADAUSDT"
+    }
     tv = tv_map.get(sym, f"BINANCE:{sym}USDT")
-    p = P(sym); _,_,ema,_ = AN(sym)
-    return f'''<html><head><meta name="viewport" content="width=device-width">
-    <style>body{{margin:0;background:#000;color:#fff;font-family:Arial}}a{{color:#00ff88;text-decoration:none;padding:12px;display:inline-block;font-weight:bold}}</style>
-    </head><body><a href="/">← Volver Dashboard V29.3</a><b> {sym} ${p:.4f} EMA {ema:.2f}</b>
-    <div id="tv" style="height:92vh"></div>
-    <script src="https://s.tradingview.com/tv.js"></script>
-    <script>new TradingView.widget({{"autosize":true,"symbol":"{tv}","interval":"5","theme":"dark","style":"1","container_id":"tv"}})</script>
-    </body></html>'''
+    p = P(sym)
+    rsi,_,ema,_ = AN(sym)
+    return f'''
+    <html><head><meta name="viewport" content="width=device-width, initial-scale=1">
+    <style>
+    body{{margin:0;background:#000;color:#fff;font-family:Arial}}
+   .header{{padding:12px;background:#111;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}}
+    a{{color:#00ff88;text-decoration:none;font-weight:bold}}
+    #tradingview_chart{{height:88vh;width:100%}}
+    </style>
+    </head><body>
+    <div class="header">
+    <a href="/">← Volver Dashboard V29.4</a>
+    <span><b>{sym} ${p:.2f} RSI {rsi:.1f}</b> EMA {ema:.2f}</span>
+    </div>
+    <div id="tradingview_chart"></div>
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+    new TradingView.widget({{
+        "autosize": true,
+        "symbol": "{tv}",
+        "interval": "5",
+        "timezone": "America/Mexico_City",
+        "theme": "dark",
+        "style": "1",
+        "locale": "es",
+        "enable_publishing": false,
+        "allow_symbol_change": true,
+        "container_id": "tradingview_chart"
+    }});
+    </script>
+    </body></html>
+    '''
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
@@ -159,26 +185,25 @@ def all_msg(m):
     txt = m.text.upper().strip() if m.text else ""
     if m.chat.id not in data["alert_users"]:
         data["alert_users"].append(m.chat.id); save()
-
     if txt in ["/START","START","/BALANCE","/B","BALANCE","B"]:
         t,_=totals()
-        tg(m.chat.id, f"V29.3 $5K REAL MODE LIVE ✅\nTotal: ${t:.2f}\nSaldo: ${data['b']:.2f}\nPos: {len(data['pos'])}/{MAX_POS} x ${MONTO_TRADE}\nAuto: {'ON' if data['auto_buy'] else 'OFF'}\nDashboard: {DASH_URL}", kb())
+        tg(m.chat.id, f"V29.4 $5K GRAFICA FIX LIVE ✅\nTotal: ${t:.2f}\nSaldo: ${data['b']:.2f}\nPos: {len(data['pos'])}/{MAX_POS} x ${MONTO_TRADE}\nAuto: {'ON' if data['auto_buy'] else 'OFF'}\nDashboard: {DASH_URL}", kb())
         return
     if txt=="DASHBOARD":
-        tg(m.chat.id, f"📊 Dashboard V29.3:\n{DASH_URL}\n\nGraficas:\n{DASH_URL}/chart/BTC", kb())
+        tg(m.chat.id, f"📊 Dashboard V29.4:\n{DASH_URL}\n\nGrafica BTC: {DASH_URL}/chart/BTC", kb())
         return
     if txt=="AUTO ON":
         data['auto_buy']=True; save()
-        tg(m.chat.id, "✅ AUTO ON - Ya compro solo cuando RSI <32", kb())
+        tg(m.chat.id, "✅ AUTO ON", kb())
         return
     if txt=="AUTO OFF":
         data['auto_buy']=False; save()
-        tg(m.chat.id, "⏸️ AUTO OFF - Pausado", kb())
+        tg(m.chat.id, "⏸️ AUTO OFF", kb())
         return
     if txt in ALL_COINS:
         rsi,price,ema,btc_t = AN(txt)
         estado = "🔥 APTO PARA COMPRA" if price>ema*0.995 and rsi<32 else "⏳ Aun no compra"
-        tg(m.chat.id, f"{txt} RSI {rsi:.1f} ${price:.4f}\nEMA ${ema:.2f} BTC {btc_t:.2f}%\n{estado}\nDash: {DASH_URL}\nGrafica: {DASH_URL}/chart/{txt}", kb())
+        tg(m.chat.id, f"{txt} RSI {rsi:.1f} ${price:.4f}\nEMA ${ema:.2f} BTC {btc_t:.2f}%\n{estado}\nGrafica: {DASH_URL}/chart/{txt}", kb())
         return
 
 def auto_loop():
@@ -197,12 +222,12 @@ def auto_loop():
                             data["pos"].append({"sym":sym,"monto":MONTO_TRADE,"gan":0,"precio_entry":price,"max_price":price})
                             data["b"]-=MONTO_TRADE; data["trades_hoy"]+=1; save()
                             for u in data["alert_users"]:
-                                tg(u,f"🔥 V29.3 COMPRA {sym} ${price:.4f} RSI {rsi:.1f} x ${MONTO_TRADE}\nGrafica: {DASH_URL}/chart/{sym}")
+                                tg(u,f"🔥 V29.4 COMPRA {sym} ${price:.4f} RSI {rsi:.1f} x ${MONTO_TRADE}\nGrafica: {DASH_URL}/chart/{sym}")
                 except Exception as e_inner:
                     print(f"Error en {sym}: {e_inner}")
                     continue
-                time.sleep(2) # pausa entre monedas para no saturar Binance
-            time.sleep(90) # espera 90 seg entre ciclos
+                time.sleep(2)
+            time.sleep(90)
         except Exception as e:
             print(f"Error loop principal: {e}")
             time.sleep(60)
