@@ -16,13 +16,11 @@ MAX_POS=10
 MONTO_TRADE=500
 SALDO_INICIAL=5000
 DASH_URL="https://telegram-bot-cijp.onrender.com"
-
 STOP_LOSS_PCT = -7.0
 TP1_PCT = 1.8
 TP2_PCT = 3.5
 TRAILING_PCT = 0.8
 BTC_CRASH_PCT = -3.0
-
 MONTO_E1 = 1750
 MONTO_E2 = 1750
 LIQUIDEZ_DATA = {}
@@ -61,26 +59,14 @@ def get_price_robust(sym):
 def P(sym):
     try:
         if sym=="XAUUSD":
-            for _ in range(2):
-                try:
-                    r=requests.get("https://query1.finance.yahoo.com/v8/finance/chart/GC=F",timeout=8, headers={"User-Agent":"Mozilla/5.0"}).json()
-                    price=float(r['chart']['result'][0]['meta']['regularMarketPrice'])
-                    if price>0: return price
-                except: time.sleep(0.5)
             try:
-                r=requests.get("https://query1.finance.yahoo.com/v8/finance/chart/GC=F?range=5d&interval=1d",timeout=8, headers={"User-Agent":"Mozilla/5.0"}).json()
-                return float([x for x in r['chart']['result'][0]['indicators']['quote'][0]['close'] if x][-1])
+                r=requests.get("https://query1.finance.yahoo.com/v8/finance/chart/GC=F",timeout=8, headers={"User-Agent":"Mozilla/5.0"}).json()
+                return float(r['chart']['result'][0]['meta']['regularMarketPrice'])
             except: return 0
         if sym in COINS_STOCKS:
-            for _ in range(2):
-                try:
-                    r=requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}",timeout=8, headers={"User-Agent":"Mozilla/5.0"}).json()
-                    price=float(r['chart']['result'][0]['meta']['regularMarketPrice'])
-                    if price>0: return price
-                except: time.sleep(0.5)
             try:
-                r=requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}?range=5d&interval=1d",timeout=8, headers={"User-Agent":"Mozilla/5.0"}).json()
-                return float([x for x in r['chart']['result'][0]['indicators']['quote'][0]['close'] if x][-1])
+                r=requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}",timeout=8, headers={"User-Agent":"Mozilla/5.0"}).json()
+                return float(r['chart']['result'][0]['meta']['regularMarketPrice'])
             except: return 0
         return get_price_robust(sym)
     except: return 0
@@ -134,9 +120,8 @@ def totals():
     for p in data['pos']:
         pr=P(p["sym"])
         if pr==0: pr=p["precio_entry"]
-        gan=(pr-p["precio_entry"])/p["precio_entry"]*p["monto"]
-        p["gan"]=gan
-        flot+=gan
+        p["gan"]=(pr-p["precio_entry"])/p["precio_entry"]*p["monto"]
+        flot+=p["gan"]
     tot=data['b']+sum([p['monto'] for p in data['pos']])+flot
     return tot, flot
 
@@ -186,39 +171,31 @@ def home():
     pos_normal = [p for p in data['pos'] if not p.get('es_dual')]
     pos_e1 = [p for p in data['pos'] if p.get('es_dual')==1]
     pos_e2 = [p for p in data['pos'] if p.get('es_dual')==2]
-    html=f"""<html><head><meta name='viewport' content='width=device-width'><meta http-equiv='refresh' content='30'><style>
-    body{{background:#0a0a0a;color:#fff;font-family:Arial;padding:10px}}
-.card{{background:#1a1a1a;border-radius:15px;padding:12px;margin:8px 0;border-left:4px solid #00ff88}}
-.card.neg{{border-left-color:#ff1744}}.top{{border:2px solid #ffcc00;border-radius:15px;padding:12px;background:#1a1500}}
-.graf{{background:#ffcc00;color:#000;width:100%;padding:12px;border-radius:10px;margin-top:8px;display:block;text-align:center;text-decoration:none;font-weight:bold}}
-.live{{background:#00ff88;color:#000;padding:2px 8px;border-radius:10px;font-size:10px;animation:blink 1s infinite}}@keyframes blink{{0%{{opacity:1}}50%{{opacity:0.3}}}}
-.dual{{background:linear-gradient(90deg,#a855f7,#ffcc00);color:#000;padding:12px;border-radius:10px;display:block;text-align:center;text-decoration:none;font-weight:bold;margin:10px 0}}
-.desglose{{background:#222;border:1px solid #ffcc00;border-radius:12px;padding:12px;margin:10px 0}}
-    </style></head><body>
-    <div class='top'><b>🔥 V32.3 + ALARMA 7:30 🔥 <span class='live'>● VIVO</span></b><br>{'🟢 CAZANDO' if data['auto_buy'] else '🔴 PAUSA'} | {len(data['pos'])}/{MAX_POS} | BTC 1h {btc1h:+.2f}%<br>Total ${tot:.2f} | Flot {flot:+.2f}$</div>
-    <div class='desglose'>
-    <b>💰 DESGLOSE $5000 MXN:</b><br>
-    - Motor PRO: ${sum([p['monto'] for p in pos_normal]):.2f} en {len(pos_normal)} pos<br>
-    - E1 AUTO $1750: ${sum([p['monto'] for p in pos_e1]):.2f} en {len(pos_e1)} pos<br>
-    - E2 CONFIRMA $1750: ${sum([p['monto'] for p in pos_e2]):.2f} en {len(pos_e2)} pos<br>
-    - Saldo Libre: ${data['b']:.2f}<br>
-    <small>Total = ${tot:.2f}</small>
-    </div>
-    <a class='dual' href='/dual/NVDA'>🔥 VER DUAL $3500 → E1 $1750 + E2 $1750</a>
-    <div style='display:flex;justify-content:space-between;margin:12px 0;flex-wrap:wrap'><span>Saldo ${data['b']:.2f}</span><span>Hoy ${data['gan_hoy']:.2f}</span><span>Total ${data['gan_total']:.2f}</span></div>"""
+    html = """
+    <html><head><meta name='viewport' content='width=device-width'><meta http-equiv='refresh' content='30'>
+    <style>body{background:#0a0a0a;color:#fff;font-family:Arial;padding:10px}
+   .card{background:#1a1a1a;border-radius:15px;padding:12px;margin:8px 0;border-left:4px solid #00ff88}
+   .top{border:2px solid #ffcc00;border-radius:15px;padding:12px;background:#1a1500}
+   .graf{background:#ffcc00;color:#000;width:100%;padding:12px;border-radius:10px;margin-top:8px;display:block;text-align:center;text-decoration:none;font-weight:bold}
+   .live{background:#00ff88;color:#000;padding:2px 8px;border-radius:10px;font-size:10px}
+   .dual{background:linear-gradient(90deg,#a855f7,#ffcc00);color:#000;padding:12px;border-radius:10px;display:block;text-align:center;text-decoration:none;font-weight:bold;margin:10px 0}
+   .desglose{background:#222;border:1px solid #ffcc00;border-radius:12px;padding:12px;margin:10px 0}</style></head><body>
+    """
+    html += f"<div class='top'><b>V32.3 FIX <span class='live'>VIVO</span></b><br>Total ${tot:.2f} | Flot {flot:+.2f}$ | BTC 1h {btc1h:+.2f}%</div>"
+    html += f"<div class='desglose'><b>DESGLOSE $5000 MXN:</b><br>- Motor PRO: ${sum([p['monto'] for p in pos_normal]):.2f} en {len(pos_normal)} pos<br>- E1 AUTO $1750: ${sum([p['monto'] for p in pos_e1]):.2f} en {len(pos_e1)}<br>- E2 CONFIRMA $1750: ${sum([p['monto'] for p in pos_e2]):.2f} en {len(pos_e2)}<br>- Saldo Libre: ${data['b']:.2f}</div>"
+    html += f"<a class='dual' href='/dual/NVDA'>VER DUAL $3500</a>"
     for sym in ALL_COINS:
         try:
-            rsi,price,ema20,_=AN(sym)
+            rsi,price,_,_=AN(sym)
             pos=next((x for x in data["pos"] if x["sym"]==sym), None)
             if pos:
-                gan=pos.get('gan',0)
                 gan_pct=(price-pos["precio_entry"])/pos["precio_entry"]*100 if price else 0
-                cls="pos" if gan>=0 else "neg"
                 tipo = " (E1)" if pos.get('es_dual')==1 else " (E2)" if pos.get('es_dual')==2 else " (PRO)"
-                html+=f"<div class='card {cls}'><b>🎯 {sym}{tipo} ${price:.4f} | {gan_pct:+.2f}% <span class='live'>VIVO</span></b><br>Ent ${pos['precio_entry']:.4f} | <b>{gan:+.2f}$</b><br><a class='graf' href='/chart/{sym}'>📈 GRAFICA</a></div>"
+                html+=f"<div class='card'><b>{sym}{tipo} ${price:.4f} | {gan_pct:+.2f}%</b><br><a class='graf' href='/chart/{sym}'>GRAFICA</a></div>"
             else:
-                html+=f"<div class='card'><b>{sym} ${price:.4f} <span class='live'>VIVO</span></b> RSI {rsi:.1f}<br><a class='graf' href='/chart/{sym}'>📈 VER</a></div>"
-        except: html+=f"<div class='card'><b>{sym} consultando...</b></div>"
+                html+=f"<div class='card'><b>{sym} ${price:.4f}</b> RSI {rsi:.1f}<br><a class='graf' href='/chart/{sym}'>VER</a></div>"
+        except:
+            html+=f"<div class='card'><b>{sym} consultando...</b></div>"
     html+="</body></html>"
     return html
 
@@ -236,8 +213,7 @@ def api_klines(sym):
                 out.append({"time":stamps[i],"open":opens[i],"high":highs[i],"low":lows[i],"close":closes[i]})
             return out[-200:]
         kl=get_klines_robust(sym)
-        out=[{"time":int(k[0]/1000),"open":float(k[1]),"high":float(k[2]),"low":float(k[3]),"close":float(k[4])} for k in kl]
-        return out
+        return [{"time":int(k[0]/1000),"open":float(k[1]),"high":float(k[2]),"low":float(k[3]),"close":float(k[4])} for k in kl]
     except: return []
 
 @app.route("/api/price/<sym>")
@@ -247,22 +223,65 @@ def api_price(sym):
 
 @app.route("/chart/<sym>")
 def chart(sym):
-    p=P(sym); rsi,_,_,_=AN(sym)
-    return f'<html><head><meta name="viewport" content="width=device-width"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{margin:0;background:#000;color:#fff}}a{{color:#ffcc00}}#chart{{width:100%;height:80vh}}</style></head><body><div style="padding:10px"><a href="/">←</a> 🔥 {sym} ${p:.4f} RSI {rsi:.1f}</div><div id="chart"></div><script>async function load(){{const res=await fetch("/api/klines/{sym}");const data=await res.json();const chart=LightweightCharts.createChart(document.getElementById("chart"),{{layout:{{background:{{color:"#000"}},textColor:"#fff"}},grid:{{vertLines:{{color:"#222"}},horzLines:{{color:"#222"}}}}});const candle=chart.addCandlestickSeries();candle.setData(data);chart.timeScale().fitContent();setInterval(async()=>{{const r=await fetch("/api/price/{sym}");const j=await r.json();if(j.price>0){{const last=data[data.length-1];last.close=j.price;candle.update(last);}}}},3000);}}load();</script></body></html>'
+    price = P(sym)
+    rsi,_,_,_ = AN(sym)
+    html_chart = """
+    <html><head><meta name="viewport" content="width=device-width">
+    <script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+    <style>body{margin:0;background:#000;color:#fff} a{color:#ffcc00} #chart{width:100%;height:85vh}</style>
+    </head><body>
+    <div style="padding:10px"><a href="/">ATRAS</a> SYM_PLACEHOLDER PRICE_PLACEHOLDER RSI_PLACEHOLDER</div>
+    <div id="chart"></div>
+    <script>
+    const SYM = "SYM_PLACEHOLDER";
+    async function load(){
+      const res = await fetch("/api/klines/" + SYM);
+      const data = await res.json();
+      const chart = LightweightCharts.createChart(document.getElementById("chart"), {
+        layout: {background: {color:"#000"}, textColor:"#fff"},
+        grid: {vertLines:{color:"#222"}, horzLines:{color:"#222"}}
+      });
+      const candle = chart.addCandlestickSeries();
+      candle.setData(data);
+      chart.timeScale().fitContent();
+      setInterval(async ()=>{
+        const r = await fetch("/api/price/" + SYM);
+        const j = await r.json();
+        if(j.price>0){
+          const last = data[data.length-1];
+          last.close=j.price;
+          if(j.price>last.high) last.high=j.price;
+          if(j.price<last.low) last.low=j.price;
+          candle.update(last);
+        }
+      },3000);
+    }
+    load();
+    </script></body></html>
+    """
+    html_chart = html_chart.replace("SYM_PLACEHOLDER", sym).replace("PRICE_PLACEHOLDER", f"${price:.4f}").replace("RSI_PLACEHOLDER", f"RSI {rsi:.1f}")
+    return html_chart
 
 @app.route("/dual/<sym>")
-def dual(sym):
+def dual_page(sym):
     sym=sym.upper()
     fc=get_first_candle_ny(sym)
     liq=detectar_liquidez(sym)
     pos_e1 = [p for p in data['pos'] if p.get('es_dual')==1 and p['sym']==sym]
     pos_e2 = [p for p in data['pos'] if p.get('es_dual')==2 and p['sym']==sym]
-    return f"""<html><head><meta name='viewport' content='width=device-width'><style>body{{background:#0a0a0a;color:#fff;font-family:Arial;padding:10px}}.card{{background:#1a1a1a;padding:14px;border-radius:15px;margin:10px 0;border-left:4px solid #00ff88}}.card.purple{{border-left-color:#a855f7}}.card.red{{border-left-color:#ff1744}}</style></head><body>
-    <a href='/' style='color:#ffcc00'>← V32.3</a><h2>🔥 DUAL {sym}</h2>
-    <div style='background:#222;border:1px solid #ffcc00;border-radius:10px;padding:10px'>💰 $5000: PRO ${sum([p['monto'] for p in data['pos'] if not p.get('es_dual')]):.2f} + E1 ${sum([p['monto'] for p in pos_e1])} + E2 ${sum([p['monto'] for p in pos_e2])} + Saldo ${data['b']:.2f}</div>
-    <div class='card purple'><b>E1 AUTO $1750</b><br>{f"HIGH ${fc['high']:.2f} LOW ${fc['low']:.2f}" if fc else "Esperando 7:30 AM"}</div>
-    <div class='card red'><b>E2 CONFIRMA $1750</b><br>{f"Triple ${liq['liquidez_en']:.2f} OB ${liq['orderblock']:.2f}" if liq else "Escaneando..."}</div>
-    <iframe src='/chart/{sym}' style='width:100%;height:50vh;border:none;border-radius:10px'></iframe></body></html>"""
+    fc_txt = f"HIGH ${fc['high']:.2f} LOW ${fc['low']:.2f}" if fc else "Esperando 7:30 AM"
+    liq_txt = f"Triple ${liq['liquidez_en']:.2f} OB ${liq['orderblock']:.2f}" if liq else "Escaneando..."
+    html = f"""
+    <html><head><meta name='viewport' content='width=device-width'>
+    <style>body{{background:#0a0a0a;color:#fff;font-family:Arial;padding:10px}}.card{{background:#1a1a1a;padding:14px;border-radius:15px;margin:10px 0;border-left:4px solid #00ff88}}</style></head><body>
+    <a href='/' style='color:#ffcc00'>ATRAS</a><h2>DUAL {sym} $3500</h2>
+    <div style='background:#222;border:1px solid #ffcc00;border-radius:10px;padding:10px'>PRO {len([p for p in data['pos'] if not p.get('es_dual')])} pos + E1 {len(pos_e1)} + E2 {len(pos_e2)} + Saldo ${data['b']:.2f}</div>
+    <div class='card'><b>E1 AUTO $1750</b><br>{fc_txt}</div>
+    <div class='card'><b>E2 CONFIRMA $1750</b><br>{liq_txt} -> Escribe SI {sym}</div>
+    <iframe src='/chart/{sym}' style='width:100%;height:60vh;border:none;border-radius:10px'></iframe>
+    </body></html>
+    """
+    return html
 
 @app.route("/webhook", methods=['POST'])
 def webhook():
@@ -297,34 +316,24 @@ def all_msg(m):
             pos_normal = [p for p in data['pos'] if not p.get('es_dual')]
             pos_e1 = [p for p in data['pos'] if p.get('es_dual')==1]
             pos_e2 = [p for p in data['pos'] if p.get('es_dual')==2]
-            msg = f"""🔥 V32.3 + ALARMA 7:30 🔥
-Total: ${tot:.2f} Flot {flot:+.2f}$
-Saldo Libre: ${data['b']:.2f}
-
-💰 DESGLOSE $5000 MXN:
-- Motor PRO (RSI): {len(pos_normal)} pos = ${sum([p['monto'] for p in pos_normal]):.2f}
-- E1 AUTO 1 Vela: {len(pos_e1)} pos = ${sum([p['monto'] for p in pos_e1]):.2f} / $1750
-- E2 CONFIRMA Liq: {len(pos_e2)} pos = ${sum([p['monto'] for p in pos_e2]):.2f} / $1750
-
-Gan Hoy: ${data['gan_hoy']:.2f}
-Pos: {len(data['pos'])}/{MAX_POS}"""
+            msg = f"V32.3 FIX\nTotal: ${tot:.2f} Flot {flot:+.2f}$\nSaldo Libre: ${data['b']:.2f}\n\nDESGLOSE $5000 MXN:\n- Motor PRO: {len(pos_normal)} pos = ${sum([p['monto'] for p in pos_normal]):.2f}\n- E1 AUTO $1750: {len(pos_e1)} pos = ${sum([p['monto'] for p in pos_e1]):.2f}\n- E2 CONFIRMA $1750: {len(pos_e2)} pos = ${sum([p['monto'] for p in pos_e2]):.2f}"
             tg(m.chat.id, msg, kb())
             return
         if txt=="DASHBOARD":
-            tg(m.chat.id, f"📊 DASHBOARD PRO\n{DASH_URL}", kb())
+            tg(m.chat.id, f"DASHBOARD PRO\n{DASH_URL}", kb())
             return
         if txt=="DUAL":
             pos_e1 = [p for p in data['pos'] if p.get('es_dual')==1]
             pos_e2 = [p for p in data['pos'] if p.get('es_dual')==2]
-            tg(m.chat.id, f"🔥 DUAL $3500\nE1 AUTO $1750: {len(pos_e1)} pos\nE2 CONFIRMA $1750: {len(pos_e2)} pos\n{DASH_URL}/dual/NVDA", kb())
+            tg(m.chat.id, f"DUAL $3500\nE1 $1750: {len(pos_e1)} pos\nE2 $1750: {len(pos_e2)} pos\n{DASH_URL}/dual/NVDA", kb())
             return
-        if txt=="AUTO ON": data['auto_buy']=True; save(); tg(m.chat.id, "🔥 AUTO ON + ALARMA 7:30", kb()); return
-        if txt=="AUTO OFF": data['auto_buy']=False; save(); tg(m.chat.id, "⏸️ PAUSA TOTAL", kb()); return
+        if txt=="AUTO ON": data['auto_buy']=True; save(); tg(m.chat.id, "AUTO ON + ALARMA 7:30", kb()); return
+        if txt=="AUTO OFF": data['auto_buy']=False; save(); tg(m.chat.id, "PAUSA TOTAL", kb()); return
         if txt in ALL_COINS:
-            rsi,price,ema,btc_t=AN(txt)
-            tg(m.chat.id, f"🎯 {txt} ${price:.4f} RSI {rsi:.1f}", kb())
+            rsi,price,_,_=AN(txt)
+            tg(m.chat.id, f"{txt} ${price:.4f} RSI {rsi:.1f}", kb())
             return
-        tg(m.chat.id, f"🔥 V32.3\n{DASH_URL}", kb())
+        tg(m.chat.id, f"V32.3 FIX\n{DASH_URL}", kb())
     except Exception as e: print(f"Error {e}")
 
 def auto_loop():
@@ -332,18 +341,16 @@ def auto_loop():
         try:
             now=datetime.now(ZoneInfo('America/Mexico_City'))
             ny_now = datetime.now(ZoneInfo('America/New_York'))
-            # ALARMA 7:30 AM NOGALES LUN-VIE
             try:
                 if ny_now.weekday()<5 and now.hour==7 and now.minute==30 and now.second<15:
                     if data.get("last_apertura")!= now.strftime("%Y-%m-%d"):
                         for u in data["alert_users"]:
-                            tg(u, f"⏰ APERTURA NY EN 5 MIN ⏰\n\n🔥 V32.3 LISTO\n- E1 AUTO $1750 cazando GAP 7:35-9:00\n- E2 $1750 esperando liquidez\n- Motor PRO ${data['b']:.2f} cazando RSI\n\nYo te aviso aquí, no entres a Dual si no quieres.\n{DASH_URL}/dual/NVDA", kb())
-                        data["last_apertura"]=now.strftime("%Y-%m-%d")
-                        save()
+                            tg(u, f"APERTURA NY EN 5 MIN\nV32.3 LISTO\nE1 AUTO $1750 7:35-9:00\nE2 $1750 esperando\n{DASH_URL}/dual/NVDA", kb())
+                        data["last_apertura"]=now.strftime("%Y-%m-%d"); save()
             except: pass
             if now.hour==22 and now.minute<4 and data.get("last_report_date")!=now.strftime("%Y-%m-%d"):
                 tot,flot=totals()
-                for u in data["alert_users"]: tg(u,f"📊 10 PM V32.3\nTotal ${tot:.2f}\nSaldo ${data['b']:.2f}\nGan Hoy ${data['gan_hoy']:+.2f}")
+                for u in data["alert_users"]: tg(u,f"10 PM V32.3 Total ${tot:.2f} Saldo ${data['b']:.2f} Hoy ${data['gan_hoy']:+.2f}")
                 data["last_report_date"]=now.strftime("%Y-%m-%d"); save()
             try:
                 if ny_now.weekday()<5 and 9<=ny_now.hour<=10 and data.get('auto_buy'):
@@ -358,13 +365,13 @@ def auto_loop():
                             if data['b']>=MONTO_E1 and len(data['pos'])<MAX_POS:
                                 data['pos'].append({"sym":sym,"monto":MONTO_E1,"gan":0,"precio_entry":price,"max_price":price,"tp1_done":False,"es_dual":1,"tipo":"1VELA"})
                                 data['b']-=MONTO_E1; save()
-                                for u in data["alert_users"]: tg(u,f"🔥 E1 AUTO {sym} ${price:.4f} $1750")
+                                for u in data["alert_users"]: tg(u,f"E1 AUTO {sym} ${price:.4f} $1750")
                 if ny_now.weekday()<5 and data.get('auto_buy'):
                     for sym in ["NVDA","TSLA"]:
                         liq=detectar_liquidez(sym)
                         if liq and sym not in LIQUIDEZ_DATA:
                             LIQUIDEZ_DATA[sym]=liq
-                            for u in data["alert_users"]: tg(u,f"🎯 E2 LIQ {sym} Triple ${liq['liquidez_en']:.2f} OB ${liq['orderblock']:.2f} -> SI {sym} $1750")
+                            for u in data["alert_users"]: tg(u,f"E2 LIQ {sym} Triple ${liq['liquidez_en']:.2f} OB ${liq['orderblock']:.2f} -> SI {sym}")
                         elif not liq and sym in LIQUIDEZ_DATA: del LIQUIDEZ_DATA[sym]
             except: pass
             btc_1h = get_btc_1h()
@@ -381,28 +388,28 @@ def auto_loop():
                         if gan_pct <= STOP_LOSS_PCT:
                             loss=(price-p["precio_entry"])/p["precio_entry"]*p["monto"]
                             data["b"]+=p["monto"]+loss; data["gan_total"]+=loss; data["gan_hoy"]+=loss; data["pos"].remove(p); save()
-                            for u in data["alert_users"]: tg(u,f"🛑 STOP {sym} {gan_pct:.2f}%")
+                            for u in data["alert_users"]: tg(u,f"STOP {sym} {gan_pct:.2f}%")
                             continue
                         if not p.get("tp1_done") and gan_pct >= TP1_PCT:
                             if p["monto"]>=400:
                                 profit_half=(price-p["precio_entry"])/p["precio_entry"]*(p["monto"]/2)
                                 data["b"]+=p["monto"]/2 + profit_half; data["gan_total"]+=profit_half; data["gan_hoy"]+=profit_half; p["monto"]=p["monto"]/2; p["tp1_done"]=True; save()
-                                for u in data["alert_users"]: tg(u,f"💰 TP1 {sym} +{gan_pct:.2f}%")
+                                for u in data["alert_users"]: tg(u,f"TP1 {sym} +{gan_pct:.2f}%")
                             else:
                                 profit=(price-p["precio_entry"])/p["precio_entry"]*p["monto"]; data["b"]+=p["monto"]+profit; data["gan_total"]+=profit; data["gan_hoy"]+=profit; data["pos"].remove(p); save()
-                                for u in data["alert_users"]: tg(u,f"💰 TP1 {sym} +{gan_pct:.2f}%")
+                                for u in data["alert_users"]: tg(u,f"TP1 {sym} +{gan_pct:.2f}%")
                             continue
                         if p.get("tp1_done"):
                             if gan_pct >= TP2_PCT or (p["max_price"]>p["precio_entry"]*1.02 and price < p["max_price"]*(1-TRAILING_PCT/100)):
                                 profit=(price-p["precio_entry"])/p["precio_entry"]*p["monto"]; data["b"]+=p["monto"]+profit; data["gan_total"]+=profit; data["gan_hoy"]+=profit; data["pos"].remove(p); save()
-                                for u in data["alert_users"]: tg(u,f"🚀 TP2 {sym} +{gan_pct:.2f}%")
+                                for u in data["alert_users"]: tg(u,f"TP2 {sym} +{gan_pct:.2f}%")
                     if btc_1h < BTC_CRASH_PCT: continue
                     if rsi<32 and price>ema20*0.995 and btc_t>-1.5:
                         if data.get('auto_buy') and len(data["pos"])<MAX_POS and not any(pp['sym']==sym for pp in data["pos"] if not pp.get('es_dual')):
                             if data["b"]<MONTO_TRADE: continue
                             data["pos"].append({"sym":sym,"monto":MONTO_TRADE,"gan":0,"precio_entry":price,"max_price":price,"tp1_done":False})
                             data["b"]-=MONTO_TRADE; data["trades_hoy"]+=1; save()
-                            for u in data["alert_users"]: tg(u,f"🔥 CASERIA {sym} ${price:.4f} RSI {rsi:.1f}")
+                            for u in data["alert_users"]: tg(u,f"CASERIA {sym} ${price:.4f} RSI {rsi:.1f}")
                 except: continue
                 time.sleep(1.5)
             time.sleep(40)
