@@ -27,6 +27,9 @@ DASH_URL = "https://telegram-bot-cijp.onrender.com"
 
 try:
     with open("data.json","r") as f: data=json.load(f)
+    # Si venia de $50, ajustamos saldo solo si es primera vez
+    if data.get("b",0) < 1000 and len(data.get("pos",[]))==0:
+        data["b"]=SALDO_INICIAL
 except:
     data={"b":SALDO_INICIAL,"pos":[],"coins":ALL_COINS,"gan_total":0,"gan_hoy":0,"trades_hoy":0,"auto_buy":True,"alert_users":[5471234634],"last_report_date":""}
 
@@ -43,22 +46,35 @@ def tg(chat,txt,markup=None):
 
 def P(sym):
     try:
+        headers = {"User-Agent":"Mozilla/5.0"}
         if sym=="XAUUSD":
-            r=requests.get("https://query1.finance.yahoo.com/v8/finance/chart/GC=F",timeout=5).json()
+            r=requests.get("https://query1.finance.yahoo.com/v8/finance/chart/GC=F",timeout=8, headers=headers).json()
             return float(r['chart']['result'][0]['meta']['regularMarketPrice'])
         if sym in COINS_STOCKS:
-            r=requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}",timeout=5).json()
+            r=requests.get(f"https://query1.finance.yahoo.com/v8/finance/chart/{sym}",timeout=8, headers=headers).json()
             return float(r['chart']['result'][0]['meta']['regularMarketPrice'])
-        r=requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={sym}USDT",timeout=5).json()
+        r=requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={sym}USDT",timeout=8).json()
+        if 'price' not in r: return 0
         return float(r['price'])
-    except: return 0
+    except Exception as e:
+        print(f"P error {sym}: {e}")
+        return 0
 
 def AN(sym):
     try:
         price = P(sym)
+        if price==0:
+            return 50,0,0,0
         if sym in COINS_STOCKS+COINS_GOLD:
             return 29.0, price, price*0.998, 0
-        kl=requests.get(f"https://api.binance.com/api/v3/klines?symbol={sym}USDT&interval=5m&limit=50",timeout=8).json()
+
+        kl_resp = requests.get(f"https://api.binance.com/api/v3/klines?symbol={sym}USDT&interval=5m&limit=50",timeout=8)
+        kl = kl_resp.json()
+        if not isinstance(kl, list) or len(kl) < 20:
+            # Binance esta limitando, regresamos datos del precio actual sin RSI
+            print(f"Binance limit/wait en {sym}: {str(kl)[:100]}")
+            return 50, price, price*0.998, 0
+
         closes=[float(k[4]) for k in kl]
         ema=sum(closes[-20:])/20
         gains=[max(0, closes[i]-closes[i-1]) for i in range(1,len(closes))]
@@ -66,8 +82,13 @@ def AN(sym):
         rg=sum(gains[-14:])/14 or 0.01
         rl=sum(losses[-14:])/14 or 0.01
         rsi=100-(100/(1+rg/rl))
-        btc=requests.get("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",timeout=5).json()
-        return rsi, price, ema, float(btc['priceChangePercent'])
+
+        try:
+            btc=requests.get("https://api.binance.com/api/v3/ticker/24hr?symbol=BTCUSDT",timeout=5).json()
+            btc_change = float(btc.get('priceChangePercent', 0))
+        except:
+            btc_change = 0
+        return rsi, price, ema, btc_change
     except Exception as e:
         print(f"AN error {sym}: {e}")
         return 50,0,0,0
@@ -89,10 +110,10 @@ def home():
     tt, _ = totals()
     html=f"""<html><head><meta name='viewport' content='width=device-width'><style>
     body{{background:#0a0a0a;color:#fff;font-family:Arial;padding:10px}}
-  .card{{background:#1a1a1a;border-radius:15px;padding:12px;margin:8px 0;border-left:4px solid #00ff88}}
-  .top{{border:1.5px solid #00ff88;border-radius:15px;padding:12px;display:flex;justify-content:space-between;align-items:center}}
-  .btn{{background:#00ff88;color:#000;padding:8px 15px;border-radius:20px;font-weight:bold}}
-  .graf{{background:#00ff88;color:#000;width:100%;padding:12px;border-radius:10px;margin-top:8px;display:block;text-align:center;text-decoration:none;font-weight:bold}}
+ .card{{background:#1a1a1a;border-radius:15px;padding:12px;margin:8px 0;border-left:4px solid #00ff88}}
+ .top{{border:1.5px solid #00ff88;border-radius:15px;padding:12px;display:flex;justify-content:space-between;align-items:center}}
+ .btn{{background:#00ff88;color:#000;padding:8px 15px;border-radius:20px;font-weight:bold}}
+ .graf{{background:#00ff88;color:#000;width:100%;padding:12px;border-radius:10px;margin-top:8px;display:block;text-align:center;text-decoration:none;font-weight:bold}}
     </style></head><body>"""
     html+=f"<div class='top'><div><b>V29.3 $5K REAL MODE</b><br>Auto ejecuta solo</div><div><span class='btn'>{'AUTO ON' if data['auto_buy'] else 'AUTO OFF'}</span> <span style='background:#ffcc00;color:#000;padding:8px 12px;border-radius:10px;font-weight:bold'>${tt:.0f}</span></div></div>"
     html+=f"<div style='display:flex;justify-content:space-between;margin:12px 0'><span>Saldo ${data['b']:.0f}</span><span>Total ${tt:.0f}</span><span>Hoy ${data['gan_hoy']:.2f}</span></div>"
@@ -169,6 +190,7 @@ def auto_loop():
                         h=datetime.now(ZoneInfo('America/Mexico_City')).hour
                         if not (8 <= h <= 15): continue
                     rsi,price,ema20,btc_t=AN(sym)
+                    if price==0: continue
                     if rsi<32 and price>ema20*0.995 and btc_t>-1.5:
                         if data.get('auto_buy') and len(data["pos"])<MAX_POS and not any(p['sym']==sym for p in data["pos"]):
                             if data["b"] < MONTO_TRADE: continue
@@ -179,7 +201,8 @@ def auto_loop():
                 except Exception as e_inner:
                     print(f"Error en {sym}: {e_inner}")
                     continue
-            time.sleep(60)
+                time.sleep(2) # pausa entre monedas para no saturar Binance
+            time.sleep(90) # espera 90 seg entre ciclos
         except Exception as e:
             print(f"Error loop principal: {e}")
             time.sleep(60)
