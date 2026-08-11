@@ -95,7 +95,9 @@ def home():
         html+=f"<div class='card'><b>{sym} ${price:.4f}</b><br><span style='color:{color}'>RSI {rsi:.1f}</span> | EMA ${ema20:.2f} | BTC {btc_t:.2f}%<br><a class='graf' href='/chart/{sym}'>📈 VER GRAFICA {sym}</a></div>"
     html+=f"<div class='card'>Pos abiertas: {len(data['pos'])}/{MAX_POS}</div></body></html>"
     return html
-
+@app.route("/dashboard")
+def dashboard_redirect():
+    return home()
 @app.route("/chart/<sym>")
 def chart(sym):
     tv_map = {"XAUUSD":"OANDA:XAUUSD","NVDA":"NASDAQ:NVDA","TSLA":"NASDAQ:TSLA"}
