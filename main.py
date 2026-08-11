@@ -2,7 +2,7 @@ import os, json, requests, threading, time
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 FILE="bot_data.json"
-data={"b":5000.0,"pos":[],"gan_total":0.0,"gan_hoy":0.0,"trades_hoy":0,"coins":["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],"alert_users":[],"scoring":{"BTC":5,"ETH":4,"SOL":4,"XRP":3,"AVAX":3,"LINK":3,"DOGE":3,"ADA":3}}
+data={"b":5000.0,"pos":[],"gan_total":0.0,"gan_hoy":0.0,"trades_hoy":0,"coins":["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],"alert_users":[],"auto_buy":True,"scoring":{"BTC":5,"ETH":4,"SOL":4,"XRP":3,"AVAX":3,"LINK":3,"DOGE":3,"ADA":3}}
 CACHE={"prices":{},"ts":0}
 def load():
     if os.path.exists(FILE):
@@ -50,7 +50,6 @@ def AN(sym):
         if len(bk)>=2: btc_t=((float(bk[-1][4])-float(bk[-2][4]))/float(bk[-2][4]))*100
     except: pass
     return rsi,price,ema20,btc_t
-
 def totals():
     val=0
     for p in data['pos']:
@@ -58,7 +57,6 @@ def totals():
         if p.get('precio_entry',0)>0: p['gan']=((pr-p['precio_entry'])/p['precio_entry'])*100
         val+=p['monto']*(1+p.get('gan',0)/100)
     return data['b']+val,val
-
 def tg(uid,txt):
     try:
         TOKEN=os.getenv("TELEGRAM_TOKEN","")
@@ -72,10 +70,20 @@ def api_prices():
     for sym in data["coins"]:
         rsi,price,ema20,btc_t=AN(sym)
         filt = price>ema20 and btc_t>-1.5
-        action="COMPRAR" if rsi<32 and filt else "VENDER" if rsi>74 else "SOSTENER"
+        action="COMPRAR" if rsi<32 and filt and data.get('auto_buy',True) else "VENDER" if rsi>74 else "SOSTENER"
         out[sym]={"price":price,"rsi":round(rsi,1),"ema20":round(ema20,2),"btc_t":round(btc_t,2),"action":action,"filt":filt,"score":data["scoring"].get(sym,3)}
     CACHE["prices"]=out; CACHE["ts"]=time.time()
     return jsonify(out)
+
+@app.route('/api/status')
+def api_status():
+    return jsonify({"auto_buy": data.get('auto_buy', True)})
+
+@app.route('/toggle_auto')
+def toggle_auto():
+    data['auto_buy']=not data.get('auto_buy',True)
+    save()
+    return "<script>location='/dashboard'</script>"
 
 @app.route('/')
 @app.route('/dashboard')
@@ -85,23 +93,32 @@ def dash():
     for p in data['pos']:
         pr=P(p['sym']); col="#00ff88" if p.get('gan',0)>=0 else "#ff4444"
         pos_html+=f"<div style=display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid #222><span>{p['sym']} Entry ${p.get('precio_entry',0):.2f} Ahora ${pr:.2f} <span style=color:{col}>{p.get('gan',0):.2f}%</span> Max ${p.get('max_price',pr):.2f}</span> <a href='/sell/{p['sym']}' style=background:#ff3344;color:#fff;padding:2px 8px;border-radius:6px;text-decoration:none'>VENDER</a></div>"
-    if not pos_html: pos_html="Sin posiciones - esperando RSI<32 + EMA20 + BTC>-1.5%"
+    if not pos_html: pos_html="Sin posiciones - AUTO OFF = solo compras manuales por botón o Telegram"
 
     return f"""<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
-<style>body{{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}}.top{{display:flex;justify-content:space-between;background:#111;padding:12px;border-radius:16px;border:1px solid #00ff88;margin-bottom:8px}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.card{{background:#151515;border:2px solid #ffcc00;border-radius:18px;padding:10px;min-height:110px;cursor:pointer}}.card.buy{{border-color:#00ff88;box-shadow:0 0 10px #00ff8855}}.card.sell{{border-color:#ff4444}}.card.wait{{border-color:#444;opacity:.7}}.score{{float:right;background:#111;border:2px solid #ffcc00;border-radius:12px;padding:6px 12px;font-weight:bold;color:#ffcc00}}.btn{{width:100%;padding:8px;border-radius:8px;border:none;font-weight:bold;margin-top:6px}}.btn.g{{background:#00ff88}}.btn.r{{background:#ff3344;color:#fff}}.pos{{background:#111;border-radius:16px;padding:12px;margin-top:10px;border:1px solid #333}}.skel{{background:#222;height:80px;border-radius:10px;animation:p 1s infinite}}@keyframes p{{0%{{opacity:.5}}50%{{opacity:1}}}}</style></head><body>
-<div class=top><b style=color:#00ff88>V1002.27 MILLONARIO PENSADO</b><div><span style=background:#ffeb3b;color:#000;padding:6px 12px;border-radius:8px;font-weight:bold>${total:.0f}</span> <span style=background:#00ff88;color:#000;padding:6px 12px;border-radius:20px;font-weight:bold>ON</span></div></div>
+<style>body{{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}}.top{{display:flex;justify-content:space-between;align-items:center;background:#111;padding:12px;border-radius:16px;border:1px solid #00ff88;margin-bottom:8px}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.card{{background:#151515;border:2px solid #ffcc00;border-radius:18px;padding:10px;min-height:110px;cursor:pointer}}.card.buy{{border-color:#00ff88;box-shadow:0 0 10px #00ff8855}}.card.sell{{border-color:#ff4444}}.card.wait{{border-color:#444;opacity:.7}}.score{{float:right;background:#111;border:2px solid #ffcc00;border-radius:12px;padding:6px 12px;font-weight:bold;color:#ffcc00}}.btn{{width:100%;padding:8px;border-radius:8px;border:none;font-weight:bold;margin-top:6px}}.btn.g{{background:#00ff88}}.btn.r{{background:#ff3344;color:#fff}}.pos{{background:#111;border-radius:16px;padding:12px;margin-top:10px;border:1px solid #333}}.skel{{background:#222;height:80px;border-radius:10px;animation:p 1s infinite}}@keyframes p{{0%{{opacity:.5}}50%{{opacity:1}}}}</style></head><body>
+<div class=top><div><b style=color:#00ff88>V1002.28 AUTO ON/OFF</b><br><small id=autoTxt>...</small></div><div style=display:flex;gap:8px;align-items:center><a href=/toggle_auto style=text-decoration:none><span id=autoBtn style=padding:8px 16px;border-radius:20px;font-weight:bold;cursor:pointer>...</span></a><span style=background:#ffeb3b;color:#000;padding:6px 12px;border-radius:8px;font-weight:bold>${total:.0f}</span></div></div>
 <div style=background:#151515;padding:10px;border-radius:12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px><div><small>Saldo</small><br><b>${data['b']:.0f}</b></div><div><small>Total</small><br><b>${total:.0f}</b> <small style=color:#00ff88>+${data['gan_total']:.2f}</small></div><div><small>Hoy</small><br><b>${data['gan_hoy']:.2f}</b> <small>{data['trades_hoy']} trades</small></div></div>
 <div class=grid id=g><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div></div>
-<div class=pos><b>Posiciones ({len(data['pos'])}/5) - Lógica: RSI&lt;32 + Precio&gt;EMA20 + BTC&gt;-1.5% | Venta +2.5%/+3.5% / -2% / RSI 74 / Trailing</b><br><br><div id=pos>{pos_html}</div><br><small>Persistente: bot_data.json | Pensado para ganar obvio</small></div>
+<div class=pos><b>Posiciones ({len(data['pos'])}/5) - Auto: <span id=autoPos>...</span> | Lógica: RSI&lt;32 + EMA20 + BTC&gt;-1.5%</b><br><br><div id=pos>{pos_html}</div><br><small>/auto on | /auto off | /status en Telegram | Botón arriba para ON/OFF</small></div>
 <script>
 async function L(){{
  try{{
+  let st=await fetch('/api/status').then(r=>r.json());
+  let btn=document.getElementById('autoBtn'); let txt=document.getElementById('autoTxt'); let posTxt=document.getElementById('autoPos');
+  btn.innerText=st.auto_buy?'🤖 AUTO ON':'⏸️ AUTO OFF';
+  btn.style.background=st.auto_buy?'#00ff88':'#ff4444';
+  btn.style.color='#000';
+  txt.innerText=st.auto_buy?'Comprando solo':'Solo manual';
+  posTxt.innerText=st.auto_buy?'ON - Compra solo':'OFF - Solo manual';
+  posTxt.style.color=st.auto_buy?'#00ff88':'#ff4444';
   let r=await fetch('/api/prices'); let d=await r.json(); let h='';
   for(let s in d){{
    let cls=d[s].action=='COMPRAR'?'buy':d[s].action=='VENDER'?'sell':'wait';
    let filtTxt=d[s].filt?'✅ Filtros OK':'⏸️ Esperando rebote';
-   let btn=d[s].action=='COMPRAR'?`<a href=/buy/${{s}}><button class=btn g>COMPRAR $50</button></a>`:`<a href=/chart/${{s}}><button class=btn style=background:#333;color:#fff>VER GRAFICA</button></a>`;
-   h+=`<div class=card ${{cls}} onclick="location='/chart/${{s}}'"><b>${{s}} $${{d[s].price.toFixed(2)}}</b><span class=score>${{d[s].score}}/5</span><br><small>RSI ${{d[s].rsi}} | EMA $${{d[s].ema20}}<br>BTC ${{d[s].btc_t}}% | ${{filtTxt}}</small><br><span style=background:#ffcc00;color:#000;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold>${{d[s].action}}</span>${{btn}}</div>`;
+   if(!st.auto_buy) filtTxt='⏸️ AUTO OFF';
+   let btnHtml=d[s].action=='COMPRAR'?`<a href=/buy/${{s}}><button class=btn g>COMPRAR $50</button></a>`:`<a href=/chart/${{s}}><button class=btn style=background:#333;color:#fff>VER GRAFICA</button></a>`;
+   h+=`<div class=card ${{cls}} onclick="location='/chart/${{s}}'"><b>${{s}} $${{d[s].price.toFixed(2)}}</b><span class=score>${{d[s].score}}/5</span><br><small>RSI ${{d[s].rsi}} | EMA $${{d[s].ema20}}<br>BTC ${{d[s].btc_t}}% | ${{filtTxt}}</small><br><span style=background:#ffcc00;color:#000;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold>${{d[s].action}}</span>${{btnHtml}}</div>`;
   }}
   document.getElementById('g').innerHTML=h;
  }}catch(e){{}}
@@ -130,7 +147,7 @@ def sell(sym):
 @app.route('/chart/<sym>')
 def chart(sym):
     sym=sym.upper()
-    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between}}</style></head><body><div class=top><b>{sym}/USDT - Millonario V27</b><a href="/dashboard"><button style=background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold>Volver</button></a></div><div id=c></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(k=>{{let d=k.map(x=>({{time:x[0]/1000,open:+x[1],high:+x[2],low:+x[3],close:+x[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(d);ch.timeScale().fitContent();}})</script></body></html>"""
+    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between}}</style></head><body><div class=top><b>{sym}/USDT - V28 AUTO</b><a href="/dashboard"><button style=background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold>Volver</button></a></div><div id=c></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(k=>{{let d=k.map(x=>({{time:x[0]/1000,open:+x[1],high:+x[2],low:+x[3],close:+x[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(d);ch.timeScale().fitContent();}})</script></body></html>"""
 
 @app.route('/webhook',methods=['POST'])
 def wh():
@@ -141,14 +158,21 @@ def wh():
         if txt in data["coins"]:
             if len(data["pos"])<5 and not any(p['sym']==txt for p in data["pos"]):
                 rsi,price,ema20,btc_t=AN(txt)
-                if rsi<32 and price>ema20 and btc_t>-1.5:
-                    data["pos"].append({"sym":txt,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
-                    tg(chat,f"✅ {txt} COMPRADO ${price:.2f} RSI {rsi:.1f} | Filtros OK")
-                else:
-                    tg(chat,f"⏸️ {txt} RSI {rsi:.1f} EMA ${ema20:.1f} BTC {btc_t:.2f}% - Bloqueado para no perder")
+                # compra manual IGNORA auto_buy
+                data["pos"].append({"sym":txt,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
+                tg(chat,f"✅ {txt} MANUAL ${price:.2f} RSI {rsi:.1f}")
+        if "/AUTO" in txt:
+            if "ON" in txt: data['auto_buy']=True
+            elif "OFF" in txt: data['auto_buy']=False
+            else: data['auto_buy']=not data.get('auto_buy',True)
+            save()
+            tg(chat,f"{'✅ AUTO ON - Bot compra solo con 3 filtros' if data['auto_buy'] else '⏸️ AUTO OFF - Solo tú compras manual'}")
+        if "/STATUS" in txt or "/ESTADO" in txt:
+            total,val=totals()
+            tg(chat,f"🤖 V28 STATUS\nAuto: {'ON ✅' if data.get('auto_buy',True) else 'OFF ⏸️'}\nSaldo ${data['b']:.2f} Total ${total:.2f}\nPos {len(data['pos'])}/5\nUsa /auto on / /auto off")
         if "/REPORTE" in txt:
-            total,val=totals(); tg(chat,f"📊 V27 PENSADO\nSaldo ${data['b']:.2f}\nTotal ${total:.2f}\nGan ${data['gan_total']:.2f}\nPos {len(data['pos'])}/5\nLogica 3 filtros + trailing")
-        if "/START" in txt: tg(chat,"V1002.27 MILLONARIO PENSADO\nRSI<32 + EMA20 + BTC>-1.5%\nVenta +2.5%/+3.5% -2% RSI74 trailing\n/dashboard")
+            total,val=totals(); tg(chat,f"📊 V28\nSaldo ${data['b']:.2f} Total ${total:.2f}\nGan ${data['gan_total']:.2f}\nAuto {'ON' if data.get('auto_buy',True) else 'OFF'}")
+        if "/START" in txt: tg(chat,"V1002.28 AUTO ON/OFF\nBoton en dashboard + /auto on / /auto off / /status\n/dashboard")
         save()
     return {"ok":True}
 
@@ -160,9 +184,10 @@ def auto_loop():
                 rsi,price,ema20,btc_t=AN(sym)
                 for p in data["pos"]:
                     if p['sym']==sym and price>p.get("max_price",0): p["max_price"]=price
-                if rsi<32 and price>ema20 and btc_t>-1.5 and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
+                # AUTO COMPRA SOLO SI ESTA ACTIVADO
+                if data.get('auto_buy',True) and rsi<32 and price>ema20 and btc_t>-1.5 and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
                     data["pos"].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
-                    for u in data["alert_users"]: tg(u,f"🤖 COMPRA PENSADA {sym} RSI {rsi:.1f} ${price:.2f} EMA OK BTC {btc_t:.2f}%")
+                    for u in data["alert_users"]: tg(u,f"🤖 AUTO {sym} RSI {rsi:.1f} ${price:.2f}")
                 for p in data["pos"][:]:
                     if p['sym']==sym:
                         gan=((price-p["precio_entry"])/p["precio_entry"])*100 if p.get("precio_entry") else 0
@@ -171,7 +196,7 @@ def auto_loop():
                         trail=max_gan>4 and gan < max_gan-1
                         if gan>=take or gan<=-2 or rsi>=74 or trail:
                             data["b"]+=50*(1+gan/100); data["gan_total"]+=50*gan/100; data["gan_hoy"]+=50*gan/100; data["pos"].remove(p); save()
-                            for u in data["alert_users"]: tg(u,f"💰 VENTA {sym} {gan:.2f}% max {max_gan:.2f}% RSI {rsi:.1f}")
+                            for u in data["alert_users"]: tg(u,f"💰 VENTA {sym} {gan:.2f}% max {max_gan:.2f}%")
             time.sleep(180)
         except: time.sleep(10)
 
