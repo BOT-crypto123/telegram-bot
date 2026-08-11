@@ -1,14 +1,12 @@
-import os, json, httpx, time, asyncio
+import os, json, httpx, time, asyncio, datetime
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 from contextlib import asynccontextmanager
 
-app = FastAPI()
 T = os.getenv('TELEGRAM_TOKEN','')
 B = 'https://api.telegram.org/bot' + T
 F = '/data/bot_data.json' if os.path.exists('/data') else '/tmp/bot_data.json'
 
-# --- MISMO CODIGO TUYO, NO TOCO LOGICA ---
 def L():
     try:
         if os.path.exists(F):
@@ -22,6 +20,7 @@ def L():
             return d
     except: pass
     return {'b':2000,'h':{},'hs':[],'auto':True,'ganancia_total':0,'total_trades':0,'alert_users':[],'historial_diario':[],'ganancia_hoy':0,'trades_hoy':0,'fecha_hoy':time.strftime('%Y-%m-%d'),'inicial':2000}
+
 def S(s):
     try:
         os.makedirs(os.path.dirname(F), exist_ok=True)
@@ -29,6 +28,7 @@ def S(s):
     except: pass
 
 MONEDAS = ['BTC','ETH','SOL','XRP','DOGE','AVAX','LINK','ADA']
+
 async def P(m):
     for url in [f'https://api.binance.com/api/v3/ticker/price?symbol={m}USDT',f'https://data-api.binance.vision/api/v3/ticker/price?symbol={m}USDT']:
         try:
@@ -37,6 +37,7 @@ async def P(m):
                 if r.status_code==200: return float(r.json()['price'])
         except: continue
     return 0
+
 async def CANDLES(sym):
     for url in [f'https://api.binance.com/api/v3/klines?symbol={sym}USDT&interval=1h&limit=100',f'https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=100']:
         try:
@@ -45,11 +46,13 @@ async def CANDLES(sym):
                 if r.status_code==200: return [float(x[4]) for x in r.json()]
         except: continue
     return []
+
 def ema(a,n):
     if len(a) < n: return []
     k=2/(n+1); s=sum(a[:n])/n; o=[s]
     for x in a[n:]: o.append(x*k+o[-1]*(1-k))
     return o
+
 def rsi(a):
     if len(a) < 15: return 50
     g=l=0
@@ -58,6 +61,7 @@ def rsi(a):
         if d>0: g+=d
         else: l-=d
     return 100-100/(1+g/l) if l!=0 else 80
+
 async def SCORE(sym):
     cl = await CANDLES(sym); pr = await P(sym)
     if not cl or len(cl) < 50 or pr==0: return {'p':pr,'score':50,'rsi':50,'cl':cl or []}
@@ -69,11 +73,13 @@ async def SCORE(sym):
     if e50 and abs(cl[-1]-e50[-1])/cl[-1] < 0.025: sc+=20
     if len(cl)>2 and cl[-1]>cl[-2] and cl[-2]<cl[-3]: sc+=10
     return {'p':pr,'score':min(100,sc),'rsi':r,'cl':cl}
+
 def monto_dinamico(s):
     if s['ganancia_total']>1000: return 150
     if s['ganancia_total']>500: return 100
     if s['ganancia_total']>200: return 70
     return 50
+
 def BUY(s,sym,price,monto):
     if s['b'] < monto: return False
     if sym not in s['h']: s['h'][sym]={'a':(monto/17.5*0.998)/price,'e':price,'niveles':1,'invertido':monto,'tp1':False,'tp2':False}
@@ -82,6 +88,7 @@ def BUY(s,sym,price,monto):
         avg=(s['h'][sym]['e']*s['h'][sym]['a']+price*extra)/total_a
         s['h'][sym]['a']=total_a; s['h'][sym]['e']=avg; s['h'][sym]['niveles']+=1; s['h'][sym]['invertido']+=monto
     s['b']-=monto; return True
+
 def SELL(s,sym,price,pct):
     if sym not in s['h']: return 0
     amt=s['h'][sym]['a']; inv=s['h'][sym]['invertido']; ent=s['h'][sym]['e']
@@ -93,17 +100,20 @@ def SELL(s,sym,price,pct):
         del s['h'][sym]
     else: s['h'][sym]['a']=amt-sell_amt; s['h'][sym]['invertido']=inv*(1-pct/100)
     return gan
+
 async def SEND(cid,txt):
     if not T: return
     try:
         async with httpx.AsyncClient(timeout=10) as c: await c.post(B+'/sendMessage',json={'chat_id':cid,'text':txt})
     except: pass
+
 async def check_fecha(s):
     hoy=time.strftime('%Y-%m-%d')
     if s['fecha_hoy']!=hoy:
         s['historial_diario'].insert(0,{'fecha':s['fecha_hoy'],'ganancia':round(s['ganancia_hoy'],2),'trades':s['trades_hoy']})
         s['historial_diario']=s['historial_diario'][:7]; s['ganancia_hoy']=0; s['trades_hoy']=0; s['fecha_hoy']=hoy; S(s)
     return s
+
 async def PUTERO():
     s=L(); s=await check_fecha(s)
     if not s['auto']: return s
@@ -123,6 +133,7 @@ async def PUTERO():
         else:
             if an['score']>=70 and btc_ok and s['b']>=monto and len(s['h'])<5: BUY(s,sym,an['p'],monto); S(s)
     return L()
+
 async def reporte_diario_logic():
     s=L(); s=await check_fecha(s)
     total=s['b']
@@ -131,7 +142,7 @@ async def reporte_diario_logic():
     gan_total=total-s['inicial']; pct_total=(total/s['inicial']-1)*100 if s['inicial'] else 0
     hist_txt="".join([f"{h['fecha']} {h['ganancia']:+.2f} MXN {h['trades']} trades\n" for h in s['historial_diario'][:6]]) or "Primer dia"
     pos_txt=" ".join([f"{k} {round(((await P(k))/v['e']-1)*100,2)}% " for k,v in s['h'].items()]) or "Ninguna"
-    msg=f"""📊 REPORTE V1002.10 24/7
+    msg=f"""📊 REPORTE V1002.11 24/7 FIXED
 💰 Saldo: ${int(s['b'])} MXN
 💵 Total: ${int(total)} MXN
 📈 Gan total: ${round(gan_total,2)} ({round(pct_total,2)}%)
@@ -142,19 +153,17 @@ Dias:
 {hist_txt}"""
     return msg, s
 
-# --- NUEVO: LOOP INTERNO 24/7 ---
 async def loop_24_7():
-    print("LOOP 24/7 INICIADO")
+    print("LOOP 24/7 INICIADO OK")
     while True:
         try:
             await PUTERO()
-            # Reporte automático 22:00 hora México (04:00 UTC)
-            now = datetime.datetime.now()
-            if now.hour == 4 and now.minute < 3: # 22:00 México = 04:00 UTC
+            now = datetime.datetime.utcnow()
+            if now.hour == 4 and now.minute < 3:
                 msg,s = await reporte_diario_logic()
                 for cid in s['alert_users']:
                     await SEND(cid, msg)
-            await asyncio.sleep(180) # cada 3 minutos solito
+            await asyncio.sleep(180)
         except Exception as e:
             print(f"Error loop: {e}")
             await asyncio.sleep(30)
@@ -167,7 +176,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 @app.get('/')
-def home(): return {"status":"V1002.10 24/7 AUTO","file":F,"data_exists":os.path.exists(F)}
+def home(): return {"status":"V1002.11 FIXED 24/7","file":F,"data_exists":os.path.exists(F)}
 @app.get('/check')
 async def check(): s=await PUTERO(); return {"ok":"check","auto":s['auto'],"file":F}
 @app.get('/api/data')
@@ -215,25 +224,25 @@ body{background:#080b14;color:#fff;font-family:system-ui;padding:8px;margin:0}
 canvas{width:100%!important;height:55px!important}
 .btn{border:none;padding:10px 14px;border-radius:12px;font-weight:900;margin:4px}
 </style></head><body>
-<div class=header><b style=color:#5dfdcb>V1002.10 24/7 AUTO</b><div style=display:flex;gap:6px><div id=saldo style=background:#ffdd57;color:#000;padding:8px 14px;border-radius:20px;font-weight:900>$2000</div><button id=autoBtn onclick="toggle()" class=btn style="background:#00ff88;color:#000">ENCENDIDO</button></div></div>
+<div class=header><b style=color:#5dfdcb>V1002.11 FIXED 24/7</b><div style=display:flex;gap:6px><div id=saldo style=background:#ffdd57;color:#000;padding:8px 14px;border-radius:20px;font-weight:900>$2000</div><button id=autoBtn onclick="toggle()" class=btn style="background:#00ff88;color:#000">ON</button></div></div>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
 <div class=card>Saldo<br><b id=s1>$2000</b></div><div class=card>Total<br><b id=s2>$2000</b><br><span id=s2g style=color:#00ff88>+ $0</span></div><div class=card>Hoy<br><b id=s3>+$0</b><br><span id=s4 style=opacity:0.6>0 trades</span></div>
 </div>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-top:10px">
-<button onclick="forceCheck()" class=btn style="background:#00ff88;color:#000">CHECK AHORA</button>
-<button onclick="reporte()" class=btn style="background:#5dfdcb;color:#000">REPORTE 22:00</button>
-<button onclick="enviarTG()" class=btn style="background:#0088cc;color:#fff">ENVIAR A TG</button>
+<button onclick="forceCheck()" class=btn style="background:#00ff88;color:#000">🔍 CHECK AHORA</button>
+<button onclick="reporte()" class=btn style="background:#5dfdcb;color:#000">📊 REPORTE</button>
+<button onclick="enviarTG()" class=btn style="background:#0088cc;color:#fff">📲 TG</button>
 </div>
 <div id=status style=margin-top:8px class=card>Estado: Verificando...</div>
 <div id=grid style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px"></div>
 <div id=pos style=margin-top:12px class=card>Posiciones...</div>
 <script>
 async function toggle(){ await fetch('/api/toggle'); load(); }
-async function comprar(sym){ let r=await fetch('/api/buy/'+sym); if(r.ok) load(); else alert((await r.json()).error); }
+async function comprar(sym){ if(!confirm('Comprar '+sym+'?')) return; let r=await fetch('/api/buy/'+sym); if(r.ok) load(); else alert((await r.json()).error); }
 async function vender(sym){ if(!confirm('Vender '+sym+' TODO?')) return; let r=await fetch('/api/sell/'+sym); if(r.ok) load(); else alert((await r.json()).error); }
-async function forceCheck(){ let r=await fetch('/api/force_check'); let j=await r.json(); alert('CHECK - Saldo $'+j.saldo+' Pos '+j.pos+' File:'+j.file); load(); }
+async function forceCheck(){ let r=await fetch('/api/force_check'); let j=await r.json(); alert('CHECK OK Saldo $'+j.saldo+' Pos '+j.pos); load(); }
 async function reporte(){ let r=await fetch('/api/reporte'); let j=await r.json(); alert(j.reporte); }
-async function enviarTG(){ let r=await fetch('/api/reporte'); alert('Enviado a Telegram'); }
+async function enviarTG(){ await fetch('/api/reporte'); alert('Enviado a Telegram'); }
 async function load(){
  let r=await fetch('/api/data'); let d=await r.json();
  document.getElementById('saldo').innerText='$'+Math.round(d.saldo);
@@ -242,9 +251,9 @@ async function load(){
  document.getElementById('s2g').innerText='+ $'+Math.round(d.ganancia);
  document.getElementById('s3').innerText='+$'+Math.round(d.gan_hoy);
  document.getElementById('s4').innerText=d.trades+' trades';
- document.getElementById('autoBtn').innerText=d.auto?'ENCENDIDO':'APAGADO';
+ document.getElementById('autoBtn').innerText=d.auto?'ON 🟢':'OFF 🔴';
  document.getElementById('autoBtn').style.background=d.auto?'#00ff88':'#ff4444';
- document.getElementById('status').innerHTML=`24/7: <b style=color:#00ff88>ACTIVO cada 3 min</b><br>Archivo: ${d.file} | Posiciones: ${Object.keys(d.pos).length} | Reporte auto 22:00 MX`;
+ document.getElementById('status').innerHTML=`24/7: <b style=color:#00ff88>ACTIVO cada 3 min</b><br>Archivo: ${d.file}`;
  let g=document.getElementById('grid'); g.innerHTML='';
  for(let sym in d.prices){
   let an=d.prices[sym]; let price=an.p? '$'+Number(an.p).toLocaleString(undefined,{maximumFractionDigits:2}): '$0.00';
@@ -284,5 +293,5 @@ async def wh(req:Request):
         msg,_=await reporte_diario_logic(); await SEND(cid,msg); return {'ok':1}
     if 'CHECK' in t:
         await PUTERO(); await SEND(cid,f"CHECK Saldo ${int(L()['b'])}"); return {'ok':1}
-    await SEND(cid,f"V1002.10 24/7 ACTIVO\nFile: {F}\nDashboard: https://telegram-bot-cijp.onrender.com/dashboard")
+    await SEND(cid,f"V1002.11 24/7 FIXED\nDashboard: https://telegram-bot-cijp.onrender.com/dashboard")
     return {'ok':1}
