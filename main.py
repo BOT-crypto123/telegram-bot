@@ -6,7 +6,7 @@ import pytz
 app = Flask(__name__)
 
 # === CONFIG V1002.12 REAL $5,000 ===
-DATA_FILE = "/tmp/bot_data.json"
+DATA_FILE = "bot_data.json"
 OBJETIVO_TOTAL = 5000.0
 TRADE_AMOUNT = 50.0
 MAX_POS = 5
