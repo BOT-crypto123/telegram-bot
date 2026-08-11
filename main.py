@@ -1,6 +1,6 @@
-import os, json, httpx, time, datetime
+import os, json, httpx, time
 from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 
 app = FastAPI()
 T = os.getenv('TELEGRAM_TOKEN','')
@@ -25,7 +25,6 @@ def S(s):
     try: json.dump(s, open(F,'w'))
     except: pass
 
-BASE = 50
 MONEDAS = ['BTC','ETH','SOL','XRP','DOGE','AVAX','LINK','ADA']
 MAPA = {'BTC':'bitcoin','ETH':'ethereum','SOL':'solana','XRP':'ripple','DOGE':'dogecoin','AVAX':'avalanche-2','LINK':'chainlink','ADA':'cardano'}
 
@@ -84,7 +83,7 @@ def monto_dinamico(s):
     if s['ganancia_total']>1000: return 150
     if s['ganancia_total']>500: return 100
     if s['ganancia_total']>200: return 70
-    return BASE
+    return 50
 
 def BUY(s,sym,price,monto):
     if s['b'] < monto: return False
@@ -128,6 +127,7 @@ async def check_fecha(s):
 
 async def PUTERO():
     s=L(); s=await check_fecha(s)
+    if not s['auto']: return s
     btc=await SCORE('BTC'); btc_ok=btc['score']>=35
     for sym in MONEDAS:
         an = await SCORE(sym) if sym!='BTC' else btc
@@ -136,61 +136,58 @@ async def PUTERO():
             chg=(an['p']/s['h'][sym]['e']-1)*100; niv=s['h'][sym]['niveles']
             if chg>=3.5:
                 g=SELL(s,sym,an['p'],100); S(s)
-                for cid in s['alert_users']: await SEND(cid,f"💰💰 PUTERO +3.5% {sym} {round(chg,2)}% GAN ${round(g,2)}\nSaldo ${int(s['b'])}"); s=L()
+                for cid in s['alert_users']: await SEND(cid,f"💰💰 +3.5% {sym} {round(chg,2)}% ${round(g,2)}"); s=L()
             elif chg>=2.0 and not s['h'][sym].get('tp2'):
                 g=SELL(s,sym,an['p'],40); s['h'][sym]['tp2']=True; S(s)
-                for cid in s['alert_users']: await SEND(cid,f"💸 TP2 +2% {sym} 40% ${round(g,2)}"); s=L()
+                for cid in s['alert_users']: await SEND(cid,f"💸 TP2 +2% {sym}"); s=L()
             elif chg>=1.0 and not s['h'][sym].get('tp1'):
                 g=SELL(s,sym,an['p'],30); s['h'][sym]['tp1']=True; S(s)
-                for cid in s['alert_users']: await SEND(cid,f"✅ TP1 +1% {sym} 30% ${round(g,2)}"); s=L()
+                for cid in s['alert_users']: await SEND(cid,f"✅ TP1 +1% {sym}"); s=L()
             elif chg<=-2.0 and niv==1 and s['b']>=monto and an['score']>=55:
-                BUY(s,sym,an['p'],monto); S(s)
-                for cid in s['alert_users']: await SEND(cid,f"🔥 PIRAMIDE {sym} {round(chg,2)}% +${monto}"); s=L()
+                BUY(s,sym,an['p'],monto); S(s); s=L()
             elif chg<=-4.0 and niv==2 and s['b']>=monto*2:
-                BUY(s,sym,an['p'],monto*2); S(s)
-                for cid in s['alert_users']: await SEND(cid,f"🔥🔥 PIRAMIDE X2 {sym} +${monto*2}"); s=L()
+                BUY(s,sym,an['p'],monto*2); S(s); s=L()
             elif chg<=-6.0:
                 g=SELL(s,sym,an['p'],100); S(s)
-                for cid in s['alert_users']: await SEND(cid,f"🛑 SL -6% {sym} ${round(g,2)} Saldo ${int(s['b'])}"); s=L()
+                for cid in s['alert_users']: await SEND(cid,f"🛑 SL -6% {sym}"); s=L()
         else:
             if an['score']>=70 and btc_ok and s['b']>=monto and len(s['h'])<5:
                 BUY(s,sym,an['p'],monto); S(s)
-                for cid in s['alert_users']: await SEND(cid,f"🚀 PUTERO ENTRA {sym} SCORE {an['score']} ${an['p']:.2f} Monto ${monto}"); s=L()
-
-async def reporte_diario_logic():
-    s=L(); s=await check_fecha(s)
-    total=s['b']
-    for k,v in s['h'].items():
-        pr=await P(k); total+=v['a']*pr*17.5
-    gan_total=total-s['inicial']; pct_total=(total/s['inicial']-1)*100 if s['inicial'] else 0
-    hist_txt="".join([f"{h['fecha']} {h['ganancia']:+.2f} MXN {h['trades']} trades\n" for h in s['historial_diario'][:6]]) or "Primer dia"
-    pos_txt=" ".join([f"{k} {round(((await P(k))/v['e']-1)*100,2)}% " for k,v in s['h'].items()]) or "Ninguna"
-    msg=f"""📊 REPORTE DIARIO 10PM - V1002.3 PUTERO DEMO $2000
-💰 Saldo: ${int(s['b'])} MXN
-📦 En pos: ${int(total-s['b'])} MXN
-💵 Total: ${int(total)} MXN
-📈 Gan total: ${round(gan_total,2)} MXN ({round(pct_total,2)}%)
-🔄 Hoy: ${round(s['ganancia_hoy'],2)} MXN
-🎯 Trades Hoy: {s['trades_hoy']}
-Pos: {len(s['h'])}/5 {pos_txt}
-Dias:
-{hist_txt}"""
-    for cid in s.get('alert_users',[]): await SEND(cid, msg)
-    return msg
+                for cid in s['alert_users']: await SEND(cid,f"🚀 ENTRA {sym} SCORE {an['score']} ${an['p']:.2f}"); s=L()
+    return s
 
 @app.get('/')
-def home(): return {"status":"V1002.4 MILLONARIO","dashboard":"/dashboard"}
+def home(): return {"status":"V1002.5 REAL","dashboard":"/dashboard"}
 
 @app.get('/check')
 async def check():
-    await PUTERO()
-    s=L()
-    return {"ok":"PUTERO EJECUTADO","saldo":s['b'],"pos":len(s['h']),"gan_hoy":s['ganancia_hoy']}
+    s=await PUTERO()
+    return {"ok":"check","auto":s['auto'],"saldo":s['b'],"pos":len(s['h'])}
 
-@app.get('/reporte_diario')
-async def reporte_diario():
-    msg=await reporte_diario_logic()
-    return {"reporte":msg}
+@app.get('/api/toggle')
+async def toggle():
+    s=L(); s['auto']=not s['auto']; S(s)
+    return {"auto":s['auto']}
+
+@app.get('/api/buy/{sym}')
+async def api_buy(sym: str):
+    sym=sym.upper()
+    s=L()
+    pr=await P(sym)
+    monto=monto_dinamico(s)
+    if sym not in MONEDAS: return JSONResponse({"error":"no"},status_code=400)
+    if s['b']<monto: return JSONResponse({"error":"sin saldo"},status_code=400)
+    BUY(s,sym,pr,monto); S(s)
+    return {"ok":True,"sym":sym,"price":pr,"monto":monto,"saldo":s['b']}
+
+@app.get('/api/sell/{sym}')
+async def api_sell(sym: str):
+    sym=sym.upper()
+    s=L()
+    if sym not in s['h']: return JSONResponse({"error":"no tienes"},status_code=400)
+    pr=await P(sym)
+    g=SELL(s,sym,pr,100); S(s)
+    return {"ok":True,"sym":sym,"ganancia":g,"saldo":s['b']}
 
 @app.get('/dashboard', response_class=HTMLResponse)
 async def dash():
@@ -206,16 +203,24 @@ async def dash():
         if sc>=70: col="#00ff88"; lbl="BUY"
         elif sc>=50: col="#ffcc00"; lbl="HOLD"
         else: col="#ff4444"; lbl="SELL"
-        coins_html+=f"""<div style="background:#11172a;border:1px solid {col};border-radius:16px;padding:12px;display:flex;justify-content:space-between;align-items:center"><div><b>{sym}</b> ${an['p']:.2f}<br><span style=font-size:12px;opacity:0.6>RSI {int(an['rsi'])}</span></div><div style=text-align:right><div style="border:1px solid {col};padding:4px 10px;border-radius:10px">SCORE<br><b style="color:{col};font-size:18px">{sc}</b></div><div style="background:{col};color:#000;font-size:11px;font-weight:800;padding:2px 8px;border-radius:8px;margin-top:4px;text-align:center">{lbl}</div></div></div>"""
-    pos_html="".join([f"<div style=background:#1a1f30;margin:4px 0;padding:8px;border-radius:8px>{k} x{v['niveles']} inv ${v['invertido']} {round(((precios.get(k,0))/v['e']-1)*100,2)}%</div>" for k,v in s['h'].items()]) or "Sin pos - esperando SCORE>=70"
-    html=f"""<html><head><meta name=viewport content='width=device-width,initial-scale=1'><style>body{{background:#080b14;color:#fff;font-family:system-ui;padding:10px}}.card{{background:#0e1324;border:1px solid #1a2a4a;border-radius:16px;padding:12px}}.header{{background:#0e1324;border:2px solid #00ffcc55;border-radius:20px;padding:12px;display:flex;justify-content:space-between}}</style></head><body>
-<div class=header><b style=color:#5dfdcb>V1002.4 PUTERO MILLONARIO</b><div style=background:#ffdd57;color:#000;padding:8px 14px;border-radius:20px;font-weight:900>${int(s['b'])}</div></div>
+        en_pos = sym in s['h']
+        btn = f"""<button onclick="vender('{sym}')" style="background:#ff4444;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:800;margin-left:4px">VENDER</button>""" if en_pos else f"""<button onclick="comprar('{sym}')" style="background:#00ff88;color:#000;border:none;padding:6px 12px;border-radius:8px;font-weight:800;margin-left:4px">COMPRAR</button>"""
+        coins_html+=f"""<div style="background:#11172a;border:1px solid {col};border-radius:16px;padding:12px;display:flex;justify-content:space-between;align-items:center"><div><b>{sym}</b> ${an['p']:.2f}<br><span style=font-size:12px;opacity:0.6>SCORE {sc} • RSI {int(an['rsi'])}</span><br>{btn}</div><div style=text-align:right><div style="border:1px solid {col};padding:4px 10px;border-radius:10px"><b style="color:{col};font-size:18px">{sc}</b></div><div style="background:{col};color:#000;font-size:11px;font-weight:800;padding:2px 8px;border-radius:8px;margin-top:4px;text-align:center">{lbl}</div></div></div>"""
+    pos_html="".join([f"<div style=background:#1a1f30;margin:4px 0;padding:8px;border-radius:8px;display:flex;justify-content:space-between><span>{k} x{v['niveles']} {round(((precios.get(k,0))/v['e']-1)*100,2)}%</span><button onclick=\"vender('{k}')\" style=background:#ff4444;color:#fff;border:none;padding:4px 10px;border-radius:6px>VENDER</button></div>" for k,v in s['h'].items()]) or "Sin pos - esperando SCORE>=70"
+    auto_txt = "ON 🟢" if s['auto'] else "OFF 🔴"
+    auto_color = "#00ff88" if s['auto'] else "#ff4444"
+    html=f"""<html><head><meta name=viewport content='width=device-width,initial-scale=1'><style>body{{background:#080b14;color:#fff;font-family:system-ui;padding:10px}}.card{{background:#0e1324;border:1px solid #1a2a4a;border-radius:16px;padding:12px}}.header{{background:#0e1324;border:2px solid #00ffcc55;border-radius:20px;padding:12px;display:flex;justify-content:space-between;align-items:center}}</style>
+<script>
+async function toggle(){{ let r=await fetch('/api/toggle'); let j=await r.json(); location.reload(); }}
+async function comprar(sym){{ if(!confirm('Comprar '+sym+'?')) return; let r=await fetch('/api/buy/'+sym); let j=await r.json(); if(j.ok) location.reload(); else alert(j.error); }}
+async function vender(sym){{ if(!confirm('Vender '+sym+'?')) return; let r=await fetch('/api/sell/'+sym); let j=await r.json(); if(j.ok) location.reload(); else alert(j.error); }}
+</script></head><body>
+<div class=header><b style=color:#5dfdcb>V1002.5 REAL</b><div style=display:flex;gap:8px><div style=background:#ffdd57;color:#000;padding:8px 14px;border-radius:20px;font-weight:900>${int(s['b'])}</div><button onclick="toggle()" style="background:{auto_color};color:#000;border:none;padding:8px 16px;border-radius:20px;font-weight:900">{auto_txt}</button></div></div>
 <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px">
-<div class=card>Saldo<br><b style=font-size:22px>${int(s['b'])}</b></div><div class=card>Total<br><b style=font-size:22px>${int(total)}</b><br><span style=color:#00ff88>+${int(gan_total)} ({pct_total:.2f}%)</span></div><div class=card>Ganancia<br><b style=font-size:22px;color:#00ff88>+${int(gan_total)}</b></div>
-<div class=card>Hoy<br><b>+${int(s['ganancia_hoy'])}</b></div><div class=card>Trades<br><b>{s['total_trades']}</b> • {len(s['h'])} Open</div><div class=card>Auto<br><b style=color:#00ff88>ON</b></div>
-</div><div style="margin-top:12px;display:grid;grid-template-columns:1fr 1fr;gap:8px">{coins_html}</div>
+<div class=card>Saldo<br><b style=font-size:20px>${int(s['b'])}</b></div><div class=card>Total<br><b style=font-size:20px>${int(total)}</b><br><span style=color:#00ff88>+${int(gan_total)} ({pct_total:.1f}%)</span></div><div class=card>Ganancia<br><b style=font-size:20px;color:#00ff88>+${int(gan_total)}</b></div>
+</div>
+<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px">{coins_html}</div>
 <div style=margin-top:12px class=card><b>Posiciones abiertas ({len(s['h'])})</b><div style=margin-top:6px>{pos_html}</div></div>
-<div style=margin-top:12px><a href='/check' style=color:#00ff88>Forzar Check</a> | <a href='/reporte_diario' style=color:#ffdd57>Forzar Reporte 10PM</a></div>
 </body></html>"""
     return HTMLResponse(html)
 
@@ -228,14 +233,11 @@ async def wh(req:Request):
     s=L()
     if cid not in s['alert_users']: s['alert_users'].append(cid); S(s)
     t=(q.get('message',{}).get('text') or '').upper()
-    if 'RESET' in t:
-        S({'b':2000,'h':{},'hs':[],'auto':True,'ganancia_total':0,'total_trades':0,'alert_users':s['alert_users'],'historial_diario':[],'ganancia_hoy':0,'trades_hoy':0,'fecha_hoy':time.strftime('%Y-%m-%d'),'inicial':2000})
-        await SEND(cid,"♻️ RESET DEMO $2000 - TODO LIMPIO"); return {'ok':1}
-    if 'AUTO ON' in t:
-        s['auto']=True; S(s); await SEND(cid,"🔥 PUTERO $2000 ON - Reporte 10pm activo"); return {'ok':1}
-    if 'AUTO OFF' in t:
-        s['auto']=False; S(s); await SEND(cid,"OFF"); return {'ok':1}
+    # YA NO HAY RESET
     if 'REPORTE' in t:
-        msg=await reporte_diario_logic(); await SEND(cid,msg); return {'ok':1}
-    await SEND(cid,f"V1002.4 MILLONARIO\nSaldo ${int(s['b'])} Total ${int(sum([v['a']*(await P(k))*17.5 for k,v in s['h'].items()], s['b'])):.0f} G/P ${round(s['ganancia_total'],2)}\nHOY ${round(s['ganancia_hoy'],2)} Trades hoy {s['trades_hoy']}\nComandos: AUTO ON, AUTO OFF, REPORTE, RESET")
+        total=s['b']
+        for k,v in s['h'].items(): total+=v['a']*(await P(k))*17.5
+        await SEND(cid,f"REAL\nSaldo ${int(s['b'])} Total ${int(total)} G/P ${round(s['ganancia_total'],2)}\nHOY ${round(s['ganancia_hoy'],2)}")
+        return {'ok':1}
+    await SEND(cid,f"V1002.5 REAL - Dashboard: https://telegram-bot-cijp.onrender.com/dashboard\nAUTO {s['auto']} - Usa botones COMPRAR/VENDER en el dashboard")
     return {'ok':1}
