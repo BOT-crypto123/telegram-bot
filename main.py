@@ -2,13 +2,16 @@ import os, json, requests, threading, time
 from flask import Flask, request, jsonify
 app = Flask(__name__)
 FILE="bot_data.json"
-data={"b":5000.0,"pos":[],"gan_total":0.0,"coins":["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],"alert_users":[]}
+data={"b":5000.0,"pos":[],"gan_total":0.0,"gan_hoy":0.0,"trades_hoy":0,"coins":["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],"alert_users":[],"scoring":{"BTC":5,"ETH":4,"SOL":4,"XRP":3,"AVAX":3,"LINK":3,"DOGE":3,"ADA":3}}
 CACHE={"prices":{},"ts":0}
 def load():
     if os.path.exists(FILE):
-        try: data.update(json.load(open(FILE)))
+        try:
+            j=json.load(open(FILE))
+            for k in data:
+                if k in j: data[k]=j[k]
         except: pass
-def save(): json.dump(data,open(FILE,'w'))
+def save(): json.dump(data,open(FILE,'w'),indent=2)
 load()
 
 def P(sym):
@@ -16,13 +19,17 @@ def P(sym):
         r=requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={sym}USDT",timeout=3).json()
         return float(r['price'])
     except: return 0
-
-def C(sym):
+def K(sym,lim=80):
     try:
-        r=requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=80",timeout=5).json()
-        return [float(x[4]) for x in r]
+        r=requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit={lim}",timeout=5).json()
+        return r
     except: return []
-
+def EMA(closes,p=20):
+    if not closes: return 0
+    if len(closes)<p: return closes[-1]
+    ema=closes[0]; k=2/(p+1)
+    for c in closes[1:]: ema=c*k+ema*(1-k)
+    return ema
 def RSI(closes,p=14):
     if len(closes)<p+1: return 50
     g=l=0
@@ -32,84 +39,139 @@ def RSI(closes,p=14):
         else: l+=-d
     if l==0: return 100
     return 100-(100/(1+g/l))
-
 def AN(sym):
-    closes=C(sym)
-    if not closes: return 50, P(sym)
-    return RSI(closes), closes[-1]
+    kl=K(sym)
+    if not kl: return 50,P(sym),0,0
+    closes=[float(x[4]) for x in kl]
+    rsi=RSI(closes); ema20=EMA(closes,20); price=closes[-1]
+    btc_t=0
+    try:
+        bk=K("BTC",3)
+        if len(bk)>=2: btc_t=((float(bk[-1][4])-float(bk[-2][4]))/float(bk[-2][4]))*100
+    except: pass
+    return rsi,price,ema20,btc_t
+
+def totals():
+    val=0
+    for p in data['pos']:
+        pr=P(p['sym'])
+        if p.get('precio_entry',0)>0: p['gan']=((pr-p['precio_entry'])/p['precio_entry'])*100
+        val+=p['monto']*(1+p.get('gan',0)/100)
+    return data['b']+val,val
 
 def tg(uid,txt):
     try:
         TOKEN=os.getenv("TELEGRAM_TOKEN","")
-        base=os.getenv("RENDER_EXTERNAL_URL","") or f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME','')}"
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json={"chat_id":uid,"text":txt,"reply_markup":{"inline_keyboard":[[{"text":"📊 Dashboard","url":f"{base}/dashboard"}]]}},timeout=5)
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json={"chat_id":uid,"text":txt},timeout=5)
     except: pass
 
 @app.route('/api/prices')
 def api_prices():
-    if time.time()-CACHE["ts"]<20 and CACHE["prices"]: return jsonify(CACHE["prices"])
+    if time.time()-CACHE["ts"]<15 and CACHE["prices"]: return jsonify(CACHE["prices"])
     out={}
     for sym in data["coins"]:
-        rsi,price=AN(sym)
-        score=int(100-rsi) if rsi<50 else int(rsi)
-        action="COMPRAR" if rsi<32 else "VENDER" if rsi>70 else "SOSTENER"
-        out[sym]={"price":price,"rsi":round(rsi,1),"score":score,"action":action}
+        rsi,price,ema20,btc_t=AN(sym)
+        filt = price>ema20 and btc_t>-1.5
+        action="COMPRAR" if rsi<32 and filt else "VENDER" if rsi>74 else "SOSTENER"
+        out[sym]={"price":price,"rsi":round(rsi,1),"ema20":round(ema20,2),"btc_t":round(btc_t,2),"action":action,"filt":filt,"score":data["scoring"].get(sym,3)}
     CACHE["prices"]=out; CACHE["ts"]=time.time()
     return jsonify(out)
 
 @app.route('/')
 @app.route('/dashboard')
 def dash():
-    return """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
-<style>body{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}.top{background:#111;padding:12px;border-radius:12px;border:1px solid #00ff88;display:flex;justify-content:space-between;margin-bottom:8px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.card{background:#151515;border:2px solid #ffcc00;border-radius:16px;padding:12px;min-height:90px}.card.buy{border-color:#00ff88}.card.sell{border-color:#ff4444}.score{float:right;border:2px solid #ffcc00;border-radius:10px;padding:4px 10px;color:#ffcc00;font-weight:bold}.skel{background:#222;height:70px;border-radius:10px;animation:pulse 1s infinite}@keyframes pulse{0%{opacity:.5}50%{opacity:1}}</style></head><body>
-<div class=top><b style=color:#00ff88>V1002.26 MILLONARIO</b><span id=ld>⚡ Cargando RSI real...</span></div>
+    total,val=totals()
+    pos_html=""
+    for p in data['pos']:
+        pr=P(p['sym']); col="#00ff88" if p.get('gan',0)>=0 else "#ff4444"
+        pos_html+=f"<div style=display:flex;justify-content:space-between;padding:6px;border-bottom:1px solid #222><span>{p['sym']} Entry ${p.get('precio_entry',0):.2f} Ahora ${pr:.2f} <span style=color:{col}>{p.get('gan',0):.2f}%</span> Max ${p.get('max_price',pr):.2f}</span> <a href='/sell/{p['sym']}' style=background:#ff3344;color:#fff;padding:2px 8px;border-radius:6px;text-decoration:none'>VENDER</a></div>"
+    if not pos_html: pos_html="Sin posiciones - esperando RSI<32 + EMA20 + BTC>-1.5%"
+
+    return f"""<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
+<style>body{{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}}.top{{display:flex;justify-content:space-between;background:#111;padding:12px;border-radius:16px;border:1px solid #00ff88;margin-bottom:8px}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.card{{background:#151515;border:2px solid #ffcc00;border-radius:18px;padding:10px;min-height:110px;cursor:pointer}}.card.buy{{border-color:#00ff88;box-shadow:0 0 10px #00ff8855}}.card.sell{{border-color:#ff4444}}.card.wait{{border-color:#444;opacity:.7}}.score{{float:right;background:#111;border:2px solid #ffcc00;border-radius:12px;padding:6px 12px;font-weight:bold;color:#ffcc00}}.btn{{width:100%;padding:8px;border-radius:8px;border:none;font-weight:bold;margin-top:6px}}.btn.g{{background:#00ff88}}.btn.r{{background:#ff3344;color:#fff}}.pos{{background:#111;border-radius:16px;padding:12px;margin-top:10px;border:1px solid #333}}.skel{{background:#222;height:80px;border-radius:10px;animation:p 1s infinite}}@keyframes p{{0%{{opacity:.5}}50%{{opacity:1}}}}</style></head><body>
+<div class=top><b style=color:#00ff88>V1002.27 MILLONARIO PENSADO</b><div><span style=background:#ffeb3b;color:#000;padding:6px 12px;border-radius:8px;font-weight:bold>${total:.0f}</span> <span style=background:#00ff88;color:#000;padding:6px 12px;border-radius:20px;font-weight:bold>ON</span></div></div>
+<div style=background:#151515;padding:10px;border-radius:12px;margin-bottom:8px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px><div><small>Saldo</small><br><b>${data['b']:.0f}</b></div><div><small>Total</small><br><b>${total:.0f}</b> <small style=color:#00ff88>+${data['gan_total']:.2f}</small></div><div><small>Hoy</small><br><b>${data['gan_hoy']:.2f}</b> <small>{data['trades_hoy']} trades</small></div></div>
 <div class=grid id=g><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div><div class=card><div class=skel></div></div></div>
+<div class=pos><b>Posiciones ({len(data['pos'])}/5) - Lógica: RSI&lt;32 + Precio&gt;EMA20 + BTC&gt;-1.5% | Venta +2.5%/+3.5% / -2% / RSI 74 / Trailing</b><br><br><div id=pos>{pos_html}</div><br><small>Persistente: bot_data.json | Pensado para ganar obvio</small></div>
 <script>
-async function load(){
- try{
-  let r=await fetch('/api/prices'); let d=await r.json();
-  let h='';
-  for(let s in d){
-    let cls=d[s].rsi<32?'buy':d[s].rsi>70?'sell':'';
-    h+=`<div class=card ${cls} onclick="location='/chart/${s}'"><b>${s} $${d[s].price.toFixed(2)}</b><span class=score>${d[s].score}</span><br><small>RSI ${d[s].rsi}</small><br><b style=color:#ffcc00>${d[s].action}</b><br><small>${d[s].rsi<32?'+2.5% / -2% lista':''}</small></div>`;
-  }
-  document.getElementById('g').innerHTML=h; document.getElementById('ld').innerText='✅ RSI Real Millonario';
- }catch(e){ document.getElementById('ld').innerText='Reintentando...'; }
-}
-load(); setInterval(load,30000);
+async function L(){{
+ try{{
+  let r=await fetch('/api/prices'); let d=await r.json(); let h='';
+  for(let s in d){{
+   let cls=d[s].action=='COMPRAR'?'buy':d[s].action=='VENDER'?'sell':'wait';
+   let filtTxt=d[s].filt?'✅ Filtros OK':'⏸️ Esperando rebote';
+   let btn=d[s].action=='COMPRAR'?`<a href=/buy/${{s}}><button class=btn g>COMPRAR $50</button></a>`:`<a href=/chart/${{s}}><button class=btn style=background:#333;color:#fff>VER GRAFICA</button></a>`;
+   h+=`<div class=card ${{cls}} onclick="location='/chart/${{s}}'"><b>${{s}} $${{d[s].price.toFixed(2)}}</b><span class=score>${{d[s].score}}/5</span><br><small>RSI ${{d[s].rsi}} | EMA $${{d[s].ema20}}<br>BTC ${{d[s].btc_t}}% | ${{filtTxt}}</small><br><span style=background:#ffcc00;color:#000;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:bold>${{d[s].action}}</span>${{btn}}</div>`;
+  }}
+  document.getElementById('g').innerHTML=h;
+ }}catch(e){{}}
+}}
+L(); setInterval(L,25000);
 </script></body></html>"""
+
+@app.route('/buy/<sym>')
+def buy(sym):
+    sym=sym.upper()
+    if len(data['pos'])<5 and not any(p['sym']==sym for p in data['pos']):
+        rsi,price,ema20,btc_t=AN(sym)
+        data['pos'].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price,"max_price":price})
+        data['b']-=50; data['trades_hoy']+=1; save()
+    return "<script>location='/dashboard'</script>"
+
+@app.route('/sell/<sym>')
+def sell(sym):
+    sym=sym.upper()
+    for p in data['pos'][:]:
+        if p['sym']==sym:
+            price=P(sym); gan=((price-p['precio_entry'])/p['precio_entry'])*100 if p.get('precio_entry') else 0
+            data['b']+=50*(1+gan/100); data['gan_total']+=50*gan/100; data['gan_hoy']+=50*gan/100; data['pos'].remove(p); save()
+    return "<script>location='/dashboard'</script>"
 
 @app.route('/chart/<sym>')
 def chart(sym):
     sym=sym.upper()
-    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between}}</style></head><body><div class=top><b>{sym}/USDT - RSI 32/70</b><a href="/dashboard"><button style=background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold>Volver</button></a></div><div id=c></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(kl=>{{let data=kl.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(data);ch.timeScale().fitContent();}})</script></body></html>"""
+    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0}}#c{{width:100%;height:85vh}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between}}</style></head><body><div class=top><b>{sym}/USDT - Millonario V27</b><a href="/dashboard"><button style=background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold>Volver</button></a></div><div id=c></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(k=>{{let d=k.map(x=>({{time:x[0]/1000,open:+x[1],high:+x[2],low:+x[3],close:+x[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(d);ch.timeScale().fitContent();}})</script></body></html>"""
 
 @app.route('/webhook',methods=['POST'])
 def wh():
     d=request.json
     if "message" in d:
-        c=d["message"]["chat"]["id"]; t=d["message"].get("text","").upper().strip()
-        if c not in data["alert_users"]: data["alert_users"].append(c)
-        if t in data["coins"] and len(data["pos"])<5 and not any(p['sym']==t for p in data["pos"]):
-            rsi,price=AN(t); data["pos"].append({"sym":t,"monto":50,"gan":0,"precio_entry":price}); data["b"]-=50; save(); tg(c,f"✅ {t} COMPRADO ${price:.2f} RSI {rsi:.1f} | Logica +2.5%/-2%")
+        chat=d["message"]["chat"]["id"]; txt=d["message"].get("text","").upper().strip()
+        if chat not in data["alert_users"]: data["alert_users"].append(chat)
+        if txt in data["coins"]:
+            if len(data["pos"])<5 and not any(p['sym']==txt for p in data["pos"]):
+                rsi,price,ema20,btc_t=AN(txt)
+                if rsi<32 and price>ema20 and btc_t>-1.5:
+                    data["pos"].append({"sym":txt,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
+                    tg(chat,f"✅ {txt} COMPRADO ${price:.2f} RSI {rsi:.1f} | Filtros OK")
+                else:
+                    tg(chat,f"⏸️ {txt} RSI {rsi:.1f} EMA ${ema20:.1f} BTC {btc_t:.2f}% - Bloqueado para no perder")
+        if "/REPORTE" in txt:
+            total,val=totals(); tg(chat,f"📊 V27 PENSADO\nSaldo ${data['b']:.2f}\nTotal ${total:.2f}\nGan ${data['gan_total']:.2f}\nPos {len(data['pos'])}/5\nLogica 3 filtros + trailing")
+        if "/START" in txt: tg(chat,"V1002.27 MILLONARIO PENSADO\nRSI<32 + EMA20 + BTC>-1.5%\nVenta +2.5%/+3.5% -2% RSI74 trailing\n/dashboard")
         save()
     return {"ok":True}
 
 def auto_loop():
-    time.sleep(10)
+    time.sleep(5)
     while True:
         try:
             for sym in data["coins"]:
-                rsi,price=AN(sym)
-                if rsi<32 and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
-                    data["pos"].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price}); data["b"]-=50; save()
-                    for u in data["alert_users"]: tg(u,f"🤖 AUTO {sym} RSI {rsi:.1f} ${price:.2f} - Millonario")
+                rsi,price,ema20,btc_t=AN(sym)
+                for p in data["pos"]:
+                    if p['sym']==sym and price>p.get("max_price",0): p["max_price"]=price
+                if rsi<32 and price>ema20 and btc_t>-1.5 and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
+                    data["pos"].append({"sym":sym,"monto":50,"gan":0,"precio_entry":price,"max_price":price}); data["b"]-=50; data["trades_hoy"]+=1; save()
+                    for u in data["alert_users"]: tg(u,f"🤖 COMPRA PENSADA {sym} RSI {rsi:.1f} ${price:.2f} EMA OK BTC {btc_t:.2f}%")
                 for p in data["pos"][:]:
-                    if p["sym"]==sym:
+                    if p['sym']==sym:
                         gan=((price-p["precio_entry"])/p["precio_entry"])*100 if p.get("precio_entry") else 0
-                        if gan>=2.5 or gan<=-2 or rsi>=72:
-                            data["b"]+=50*(1+gan/100); data["gan_total"]+=50*gan/100; data["pos"].remove(p); save()
-                            for u in data["alert_users"]: tg(u,f"💰 VENTA {sym} {gan:.2f}% RSI {rsi:.1f}")
+                        max_gan=((p.get("max_price",price)-p["precio_entry"])/p["precio_entry"])*100
+                        take=3.5 if rsi>60 else 2.5
+                        trail=max_gan>4 and gan < max_gan-1
+                        if gan>=take or gan<=-2 or rsi>=74 or trail:
+                            data["b"]+=50*(1+gan/100); data["gan_total"]+=50*gan/100; data["gan_hoy"]+=50*gan/100; data["pos"].remove(p); save()
+                            for u in data["alert_users"]: tg(u,f"💰 VENTA {sym} {gan:.2f}% max {max_gan:.2f}% RSI {rsi:.1f}")
             time.sleep(180)
         except: time.sleep(10)
 
