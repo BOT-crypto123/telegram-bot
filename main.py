@@ -1,15 +1,17 @@
 import os, requests, threading, time
-from flask import Flask, request, send_from_directory
+from flask import Flask, request
 import telebot
 
 TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or "123456:TEST"
 NPOINT_ID = "455c95667066c8b158d0"
 ALL_COINS = ["XAUUSD","BTC","NVDA","TSLA","ETH","SOL"]
-SALDO_INICIAL = 5000
 MAX_POS = 8
 
 app = Flask(__name__)
 bot = telebot.TeleBot(TOKEN, threaded=False)
+
+# Cache de precios para nunca mostrar 0.0
+LAST_PRICE = {"XAUUSD":3350,"BTC":108500,"ETH":2650,"SOL":145,"NVDA":183.5,"TSLA":248.2}
 
 def load():
     try:
@@ -20,17 +22,28 @@ def load():
             d.setdefault("pos",[]); d.setdefault("alert_users",[]); d.setdefault("auto",True); d.setdefault("gan_total",0)
             return d
     except: pass
-    return {"b":SALDO_INICIAL,"pos":[],"alert_users":[],"auto":True,"gan_total":0}
+    return {"b":5000,"pos":[],"alert_users":[],"auto":True,"gan_total":0}
 
 data=load()
 
 def P(sym):
+    global LAST_PRICE
     try:
         mp={"XAUUSD":"PAXGUSDT","BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT"}
         if sym in mp:
-            return float(requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={mp[sym]}",timeout=4).json()["price"])
-        return {"NVDA":183.5,"TSLA":248.2}.get(sym,100)
-    except: return 0
+            r=requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={mp[sym]}",timeout=3).json()
+            price=float(r["price"])
+            if price>0: LAST_PRICE[sym]=price; return price
+    except: pass
+    # Fallback CoinGecko para crypto
+    try:
+        cg={"BTC":"bitcoin","ETH":"ethereum","SOL":"solana"}
+        if sym in cg:
+            r=requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cg[sym]}&vs_currencies=usd",timeout=4).json()
+            price=float(r[cg[sym]]["usd"])
+            if price>0: LAST_PRICE[sym]=price; return price
+    except: pass
+    return LAST_PRICE.get(sym,100)
 
 def C(sym):
     try:
@@ -72,9 +85,6 @@ def save():
     try: requests.post(f"https://api.npoint.io/{NPOINT_ID}",json=data,timeout=10)
     except: pass
 
-@app.route("/logo.png")
-def logo(): return send_from_directory(".", "logo.png")
-
 @app.route("/")
 def dash():
     tot,flot=totals()
@@ -89,103 +99,49 @@ def dash():
     coins=""
     for s in ALL_COINS:
         pr=P(s); rsi=RSI(C(s)); count=sum(1 for x in data["pos"] if x["sym"]==s)
-        c2="#ffcc00" if rsi<32 else "#444"
-        coins+=f"<div onclick=\"window.location='/chart/{s}'\" style='background:#151515;border:2px solid {c2};border-radius:14px;padding:10px;cursor:pointer'><b>{s} {count}/3</b><br>${pr:.1f}<br>RSI {rsi:.0f}<br><small style='color:#00ff88'>N1 {get_monto(1)}$</small><br><small style='font-size:9px;color:#00ccff'>GRÁFICA VIVA ►</small></div>"
-    return f"""<meta name=viewport content="width=device-width,initial-scale=1"><style>body{{background:#080808;color:#fff;font-family:Arial;padding:10px}}.card{{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}}.gold{{color:#ffcc00;font-weight:800;font-size:12px}}.big{{font-size:34px;font-weight:900}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.power{{background:linear-gradient(90deg,#ffcc00,#ff4400);color:#000;padding:5px 12px;border-radius:20px;font-weight:900;font-size:11px}}.logo{{width:110px;height:110px;border-radius:50%;border:3px solid #ffcc00;box-shadow:0 0 25px rgba(255,204,0,.4)}}</style>
-    <div class=card style=text-align:center><img src="/logo.png" class=logo><br><br><div class=gold>V36.1 PODEROSA <span class=power>🔥 LOGO + GRAFICAS VIVAS</span></div><div class=big>${tot:.2f}</div>Saldo ${data['b']:.2f} <span style='color:{col}'>Flot {flot:+.2f}$</span> Pos {len(data['pos'])}/{MAX_POS}<br><small>Bola 10% | Pirámide N1 1x N2 1.2x N3 1.5x | Trailing 3%</small></div>
-    <div class=card><div class=gold>POSICIONES - TOCA PARA VER GRÁFICA VIVA</div>{pos_html}</div>
-    <div class=card><div class=gold>6 MONEDAS - TOCA CUALQUIERA → GRÁFICA EN VIVO</div><div class=grid>{coins}</div></div>"""
+        c2="#ffcc00" if rsi<32 else "#333"
+        coins+=f"<div onclick=\"window.location='/chart/{s}'\" style='background:#151515;border:2px solid {c2};border-radius:14px;padding:10px;cursor:pointer'><b>{s} {count}/3</b><br>${pr:.1f}<br>RSI {rsi:.0f}<br><small style='color:#00ff88'>N1 {get_monto(1)}$</small><br><small style='font-size:9px;color:#00ccff'>GRAFICA VIVA ►</small></div>"
+    # LOGO EMBEBIDO EN CSS/SVG - NO NECESITA ARCHIVO
+    return f"""<meta name=viewport content="width=device-width,initial-scale=1"><style>body{{background:#080808;color:#fff;font-family:Arial;padding:10px}}.card{{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}}.gold{{color:#ffcc00;font-weight:800;font-size:12px}}.big{{font-size:34px;font-weight:900}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.power{{background:linear-gradient(90deg,#ffcc00,#ff4400);color:#000;padding:5px 12px;border-radius:20px;font-weight:900;font-size:11px}}.logo-wrap{{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #ffe87a, #ffcc00 40%, #b89600);border:3px solid #ffcc00;display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 0 30px rgba(255,204,0,.6);font-size:48px}}</style>
+    <div class=card style=text-align:center><div class=logo-wrap>🔺</div><div style=font-size:10px;margin-top:8px;letter-spacing:2px;color:#ffcc00;font-weight:900>V36 PODEROSA 🔥</div><br><div class=gold>PIRAMIDE + TRAILING + BOLA + 24/7</div><div class=big>${tot:.2f}</div>Saldo ${data['b']:.2f} <span style='color:{col}'>Flot {flot:+.2f}$</span> Pos {len(data['pos'])}/{MAX_POS}<br><small>Bola 10% | N1 1x N2 1.2x N3 1.5x | Trailing 3% si +4%</small></div>
+    <div class=card><div class=gold>POSICIONES - TOCA PARA GRAFICA VIVA</div>{pos_html}</div>
+    <div class=card><div class=gold>6 MEJORES - MAX 3 POR MONEDA</div><div class=grid>{coins}</div></div>"""
 
 @app.route("/chart/<sym>")
 def chart(sym):
-    sym=sym.upper()
-    entry=0; nivel=1; monto=0
+    sym=sym.upper(); entry=0; nivel=1; monto=get_monto(1)
     for p in data["pos"]:
         if p["sym"]==sym: entry=p.get("precio_entry",0); nivel=p.get("nivel",1); monto=p.get("monto",0); break
-    tot,flot=totals()
-    return f"""
-<html><head><meta name=viewport content="width=device-width,initial-scale=1">
-<script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
-<style>body{{background:#080808;color:#fff;margin:0;font-family:Arial}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #ffcc00}}.live{{background:#00ff88;color:#000;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:900;animation:blink 1s infinite}} @keyframes blink{{0%{{opacity:1}}50%{{opacity:.3}}100%{{opacity:1}}}} #info{{padding:10px;background:#151515;display:flex;gap:12px;overflow:auto}}.box{{background:#222;padding:8px 12px;border-radius:10px;white-space:nowrap}} button{{background:#ffcc00;padding:8px 14px;border:none;border-radius:8px;font-weight:800}}</style>
-</head><body>
+    tot,_=totals()
+    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>body{{background:#080808;color:#fff;margin:0;font-family:Arial}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #ffcc00}}.live{{background:#00ff88;color:#000;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:900;animation:blink 1s infinite}} @keyframes blink{{0%{{opacity:1}}50%{{opacity:.3}}100%{{opacity:1}}}} #info{{padding:10px;background:#151515;display:flex;gap:12px;overflow:auto}}.box{{background:#222;padding:8px 12px;border-radius:10px;white-space:nowrap}} button{{background:#ffcc00;padding:8px 14px;border:none;border-radius:8px;font-weight:800}}</style></head><body>
 <div class=top><div><b>{sym} V36.1</b> <span class=live>● VIVO</span><br><small style=color:#00ff88>Entrada ${entry:.2f} N{nivel} ${monto}</small></div><a href="/"><button>Volver</button></a></div>
-<div id=info>
-<div class=box>Precio: <b id=pv>--</b></div>
-<div class=box>RSI: <b id=rsi>--</b></div>
-<div class=box>Ganancia: <b id=gan>--</b></div>
-<div class=box>Total: <b>${tot:.2f}</b></div>
-</div>
+<div id=info><div class=box>Precio: <b id=pv>--</b></div><div class=box>RSI: <b id=rsi>--</b></div><div class=box>Gan: <b id=gan>--</b></div><div class=box>Total: <b>${tot:.2f}</b></div></div>
 <div id=chart style=width:100%;height:75vh></div>
 <script>
-const SYM="{sym}"; const ENTRY={entry};
+const SYM="{sym}"; const ENTRY={entry}; const MONTO={monto};
 const map={{'XAUUSD':'PAXGUSDT','BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT'}};
 const binSym=map[SYM]||'BTCUSDT';
-let chart, candleSeries, entryLine, lastCandle;
-
+let chart, candleSeries, lastCandle;
 async function init(){{
- const chartEl=document.getElementById('chart');
- chart=LightweightCharts.createChart(chartEl,{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}},crosshair:{{mode:1}}}});
+ chart=LightweightCharts.createChart(document.getElementById('chart'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}},crosshair:{{mode:1}}}});
  candleSeries=chart.addCandlestickSeries({{upColor:'#00ff88',downColor:'#ff4444',wickUpColor:'#00ff88',wickDownColor:'#ff4444'}});
-
- // Carga inicial 150 velas
  let r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${{binSym}}&interval=1m&limit=150`);
  let kl=await r.json();
  let data=kl.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));
- candleSeries.setData(data);
- lastCandle=data[data.length-1];
-
- if(ENTRY>0){{
-   entryLine=chart.addLineSeries({{color:'#00ff88',lineWidth:2,lineStyle:2,priceLineVisible:true}});
-   entryLine.setData(data.map(x=>({{time:x.time,value:ENTRY}})));
- }}
- chart.timeScale().fitContent();
- updateInfo();
- // Loop vivo cada 3 seg
- setInterval(updateLive, 3000);
+ candleSeries.setData(data); lastCandle=data[data.length-1];
+ if(ENTRY>0){{ let l=chart.addLineSeries({{color:'#00ff88',lineWidth:2,lineStyle:2}}); l.setData(data.map(x=>({{time:x.time,value:ENTRY}}))) }}
+ chart.timeScale().fitContent(); setInterval(updateLive,3000); updateInfo();
 }}
-
 async function updateLive(){{
- try{{
-   let r=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${{binSym}}`);
-   let p=+(await r.json()).price;
-   let now=Math.floor(Date.now()/1000);
-   // actualiza ultima vela en vivo
-   if(lastCandle){{
-     let newC={{time:now,open:lastCandle.close,high:Math.max(lastCandle.high,p),low:Math.min(lastCandle.low,p),close:p}};
-     if(now - lastCandle.time < 60){{ // misma vela minuto
-       candleSeries.update(newC);
-     }} else {{
-       candleSeries.update(newC);
-       lastCandle=newC;
-     }}
-   }}
+ try{{ let r=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${{binSym}}`); let p=+(await r.json()).price; let now=Math.floor(Date.now()/1000);
+   let newC={{time:now,open:lastCandle.close,high:Math.max(lastCandle.high,p),low:Math.min(lastCandle.low,p),close:p}};
+   candleSeries.update(newC); if(now-lastCandle.time>=60) lastCandle=newC;
    document.getElementById('pv').innerText='$'+p.toFixed(2);
-   if(ENTRY>0){{
-     let pct=((p-ENTRY)/ENTRY*100).toFixed(2);
-     let gan=({monto if monto>0 else 500} * (p-ENTRY)/ENTRY).toFixed(2);
-     document.getElementById('gan').innerText=pct+'% $'+gan;
-     document.getElementById('gan').style.color=p>=ENTRY?'#00ff88':'#ff4444';
-   }}
+   if(ENTRY>0){{ let pct=((p-ENTRY)/ENTRY*100).toFixed(2); let gan=(MONTO*(p-ENTRY)/ENTRY).toFixed(2); let el=document.getElementById('gan'); el.innerText=pct+'% $'+gan; el.style.color=p>=ENTRY?'#00ff88':'#ff4444'; }}
  }}catch(e){{}}
 }}
-
-async function updateInfo(){{
- try{{
-   let r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${{binSym}}&interval=1h&limit=20`);
-   let kl=await r.json();
-   let closes=kl.map(x=>+x[4]);
-   // RSI simple
-   let g=0,l=0;
-   for(let i=1;i<15;i++){{
-     let d=closes[closes.length-i]-closes[closes.length-i-1];
-     if(d>0) g+=d; else l+=-d;
-   }}
-   let rs=g/(l||1);
-   let rsi=100-(100/(1+rs));
-   document.getElementById('rsi').innerText=rsi.toFixed(0);
- }}catch(e){{}}
-}}
-
+async function updateInfo(){{ try{{ let r=await fetch(`https://api.binance.com/api/v3/klines?symbol=${{binSym}}&interval=1h&limit=20`); let kl=await r.json(); let closes=kl.map(x=>+x[4]); let g=0,l=0; for(let i=1;i<15;i++){{ let d=closes[closes.length-i]-closes[closes.length-i-1]; if(d>0) g+=d; else l+=-d; }} let rsi=100-(100/(1+g/(l||1))); document.getElementById('rsi').innerText=rsi.toFixed(0); }}catch(e){{}} }}
 init();
 </script></body></html>"""
 
@@ -198,28 +154,26 @@ def webhook():
 def h(m):
     txt=(m.text or "").upper().strip(); uid=m.chat.id
     if uid not in data["alert_users"]: data["alert_users"].append(uid)
-    if "RESET5K" in txt:
-        data["b"]=5000; data["pos"]=[]; save(); bot.send_message(uid,"✅ V36.1 RESET $5000 LOGO+GRAFICA VIVA 24/7")
+    if "RESET5K" in txt: data["b"]=5000; data["pos"]=[]; save(); bot.send_message(uid,"✅ V36.1 $5000 6 MEJORES + GRAFICA VIVA + 24/7 ON")
     elif any(k in txt for k in ["DASH","BALANCE","SALDO","START","HOLA"]):
-        tot,flot=totals(); bot.send_message(uid,f"V36.1 PODEROSA 🔥 LOGO+VIVA\nhttps://telegram-bot-cijp.onrender.com\nTotal ${tot:.2f} Saldo ${data['b']:.2f} Flot {flot:+.2f}$\nPos {len(data['pos'])}/{MAX_POS}\nN1 ${get_monto(1)} N2 ${get_monto(2)} N3 ${get_monto(3)}\nToca moneda para grafica viva")
+        tot,flot=totals(); bot.send_message(uid,f"V36.1 🔥\nhttps://telegram-bot-cijp.onrender.com\nTotal ${tot:.2f} Saldo ${data['b']:.2f} Flot {flot:+.2f}$\nPos {len(data['pos'])}/{MAX_POS}\nN1 ${get_monto(1)} N2 ${get_monto(2)} N3 ${get_monto(3)}")
     elif txt in ALL_COINS:
         if len(data["pos"])>=MAX_POS: bot.send_message(uid,"❌ Lleno 8/8")
         else:
             nivel=sum(1 for x in data["pos"] if x["sym"]==txt)+1
-            if nivel>3: bot.send_message(uid,f"❌ {txt} ya 3/3 niveles")
+            if nivel>3: bot.send_message(uid,f"❌ {txt} ya 3/3")
             else:
                 monto=get_monto(nivel)
-                if data["b"]<monto: bot.send_message(uid,f"❌ Saldo ${data['b']:.2f} necesita ${monto} N{nivel}")
+                if data["b"]<monto: bot.send_message(uid,f"❌ Saldo ${data['b']:.2f} necesita ${monto}")
                 else:
-                    pr=P(txt); data["pos"].append({"sym":txt,"monto":monto,"precio_entry":pr,"gan":0,"max_price":pr,"nivel":nivel}); data["b"]-=monto; save(); bot.send_message(uid,f"✅ V36.1 N{nivel} {txt} ${pr:.2f} x ${monto}\nGrafica viva: https://telegram-bot-cijp.onrender.com/chart/{txt}")
-    elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"V36.1 AUTO ON 🔥")
+                    pr=P(txt); data["pos"].append({"sym":txt,"monto":monto,"precio_entry":pr,"gan":0,"max_price":pr,"nivel":nivel}); data["b"]-=monto; save(); bot.send_message(uid,f"✅ N{nivel} {txt} ${pr:.2f} x ${monto}\nhttps://telegram-bot-cijp.onrender.com/chart/{txt}")
+    elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"AUTO ON 🔥")
     elif "AUTO OFF" in txt: data["auto"]=False; save(); bot.send_message(uid,"AUTO OFF")
 
 def auto_loop():
     while True:
         try:
             if data.get("auto"):
-                tot,flot=totals()
                 for p in list(data["pos"]):
                     pr=P(p["sym"])
                     if pr==0: continue
@@ -227,7 +181,7 @@ def auto_loop():
                     max_p=p.get("max_price",pr)
                     if pct>4 and pr < max_p*0.97:
                         gan=((pr-p["precio_entry"])/p["precio_entry"])*p["monto"]
-                        data["b"]+=p["monto"]+gan; data["gan_total"]+=gan; data["pos"].remove(p); save()
+                        data["b"]+=p["monto"]+gan; data["pos"].remove(p); save()
                         for uid in data["alert_users"]:
                             try: bot.send_message(uid,f"💰 TRAILING VIVO {p['sym']} N{p.get('nivel',1)} +{pct:.1f}% Gan ${gan:.2f}")
                             except: pass
