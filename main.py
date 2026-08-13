@@ -89,12 +89,96 @@ def save():
 
 @app.route("/")
 def dash():
-    return """<meta name=viewport content="width=device-width,initial-scale=1"><style>body{background:#080808;color:#fff;font-family:Arial;padding:10px;margin:0}.card{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}.gold{color:#ffcc00;font-weight:800;font-size:11px}.big{font-size:38px;font-weight:900}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.coin{background:#151515;border:2px solid #333;border-radius:16px;padding:12px;text-align:center;cursor:pointer}.coin.hot{border-color:#ffcc00;background:#1a1a00}.pos{padding:14px;background:#151515;border-radius:12px;margin-bottom:8px;border-left:4px solid #00ff88;cursor:pointer;display:flex;justify-content:space-between}.logo{width:80px;height:80px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #ffe87a, #ffcc00 40%, #b89600);border:3px solid #ffcc00;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:28px;font-weight:900;color:#000}</style><div class=card style=text-align:center;border:2px solid #ffcc00><div class=logo>$$</div><div style=font-size:11px;margin-top:10px;color:#ffcc00;font-weight:900>MAQUINA DE HACER DINERO V38.3 FINAL</div><div style=font-size:9px;color:#00ff88>● NO SE CAE + NO BORRA + BOLA DE NIEVE + COMISIONES + VIVA</div><div class=gold style=margin-top:12px>V34 CONCENTRADO BOLA 15%</div><div class=big id=total>$----</div><div style=display:flex;justify-content:space-around;margin-top:10px;font-size:13px><div>Saldo<br><b id=saldo>$----</b></div><div>Flot NETO<br><b id=flot>----</b></div><div>Pos<br><b id=poscount>0/8</b></div></div><div style=margin-top:10px;font-size:10px'><div>Hist NETO <b id=hist style=color:#00ff88>$0</b> | Com <b id=com style=color:#ff4444>$0</b></div><div style=color:#aaa'>Bola N1 $500 N2 $750 | STOP -15% | +1.5% = Neto +0.9%</div><div style=color:#00ff88;font-weight:800'>TODO NETO YA MENOS 0.6%</div></div></div><div class=card><div class=gold>🔥 POSICIONES NETO - TOCA GRAFICA VIVA</div><div id=poslist style=margin-top:10px>Cargando...</div></div><div class=card><div class=gold>📊 MERCADO - TOCA GRAFICA VIVA 1M</div><div class=grid style=margin-top:10px><div class=coin id=c-BTC onclick="location='/chart/BTC'"><b>BTC</b><br><span id=p-BTC>$--</span><br><small>RSI <span id=r-BTC>--</span></small></div><div class=coin id=c-ETH onclick="location='/chart/ETH'"><b>ETH</b><br><span id=p-ETH>$--</span><br><small>RSI <span id=r-ETH>--</span></small></div><div class=coin id=c-SOL onclick="location='/chart/SOL'"><b>SOL</b><br><span id=p-SOL>$--</span><br><small>RSI <span id=r-SOL>--</span></small></div><div class=coin id=c-XAUUSD onclick="location='/chart/XAUUSD'"><b>XAUUSD</b><br><span id=p-XAUUSD>$--</span><br><small>RSI <span id=r-XAUUSD>--</span></small></div><div class=coin id=c-NVDA onclick="location='/chart/NVDA'"><b>NVDA</b><br><span id=p-NVDA>$--</span></div><div class=coin id=c-TSLA onclick="location='/chart/TSLA'"><b>TSLA</b><br><span id=p-TSLA>$--</span></div></div></div><script>async function loadDash(){try{let r=await fetch('https://api.npoint.io/455c95667066c8b158d0');let d=await r.json();let b=d.b||5000;let pos=d.pos||[];document.getElementById('saldo').innerText='$'+b.toFixed(2);document.getElementById('hist').innerText='$'+(d.gan_total||0).toFixed(2);document.getElementById('com').innerText='$'+(d.com_total||0).toFixed(2);document.getElementById('poscount').innerText=pos.length+'/8';let flot=0;let html='';for(let p of pos){let sym=p.sym;let entry=p.precio_entry;let monto=p.monto;let live=entry;try{let mp={'XAUUSD':'PAXGUSDT','BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT'};if(mp[sym]){let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${mp[sym]}`).then(x=>x.json());live=parseFloat(pr.price);}}catch(e){live=entry;}if(Math.abs(live-entry)/entry>0.25)live=entry;let bruto=monto*(live-entry)/entry;let neto=bruto-monto*0.003-live/entry*monto*0.003;flot+=neto;let color=neto>=0?'#00ff88':'#ff4444';let pct=(live-entry)/entry*100;html+=`<div class=pos style='border-left-color:${color}' onclick="location='/chart/${sym}'"><div><b>${sym} N${p.nivel||1} $${monto}</b><br><small>$${entry.toFixed(2)}→$${live.toFixed(2)} ${pct.toFixed(1)}%</small><br><small>Bruto $${bruto.toFixed(2)} -Com $${(monto*0.003+live/entry*monto*0.003).toFixed(2)} = <b style='color:${color}'>NETO $${neto.toFixed(2)}</b></small><br><small style='color:#00ccff'>📈 VIVA ►</small></div><div style='color:${color};font-weight:900'>${neto.toFixed(2)}$<br><small style='font-size:9px'>NETO</small></div></div>`;}if(pos.length==0)html="<div style='padding:25px;text-align:center;opacity:.6;border:2px dashed #333;border-radius:14px'>🔥 V38.3 LISTA<br>Bola N1 $500 N2 $750<br>RSI<45<br>AUTO ON<br>NETO REAL</div>";document.getElementById('poslist').innerHTML=html;document.getElementById('total').innerText='$'+(b+flot).toFixed(2);document.getElementById('flot').innerText=(flot>=0?'+':'')+flot.toFixed(2)+'$';document.getElementById('flot').style.color=flot>=0?'#00ff88':'#ff4444';}catch(e){}}async function loadPrices(){const map={'BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT','XAUUSD':'PAXGUSDT'};for(let s in map){try{let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${map[s]}`).then(x=>x.json());document.getElementById('p-'+s).innerText='$'+parseFloat(pr.price).toFixed(1);let kl=await fetch(`https://api.binance.com/api/v3/klines?symbol=${map[s]}&interval=1h&limit=20`).then(x=>x.json());let closes=kl.map(x=>+x[4]);let g=0,l=0;for(let i=1;i<15;i++){let d=closes[closes.length-i]-closes[closes.length-i-1];if(d>0)g+=d;else l+=-d;}let rsi=100-(100/(1+g/(l||1)));let re=document.getElementById('r-'+s);if(re){re.innerText=rsi.toFixed(0);if(rsi<45)document.getElementById('c-'+s).classList.add('hot');}}catch(e){}}}loadDash();loadPrices();setInterval(loadDash,10000);setInterval(loadPrices,15000);</script>"""
+    return """<meta name=viewport content="width=device-width,initial-scale=1"><style>body{background:#080808;color:#fff;font-family:Arial;padding:10px;margin:0}.card{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}.gold{color:#ffcc00;font-weight:800;font-size:11px}.big{font-size:38px;font-weight:900}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.coin{background:#151515;border:2px solid #333;border-radius:16px;padding:12px;text-align:center;cursor:pointer}.coin.hot{border-color:#ffcc00;background:#1a1a00}.pos{padding:14px;background:#151515;border-radius:12px;margin-bottom:8px;border-left:4px solid #00ff88;cursor:pointer;display:flex;justify-content:space-between}.logo{width:80px;height:80px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #ffe87a, #ffcc00 40%, #b89600);border:3px solid #ffcc00;display:flex;align-items:center;justify-content:center;margin:0 auto;font-size:28px;font-weight:900;color:#000}</style><div class=card style=text-align:center;border:2px solid #ffcc00><div class=logo>$$</div><div style=font-size:11px;margin-top:10px;color:#ffcc00;font-weight:900>MAQUINA DE HACER DINERO V38.4 FINAL</div><div style=font-size:9px;color:#00ff88>● V34 CONCENTRADO + LINEAS VIVAS + NETO</div><div class=gold style=margin-top:12px>V34 $5029 + BOLA 15% + COM 0.6%</div><div class=big id=total>$----</div><div style=display:flex;justify-content:space-around;margin-top:10px;font-size:13px><div>Saldo<br><b id=saldo>$----</b></div><div>Flot NETO<br><b id=flot>----</b></div><div>Pos<br><b id=poscount>0/8</b></div></div><div style=margin-top:10px;font-size:10px'><div>Hist NETO <b id=hist style=color:#00ff88>$0</b> | Com <b id=com style=color:#ff4444>$0</b></div><div style=color:#aaa'>Bola N1 $500 N2 $750 | STOP -15% | +1.5% = Neto +0.9%</div><div style=color:#00ff88;font-weight:800'>LINEAS VERDE ENTRADA AZUL TP EN GRAFICA</div></div></div><div class=card><div class=gold>🔥 POSICIONES NETO - TOCA PARA VER LINEAS VIVAS</div><div id=poslist style=margin-top:10px>Cargando...</div></div><div class=card><div class=gold>📊 MERCADO - TOCA PARA GRAFICA CON LINEAS</div><div class=grid style=margin-top:10px><div class=coin id=c-BTC onclick="location='/chart/BTC'"><b>BTC</b><br><span id=p-BTC>$--</span><br><small>RSI <span id=r-BTC>--</span></small></div><div class=coin id=c-ETH onclick="location='/chart/ETH'"><b>ETH</b><br><span id=p-ETH>$--</span><br><small>RSI <span id=r-ETH>--</span></small></div><div class=coin id=c-SOL onclick="location='/chart/SOL'"><b>SOL</b><br><span id=p-SOL>$--</span><br><small>RSI <span id=r-SOL>--</span></small></div><div class=coin id=c-XAUUSD onclick="location='/chart/XAUUSD'"><b>XAUUSD</b><br><span id=p-XAUUSD>$--</span><br><small>RSI <span id=r-XAUUSD>--</span></small></div><div class=coin id=c-NVDA onclick="location='/chart/NVDA'"><b>NVDA</b><br><span id=p-NVDA>$--</span></div><div class=coin id=c-TSLA onclick="location='/chart/TSLA'"><b>TSLA</b><br><span id=p-TSLA>$--</span></div></div></div><script>async function loadDash(){try{let r=await fetch('https://api.npoint.io/455c95667066c8b158d0');let d=await r.json();let b=d.b||5000;let pos=d.pos||[];document.getElementById('saldo').innerText='$'+b.toFixed(2);document.getElementById('hist').innerText='$'+(d.gan_total||0).toFixed(2);document.getElementById('com').innerText='$'+(d.com_total||0).toFixed(2);document.getElementById('poscount').innerText=pos.length+'/8';let flot=0;let html='';for(let p of pos){let sym=p.sym;let entry=p.precio_entry;let monto=p.monto;let live=entry;try{let mp={'XAUUSD':'PAXGUSDT','BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT'};if(mp[sym]){let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${mp[sym]}`).then(x=>x.json());live=parseFloat(pr.price);}}catch(e){live=entry;}if(Math.abs(live-entry)/entry>0.25)live=entry;let bruto=monto*(live-entry)/entry;let neto=bruto-monto*0.003-live/entry*monto*0.003;flot+=neto;let color=neto>=0?'#00ff88':'#ff4444';let pct=(live-entry)/entry*100;html+=`<div class=pos style='border-left-color:${color}' onclick="location='/chart/${sym}'"><div><b>${sym} N${p.nivel||1} $${monto}</b><br><small>$${entry.toFixed(2)}→$${live.toFixed(2)} ${pct.toFixed(1)}%</small><br><small>Bruto $${bruto.toFixed(2)} -Com $${(monto*0.003+live/entry*monto*0.003).toFixed(2)} = <b style='color:${color}'>NETO $${neto.toFixed(2)}</b></small><br><small style='color:#00ff88'>🟩 ENTRADA 🟦 TP + 📈 VIVA ►</small></div><div style='color:${color};font-weight:900'>${neto.toFixed(2)}$</div></div>`;}if(pos.length==0)html="<div style='padding:25px;text-align:center;opacity:.6;border:2px dashed #333;border-radius:14px'>🔥 V38.4 LISTA<br>Bola N1 $500 N2 $750<br>RSI<45 ABRE 4-6 HOY<br>GRAFICAS CON LINEAS VERDE/AZUL<br>NETO REAL</div>";document.getElementById('poslist').innerHTML=html;document.getElementById('total').innerText='$'+(b+flot).toFixed(2);document.getElementById('flot').innerText=(flot>=0?'+':'')+flot.toFixed(2)+'$';document.getElementById('flot').style.color=flot>=0?'#00ff88':'#ff4444';}catch(e){}}async function loadPrices(){const map={'BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT','XAUUSD':'PAXGUSDT'};for(let s in map){try{let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${map[s]}`).then(x=>x.json());document.getElementById('p-'+s).innerText='$'+parseFloat(pr.price).toFixed(1);let kl=await fetch(`https://api.binance.com/api/v3/klines?symbol=${map[s]}&interval=1h&limit=20`).then(x=>x.json());let closes=kl.map(x=>+x[4]);let g=0,l=0;for(let i=1;i<15;i++){let d=closes[closes.length-i]-closes[closes.length-i-1];if(d>0)g+=d;else l+=-d;}let rsi=100-(100/(1+g/(l||1)));let re=document.getElementById('r-'+s);if(re){re.innerText=rsi.toFixed(0);if(rsi<45)document.getElementById('c-'+s).classList.add('hot');}}catch(e){}}}loadDash();loadPrices();setInterval(loadDash,10000);setInterval(loadPrices,15000);</script>"""
 
 @app.route("/chart/<sym>")
 def chart(sym):
     sym=sym.upper()
-    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js"></script><style>body{{background:#080808;color:#fff;margin:0;font-family:Arial}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between;border-bottom:3px solid #ffcc00;position:sticky;top:0}}.live{{background:#00ff88;color:#000;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:900}} #info{{padding:10px;background:#151515;display:flex;gap:8px;overflow:auto}}.box{{background:#222;padding:8px 12px;border-radius:10px;white-space:nowrap}} button{{background:#ffcc00;padding:10px 16px;border:none;border-radius:10px;font-weight:900}}</style></head><body><div class=top><div><b>{sym}</b> <span class=live>● VIVO</span><br><small id=entryinfo>Cargando...</small></div><a href="/"><button>◀ DASH</button></a></div><div id=info><div class=box>Precio <b id=pv style=color:#ffcc00>--</b></div><div class=box>Bruto <b id=bruto>--</b></div><div class=box>NETO <b id=pnl>--</b></div><div class=box><b id=gan>--</b></div></div><div id=chart style=width:100%;height:75vh'></div><script>const SYM="{sym}";const BINMAP={{'XAUUSD':'PAXGUSDT','BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT','NVDA':'BTCUSDT','TSLA':'BTCUSDT'}};const binSym=BINMAP[SYM]||'BTCUSDT';let entry=0,monto=500;async function init(){{let d=await fetch('https://api.npoint.io/455c95667066c8b158d0').then(r=>r.json());let p=d.pos.find(x=>x.sym==SYM);if(p){{entry=p.precio_entry;monto=p.monto;document.getElementById('entryinfo').innerText='Entrada $'+entry.toFixed(2)+' x $'+monto+' N'+(p.nivel||1);}}let chart=LightweightCharts.createChart(document.getElementById('chart'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let candleSeries=chart.addCandlestickSeries({{upColor:'#00ff88',downColor:'#ff4444',borderVisible:false,wickUpColor:'#00ff88',wickDownColor:'#ff4444'}});let kl=await fetch(`https://api.binance.com/api/v3/klines?symbol=${{binSym}}&interval=1m&limit=200`).then(r=>r.json());let data=kl.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));candleSeries.setData(data);if(entry>0){{let line=chart.addLineSeries({{color:'#00ff88',lineWidth:2,lineStyle:2}});line.setData(data.map(x=>({{time:x.time,value:entry}})));let tp=chart.addLineSeries({{color:'#00ccff',lineWidth:1,lineStyle:1}});tp.setData(data.map(x=>({{time:x.time,value:entry*1.015}})));}}chart.timeScale().fitContent();let last=data[data.length-1];setInterval(async()=>{{try{{let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${{binSym}}`).then(r=>r.json());let price=+pr.price;let now=Math.floor(Date.now()/1000);let newC={{time:now,open:last.close,high:Math.max(last.high,price),low:Math.min(last.low,price),close:price}};candleSeries.update(newC);if(now-last.time>=60)last=newC;document.getElementById('pv').innerText='$'+price.toFixed(2);if(entry>0){{let pct=((price-entry)/entry*100).toFixed(2);let bruto=(monto*(price-entry)/entry);let neto=bruto-monto*0.003-price/entry*monto*0.003;document.getElementById('gan').innerText=pct+'%';document.getElementById('bruto').innerText='$'+bruto.toFixed(2);document.getElementById('pnl').innerText='$'+neto.toFixed(2);document.getElementById('pnl').style.color=neto>=0?'#00ff88':'#ff4444';}}}}catch(e){{}}}},3000);}}init();</script></body></html>"""
+    return f"""
+<html><head><meta name=viewport content="width=device-width,initial-scale=1">
+<script src="https://unpkg.com/lightweight-charts@3.8.0/dist/lightweight-charts.standalone.production.js"></script>
+<style>
+body{{background:#080808;color:#fff;margin:0;font-family:Arial}}
+.top{{padding:12px;background:#111;display:flex;justify-content:space-between;border-bottom:3px solid #ffcc00;position:sticky;top:0;z-index:10}}
+.live{{background:#00ff88;color:#000;padding:4px 10px;border-radius:12px;font-size:11px;font-weight:900;animation:blink 1s infinite}}
+@keyframes blink{{0%{{opacity:1}}50%{{opacity:.3}}}}
+#info{{padding:10px;background:#151515;display:flex;gap:8px;overflow:auto}}
+.box{{background:#222;padding:8px 12px;border-radius:10px;white-space:nowrap;font-size:12px}}
+button{{background:#ffcc00;padding:10px 16px;border:none;border-radius:10px;font-weight:900}}
+#chart{{width:100%;height:78vh}}
+</style>
+</head><body>
+<div class=top>
+<div><b>{sym}</b> <span class=live>● VIVO 1M</span><br><small id=entryinfo style=color:#ffcc00>Cargando...</small></div>
+<a href="/"><button>◀ DASH</button></a>
+</div>
+<div id=info>
+<div class=box>Precio <b id=pv style=color:#ffcc00>--</b></div>
+<div class=box>Bruto <b id=bruto>--</b></div>
+<div class=box>NETO <b id=pnl>--</b></div>
+<div class=box><b id=gan>--</b></div>
+<div class=box style=border:1px solid #00ff88>🟩 Entrada <b id=line1 style=color:#00ff88>--</b></div>
+<div class=box style=border:1px solid #00ccff>🟦 TP <b id=line2 style=color:#00ccff>--</b></div>
+</div>
+<div id=chart></div>
+<div style=padding:8px;text-align:center;font-size:10px;color:#888'>🟩 VERDE = Tu entrada | 🟦 AZUL = TP +1.5% Venta rápida | Viva cada 3 seg - NETO ya menos 0.6%</div>
+<script>
+const SYM="{sym}";
+const BINMAP={{'XAUUSD':'PAXGUSDT','BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT','NVDA':'BTCUSDT','TSLA':'BTCUSDT'}};
+let binSym=BINMAP[SYM]||'BTCUSDT';
+let entry=0,monto=500;
+async function init(){{
+  try{{
+    let d=await fetch('https://api.npoint.io/455c95667066c8b158d0').then(r=>r.json());
+    let p=d.pos.find(x=>x.sym==SYM);
+    if(p){{entry=p.precio_entry; monto=p.monto;
+      document.getElementById('entryinfo').innerText='Entrada $'+entry.toFixed(2)+' x $'+monto+' N'+(p.nivel||1);
+      document.getElementById('line1').innerText='$'+entry.toFixed(2);
+      document.getElementById('line2').innerText='$'+(entry*1.015).toFixed(2);
+    }} else {{
+      document.getElementById('entryinfo').innerText='SIN POSICION - Mercado vivo';
+    }}
+    let chart=LightweightCharts.createChart(document.getElementById('chart'),{{
+      layout:{{backgroundColor:'#080808',textColor:'#ddd'}},
+      grid:{{vertLines:{{color:'#1a1a1a'}},horzLines:{{color:'#1a1a1a'}}}},
+      width: window.innerWidth,
+      height: window.innerHeight*0.78
+    }});
+    let candleSeries=chart.addCandlestickSeries({{upColor:'#00ff88',downColor:'#ff4444',borderVisible:false,wickUpColor:'#00ff88',wickDownColor:'#ff4444'}});
+    let kl=await fetch(`https://api.binance.com/api/v3/klines?symbol=${{binSym}}&interval=1m&limit=200`).then(r=>r.json());
+    let data=kl.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));
+    candleSeries.setData(data);
+    if(entry>0){{
+      candleSeries.createPriceLine({{color:'#00ff88',price:entry,lineWidth:2,lineStyle:2,axisLabelVisible:true,title:'ENTRADA'}});
+      candleSeries.createPriceLine({{color:'#00ccff',price:entry*1.015,lineWidth:1,lineStyle:1,axisLabelVisible:true,title:'TP +1.5%'}});
+    }}
+    chart.timeScale().fitContent();
+    let last=data[data.length-1];
+    setInterval(async()=>{{
+      try{{
+        let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${{binSym}}`).then(r=>r.json());
+        let price=+pr.price;
+        let now=Math.floor(Date.now()/1000);
+        let newC={{time:now,open:last.close,high:Math.max(last.high,price),low:Math.min(last.low,price),close:price}};
+        candleSeries.update(newC);
+        if(now-last.time>=60) last=newC;
+        document.getElementById('pv').innerText='$'+price.toFixed(2);
+        if(entry>0){{
+          let pct=((price-entry)/entry*100).toFixed(2);
+          let bruto=(monto*(price-entry)/entry);
+          let neto=bruto - monto*0.003 - price/entry*monto*0.003;
+          document.getElementById('gan').innerText=pct+'%';
+          document.getElementById('bruto').innerText='$'+bruto.toFixed(2);
+          document.getElementById('pnl').innerText='$'+neto.toFixed(2);
+          document.getElementById('pnl').style.color=neto>=0?'#00ff88':'#ff4444';
+        }}
+      }}catch(e){{}}
+    }},3000);
+  }}catch(e){{ document.getElementById('entryinfo').innerText='Error, recarga'; }}
+}}
+init();
+</script></body></html>
+"""
 
 @app.route(f"/{TOKEN}", methods=["POST"])
 @app.route("/webhook", methods=["POST"])
@@ -111,11 +195,11 @@ def h(m):
     markup.row("DASHBOARD","AUTO ON","AUTO OFF")
     if "RESET5K CONFIRMAR" in txt:
         data["b"]=5000; data["pos"]=[]; data["gan_total"]=0; data["com_total"]=0; save()
-        bot.send_message(uid,"✅ V38.3 FINAL REINICIADO $5000 - BOLA + COMISIONES + NO SE CAE", reply_markup=markup); return
+        bot.send_message(uid,"✅ V38.4 FINAL $5000 - LINEAS VIVAS + BOLA + NETO", reply_markup=markup); return
     elif "RESET5K" in txt: bot.send_message(uid,"⚠️ Escribe RESET5K CONFIRMAR", reply_markup=markup); return
     if any(k in txt for k in ["DASH","BALANCE","SALDO","START","HOLA"]):
         tot,flot=totals()
-        bot.send_message(uid,f"V38.3 FINAL NETO 🔥\n💰 Total NETO ${tot:.2f}\nSaldo ${data['b']:.2f}\nFlot NETO {flot:+.2f}$\nPos {len(data['pos'])}/8\nAUTO {'ON' if data.get('auto') else 'OFF'}\nHist NETO ${data.get('gan_total',0):+.2f}\nCom ${data.get('com_total',0):.2f}\nBola $500/$750 SI\nNo se cae SI\nNo borra SI\nhttps://telegram-bot-cijp.onrender.com", reply_markup=markup)
+        bot.send_message(uid,f"V38.4 FINAL 🔥\n💰 NETO ${tot:.2f}\nSaldo ${data['b']:.2f}\nFlot NETO {flot:+.2f}$\nPos {len(data['pos'])}/8\nAUTO {'ON' if data.get('auto') else 'OFF'}\nHist NETO ${data.get('gan_total',0):+.2f}\nCom ${data.get('com_total',0):.2f}\nBola $500/$750 + Lineas SI\nhttps://telegram-bot-cijp.onrender.com", reply_markup=markup)
     elif txt in ALL_COINS:
         if len(data["pos"])>=MAX_POS: bot.send_message(uid,"❌ Lleno 8/8", reply_markup=markup)
         else:
@@ -129,8 +213,8 @@ def h(m):
                     if pr==0: bot.send_message(uid,"❌ Sin precio 5s", reply_markup=markup)
                     else:
                         data["pos"].append({"sym":txt,"monto":monto,"precio_entry":pr,"gan":0,"max_price":pr,"nivel":nivel}); data["b"]-=monto; save()
-                        bot.send_message(uid,f"✅ BOLA N{nivel} {txt} ${pr:.2f} x ${monto}\nCom ${monto*COMISION:.2f}\nhttps://telegram-bot-cijp.onrender.com/chart/{txt}", reply_markup=markup)
-    elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"AUTO V38.3 ON 🔥 BOLA $500/$750", reply_markup=markup)
+                        bot.send_message(uid,f"✅ BOLA N{nivel} {txt} ${pr:.2f} x ${monto}\n🟩 Entrada ${pr:.2f}\n🟦 TP ${pr*1.015:.2f}\nhttps://telegram-bot-cijp.onrender.com/chart/{txt}", reply_markup=markup)
+    elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"AUTO V38.4 ON 🔥 LINEAS + BOLA", reply_markup=markup)
     elif "AUTO OFF" in txt: data["auto"]=False; save(); bot.send_message(uid,"AUTO OFF", reply_markup=markup)
 
 def auto_loop():
@@ -188,7 +272,7 @@ def resumen_diario():
                 today_str=now_mex.strftime("%Y-%m-%d")
                 if last_report_date!=today_str:
                     tot,flot=totals()
-                    texto=f"📊 V38.3 FINAL - 10PM\n📅 {now_mex.strftime('%d/%m/%Y')}\n💰 TOTAL NETO: ${tot:.2f}\nSaldo: ${data['b']:.2f}\nFlot NETO: {flot:+.2f}$\nHist NETO: ${data.get('gan_total',0):+.2f}\nCom: ${data.get('com_total',0):.2f}\nPos: {len(data['pos'])}/8 - BOLA ON\n"
+                    texto=f"📊 V38.4 FINAL - 10PM\n📅 {now_mex.strftime('%d/%m/%Y')}\n💰 TOTAL NETO: ${tot:.2f}\nSaldo: ${data['b']:.2f}\nFlot NETO: {flot:+.2f}$\nHist NETO: ${data.get('gan_total',0):+.2f}\nCom: ${data.get('com_total',0):.2f}\nPos: {len(data['pos'])}/8 BOLA ON\n"
                     for p in data["pos"]:
                         pr=P(p["sym"]);
                         if pr==0: pr=p["precio_entry"]
