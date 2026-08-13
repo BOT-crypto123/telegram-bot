@@ -3,3 +3,5 @@ pyTelegramBotAPI
 yfinance
 matplotlib
 pytz
+pandas
+requests
