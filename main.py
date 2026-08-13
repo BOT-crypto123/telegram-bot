@@ -105,7 +105,7 @@ def dash():
         c2="#ffcc00" if rsi<32 else "#333"
         coins+=f"<div onclick=\"window.location='/chart/{s}'\" style='background:#151515;border:2px solid {c2};border-radius:14px;padding:10px;cursor:pointer'><b>{s} {count}/3</b><br>${pr:.1f}<br>RSI {rsi:.0f}<br><small style='color:#00ff88'>N1 {get_monto(1)}$</small><br><small style='font-size:9px;color:#00ccff'>GRAFICA VIVA ►</small></div>"
     return f"""<meta name=viewport content="width=device-width,initial-scale=1"><style>body{{background:#080808;color:#fff;font-family:Arial;padding:10px}}.card{{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}}.gold{{color:#ffcc00;font-weight:800;font-size:12px}}.big{{font-size:34px;font-weight:900}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.logo-wrap{{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #ffe87a, #ffcc00 40%, #b89600);border:3px solid #ffcc00;display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 0 30px rgba(255,204,0,.6);font-size:48px}}</style>
-    <div class=card style=text-align:center><div class=logo-wrap>🔺</div><div style=font-size:10px;margin-top:8px;letter-spacing:2px;color:#ffcc00;font-weight:900>V36.5 DEMO MIL X MIL 🔥</div><br><div class=gold>PIRAMIDE + TRAILING + STOP -15% + 10PM RESUMEN</div><div class=big>${tot:.2f}</div>Saldo ${data['b']:.2f} <span style='color:{col}'>Flot {flot:+.2f}$</span> Pos {len(data['pos'])}/{MAX_POS}<br><small>Bola 10% | N1 1x N2 1.2x N3 1.5x | Trailing 3% si +4%</small></div>
+    <div class=card style=text-align:center><div class=logo-wrap>🔺</div><div style=font-size:10px;margin-top:8px;letter-spacing:2px;color:#ffcc00;font-weight:900>V36.6 MAQUINA DE HACER DINERO 🔥</div><br><div class=gold>PIRAMIDE + TRAILING + STOP -15% + RESUMEN 10PM</div><div class=big>${tot:.2f}</div>Saldo ${data['b']:.2f} <span style='color:{col}'>Flot {flot:+.2f}$</span> Pos {len(data['pos'])}/{MAX_POS}<br><small>Bola 10% | N1 1x N2 1.2x N3 1.5x | Trailing 3% si +4%</small></div>
     <div class=card><div class=gold>POSICIONES - TOCA PARA GRAFICA VIVA</div>{pos_html}</div>
     <div class=card><div class=gold>6 MEJORES - MAX 3 POR MONEDA</div><div class=grid>{coins}</div></div>"""
 
@@ -117,7 +117,7 @@ def chart(sym):
     tot,_=totals()
     return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script>
 <style>body{{background:#080808;color:#fff;margin:0;font-family:Arial}}.top{{padding:12px;background:#111;display:flex;justify-content:space-between;align-items:center;border-bottom:2px solid #ffcc00}}.live{{background:#00ff88;color:#000;padding:3px 8px;border-radius:12px;font-size:10px;font-weight:900;animation:blink 1s infinite}} @keyframes blink{{0%{{opacity:1}}50%{{opacity:.3}}100%{{opacity:1}}}} #info{{padding:10px;background:#151515;display:flex;gap:12px;overflow:auto}}.box{{background:#222;padding:8px 12px;border-radius:10px;white-space:nowrap}} button{{background:#ffcc00;padding:8px 14px;border:none;border-radius:8px;font-weight:800}}</style></head><body>
-<div class=top><div><b>{sym} V36.5</b> <span class=live>● VIVO</span><br><small style=color:#00ff88>Entrada ${entry:.2f} N{nivel} ${monto}</small></div><a href="/"><button>Volver</button></a></div>
+<div class=top><div><b>{sym} V36.6</b> <span class=live>● VIVO</span><br><small style=color:#00ff88>Entrada ${entry:.2f} N{nivel} ${monto}</small></div><a href="/"><button>Volver</button></a></div>
 <div id=info><div class=box>Precio: <b id=pv>--</b></div><div class=box>RSI: <b id=rsi>--</b></div><div class=box>Gan: <b id=gan>--</b></div><div class=box>Total: <b>${tot:.2f}</b></div></div>
 <div id=chart style=width:100%;height:75vh></div>
 <script>
@@ -160,13 +160,18 @@ def h(m):
     markup.row("BTC","ETH","SOL")
     markup.row("XAUUSD","NVDA","TSLA")
     markup.row("DASHBOARD","AUTO ON","AUTO OFF")
-    markup.row("RESET5K")
-    if "RESET5K" in txt:
+
+    if "RESET5K CONFIRMAR" in txt:
         data["b"]=5000; data["pos"]=[]; data["gan_total"]=0; save()
-        bot.send_message(uid,"✅ DEMO $5000 REINICIADO MIL X MIL", reply_markup=markup)
-    elif any(k in txt for k in ["DASH","BALANCE","SALDO","START","HOLA"]):
+        bot.send_message(uid,"✅ DEMO $5000 REINICIADO", reply_markup=markup)
+        return
+    elif "RESET5K" in txt:
+        bot.send_message(uid,"⚠️ Para reset escribe: RESET5K CONFIRMAR", reply_markup=markup)
+        return
+
+    if any(k in txt for k in ["DASH","BALANCE","SALDO","START","HOLA"]):
         tot,flot=totals()
-        bot.send_message(uid,f"V36.5 DEMO MIL X MIL 🔥\n💰 Total ${tot:.2f}\nSaldo ${data['b']:.2f} Flot {flot:+.2f}$\nPos {len(data['pos'])}/{MAX_POS}\nAUTO {'ON 🔥' if data.get('auto') else 'OFF'}\nGan Hist ${data.get('gan_total',0):.2f}\nN1 ${get_monto(1)} N2 ${get_monto(2)} N3 ${get_monto(3)}\nResumen 10pm ON\n\nhttps://telegram-bot-cijp.onrender.com", reply_markup=markup)
+        bot.send_message(uid,f"V36.6 MAQUINA DE HACER DINERO 🔥\n💰 Total ${tot:.2f}\nSaldo ${data['b']:.2f} Flot {flot:+.2f}$\nPos {len(data['pos'])}/{MAX_POS}\nAUTO {'ON 🔥' if data.get('auto') else 'OFF'}\nGan Hist ${data.get('gan_total',0):.2f}\nN1 ${get_monto(1)} N2 ${get_monto(2)} N3 ${get_monto(3)}\nResumen 10pm ON\n\nhttps://telegram-bot-cijp.onrender.com", reply_markup=markup)
     elif txt in ALL_COINS:
         if len(data["pos"])>=MAX_POS: bot.send_message(uid,"❌ Lleno 8/8", reply_markup=markup)
         else:
@@ -179,7 +184,7 @@ def h(m):
                     pr=P(txt); data["pos"].append({"sym":txt,"monto":monto,"precio_entry":pr,"gan":0,"max_price":pr,"nivel":nivel}); data["b"]-=monto; save()
                     bot.send_message(uid,f"✅ N{nivel} {txt} ${pr:.2f} x ${monto}\nhttps://telegram-bot-cijp.onrender.com/chart/{txt}", reply_markup=markup)
     elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"AUTO ON 🔥 24/7 + RESUMEN 10PM ON", reply_markup=markup)
-    elif "AUTO OFF" in txt: data["auto"]=False; save(); bot.send_message(uid,"AUTO OFF - SOLO MANUAL + RESUMEN 10PM sigue", reply_markup=markup)
+    elif "AUTO OFF" in txt: data["auto"]=False; save(); bot.send_message(uid,"AUTO OFF - SOLO MANUAL", reply_markup=markup)
 
 def auto_loop():
     while True:
@@ -235,7 +240,7 @@ def resumen_diario():
                 if last_report_date!= today_str:
                     tot, flot = totals()
                     gan_hist = data.get("gan_total",0)
-                    texto = f"📊 RESUMEN DIARIO V36.5 - 10PM\n📅 {now_mex.strftime('%d/%m/%Y %H:%M')} Nogales\n\n💰 TOTAL: ${tot:.2f}\n💵 Saldo: ${data['b']:.2f}\n📈 Flotante: {flot:+.2f}$\n🏆 Gan Hist: ${gan_hist:+.2f}\n📌 Pos: {len(data['pos'])}/{MAX_POS}\n🤖 AUTO: {'ON 🔥' if data.get('auto') else 'OFF'}\n\n"
+                    texto = f"📊 RESUMEN DIARIO - 10PM\n📅 {now_mex.strftime('%d/%m/%Y %H:%M')} Nogales\n\n💰 TOTAL: ${tot:.2f}\n💵 Saldo: ${data['b']:.2f}\n📈 Flotante: {flot:+.2f}$\n🏆 Gan Hist: ${gan_hist:+.2f}\n📌 Pos: {len(data['pos'])}/{MAX_POS}\n🤖 AUTO: {'ON 🔥' if data.get('auto') else 'OFF'}\n\n"
                     if len(data["pos"]) > 0:
                         texto += "🔹 ENTRADAS ABIERTAS:\n"
                         for p in data["pos"]:
