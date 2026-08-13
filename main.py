@@ -14,18 +14,24 @@ bot = telebot.TeleBot(TOKEN, threaded=False)
 LAST_PRICE = {"XAUUSD":3350,"BTC":63566,"ETH":2650,"SOL":145,"NVDA":183.5,"TSLA":248.2}
 last_report_date = ""
 
+def ny_open():
+    # Sin libreria extra, hora Nogales = UTC-6, NY = UTC-4 (verano) = +2 horas
+    # NY abre 9:30-16:00 = Tu hora 7:30-14:00 (Nogales) en verano
+    now = datetime.utcnow() - timedelta(hours=6) # tu hora Nogales
+    if now.weekday() >= 5: return False
+    # 7:30 a 14:00 tu hora = 9:30 a 16:00 NY
+    total_min = now.hour*60 + now.minute
+    return 450 <= total_min <= 840
+
 def load():
     try:
         r=requests.get(f"https://api.npoint.io/{NPOINT_ID}",timeout=10)
         if r.status_code==200:
             d=r.json()
-            # FIX BUG $1982 - SI ESTA TRABADO EN $2000 CON 6 POS, AUTO RESET A $5000
-            b = d.get("b",0)
-            pos_len = len(d.get("pos",[]))
+            b=d.get("b",0); pos_len=len(d.get("pos",[]))
             if b < 2500 and pos_len >= 4:
                 return {"b":5000,"pos":[],"alert_users":d.get("alert_users",[]),"auto":True,"gan_total":0,"com_total":0}
-            if b < 100:
-                d["b"]=5000
+            if b < 100: d["b"]=5000
             d.setdefault("pos",[]); d.setdefault("alert_users",[]); d.setdefault("auto",True); d.setdefault("gan_total",0); d.setdefault("com_total",0)
             return d
     except: pass
@@ -67,7 +73,7 @@ def C(sym):
     except: return []
 
 def RSI(a):
-    if len(a)<15: return 40
+    if len(a)<20: return 60
     g=l=0
     for i in range(1,15):
         d=a[-i]-a[-i-1]
@@ -96,7 +102,7 @@ def save():
 
 @app.route("/")
 def dash():
-    return """<meta name=viewport content="width=device-width,initial-scale=1"><style>body{background:#080808;color:#fff;font-family:Arial;padding:10px;margin:0}.card{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}.gold{color:#ffcc00;font-weight:800;font-size:11px}.big{font-size:38px;font-weight:900}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.coin{background:#151515;border:2px solid #333;border-radius:16px;padding:12px;text-align:center;cursor:pointer}.coin.hot{border-color:#ffcc00;background:#1a1a00}.pos{padding:14px;background:#151515;border-radius:12px;margin-bottom:8px;border-left:4px solid #00ff88;cursor:pointer;display:flex;justify-content:space-between}</style><div class=card style=text-align:center;border:2px solid #ffcc00><div style=font-size:28px'>💰</div><div style=font-size:11px;margin-top:6px;color:#ffcc00;font-weight:900>MAQUINA V38.5 DEFINITIVO 6POS</div><div style=font-size:9px;color:#00ff88>● FIX $1982 BUG + LINEAS + BOLA + NETO</div><div class=big id=total>$----</div><div style=display:flex;justify-content:space-around;margin-top:10px;font-size:13px><div>Saldo<br><b id=saldo>$----</b></div><div>Flot NETO<br><b id=flot>----</b></div><div>Pos<br><b id=poscount>0/6</b></div></div><div style=margin-top:10px;font-size:10px'><div>Hist NETO <b id=hist style=color:#00ff88>$0</b> | Com <b id=com style=color:#ff4444>$0</b></div><div>$2000 libres siempre | Bola $500/$750 | STOP -15% | TP +1.5% Neto +0.9%</div></div></div><div class=card><div class=gold>🔥 POSICIONES - TOCA GRAFICA</div><div id=poslist></div></div><div class=card><div class=gold>📊 MERCADO</div><div class=grid style=margin-top:10px><div class=coin id=c-BTC onclick="location='/chart/BTC'"><b>BTC</b><br><span id=p-BTC>$--</span><br><small>RSI <span id=r-BTC>--</span></small></div><div class=coin id=c-ETH onclick="location='/chart/ETH'"><b>ETH</b><br><span id=p-ETH>$--</span><br><small>RSI <span id=r-ETH>--</span></small></div><div class=coin id=c-SOL onclick="location='/chart/SOL'"><b>SOL</b><br><span id=p-SOL>$--</span><br><small>RSI <span id=r-SOL>--</span></small></div><div class=coin id=c-XAUUSD onclick="location='/chart/XAUUSD'"><b>XAUUSD</b><br><span id=p-XAUUSD>$--</span><br><small>RSI <span id=r-XAUUSD>--</span></small></div><div class=coin id=c-NVDA onclick="location='/chart/NVDA'"><b>NVDA</b></div><div class=coin id=c-TSLA onclick="location='/chart/TSLA'"><b>TSLA</b></div></div></div><script>async function loadDash(){try{let r=await fetch('https://api.npoint.io/455c95667066c8b158d0');let d=await r.json();let b=d.b||5000;let pos=d.pos||[];document.getElementById('saldo').innerText='$'+b.toFixed(2);document.getElementById('hist').innerText='$'+(d.gan_total||0).toFixed(2);document.getElementById('com').innerText='$'+(d.com_total||0).toFixed(2);document.getElementById('poscount').innerText=pos.length+'/6';let flot=0;let html='';for(let p of pos){let sym=p.sym;let entry=p.precio_entry;let monto=p.monto;let live=entry;try{let mp={'XAUUSD':'PAXGUSDT','BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT'};if(mp[sym]){let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${mp[sym]}`).then(x=>x.json());live=parseFloat(pr.price);}}catch(e){live=entry;}if(Math.abs(live-entry)/entry>0.25)live=entry;let bruto=monto*(live-entry)/entry;let neto=bruto-monto*0.003-live/entry*monto*0.003;flot+=neto;let color=neto>=0?'#00ff88':'#ff4444';let pct=(live-entry)/entry*100;html+=`<div class=pos style='border-left-color:${color}' onclick="location='/chart/${sym}'"><div><b>${sym} N${p.nivel||1} $${monto}</b><br><small>$${entry.toFixed(2)}→$${live.toFixed(2)} ${pct.toFixed(1)}%</small><br><small>NETO <b style='color:${color}'>$${neto.toFixed(2)}</b> 🟩🟦</small></div><div style='color:${color};font-weight:900'>${neto.toFixed(2)}$</div></div>`;}if(pos.length==0)html="<div style='padding:25px;text-align:center;opacity:.6;border:2px dashed #333;border-radius:14px'>🔥 V38.5 LISTO<br>0/6 POS<br>$5000 limpios<br>$2000 libres para bola<br>RSI<45</div>";document.getElementById('poslist').innerHTML=html;document.getElementById('total').innerText='$'+(b+flot).toFixed(2);document.getElementById('flot').innerText=(flot>=0?'+':'')+flot.toFixed(2)+'$';}catch(e){}}async function loadPrices(){const map={'BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT','XAUUSD':'PAXGUSDT'};for(let s in map){try{let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${map[s]}`).then(x=>x.json());document.getElementById('p-'+s).innerText='$'+parseFloat(pr.price).toFixed(1);let kl=await fetch(`https://api.binance.com/api/v3/klines?symbol=${map[s]}&interval=1h&limit=20`).then(x=>x.json());let closes=kl.map(x=>+x[4]);let g=0,l=0;for(let i=1;i<15;i++){let d=closes[closes.length-i]-closes[closes.length-i-1];if(d>0)g+=d;else l+=-d;}let rsi=100-(100/(1+g/(l||1)));let re=document.getElementById('r-'+s);if(re){re.innerText=rsi.toFixed(0);if(rsi<45)document.getElementById('c-'+s).classList.add('hot');}}catch(e){}}}loadDash();loadPrices();setInterval(loadDash,10000);</script>"""
+    return """<meta name=viewport content="width=device-width,initial-scale=1"><style>body{background:#080808;color:#fff;font-family:Arial;padding:10px;margin:0}.card{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}.gold{color:#ffcc00;font-weight:800;font-size:11px}.big{font-size:38px;font-weight:900}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.coin{background:#151515;border:2px solid #333;border-radius:16px;padding:12px;text-align:center;cursor:pointer}.coin.hot{border-color:#ffcc00;background:#1a1a00}.pos{padding:14px;background:#151515;border-radius:12px;margin-bottom:8px;border-left:4px solid #00ff88;cursor:pointer;display:flex;justify-content:space-between}</style><div class=card style=text-align:center;border:2px solid #ffcc00><div style=font-size:28px'>💰</div><div style=font-size:11px;margin-top:6px;color:#ffcc00;font-weight:900>MAQUINA V38.7 HORARIO NY</div><div style=font-size:9px;color:#00ff88>● BTC/ETH/SOL/XAU 24/7 | NVDA/TSLA 7:30am-2pm Lun-Vie</div><div class=big id=total>$----</div><div style=display:flex;justify-content:space-around;margin-top:10px;font-size:13px><div>Saldo<br><b id=saldo>$----</b></div><div>Flot NETO<br><b id=flot>----</b></div><div>Pos<br><b id=poscount>0/6</b></div></div><div style=margin-top:10px;font-size:10px'><div>Hist NETO <b id=hist style=color:#00ff88>$0</b> | Com <b id=com style=color:#ff4444>$0</b></div><div>$2000 libres siempre | Bola $500/$750 | STOP -15% | TP +1.5% Neto +0.9%</div></div></div><div class=card><div class=gold>🔥 POSICIONES - TOCA GRAFICA</div><div id=poslist></div></div><div class=card><div class=gold>📊 MERCADO</div><div class=grid style=margin-top:10px><div class=coin id=c-BTC onclick="location='/chart/BTC'"><b>BTC</b><br><span id=p-BTC>$--</span><br><small>RSI <span id=r-BTC>--</span></small></div><div class=coin id=c-ETH onclick="location='/chart/ETH'"><b>ETH</b><br><span id=p-ETH>$--</span><br><small>RSI <span id=r-ETH>--</span></small></div><div class=coin id=c-SOL onclick="location='/chart/SOL'"><b>SOL</b><br><span id=p-SOL>$--</span><br><small>RSI <span id=r-SOL>--</span></small></div><div class=coin id=c-XAUUSD onclick="location='/chart/XAUUSD'"><b>XAUUSD</b><br><span id=p-XAUUSD>$--</span><br><small>RSI <span id=r-XAUUSD>--</span></small></div><div class=coin id=c-NVDA onclick="location='/chart/NVDA'"><b>NVDA</b><br><small>NY 7:30-14:00</small></div><div class=coin id=c-TSLA onclick="location='/chart/TSLA'"><b>TSLA</b><br><small>NY 7:30-14:00</small></div></div></div><script>async function loadDash(){try{let r=await fetch('https://api.npoint.io/455c95667066c8b158d0');let d=await r.json();let b=d.b||5000;let pos=d.pos||[];document.getElementById('saldo').innerText='$'+b.toFixed(2);document.getElementById('hist').innerText='$'+(d.gan_total||0).toFixed(2);document.getElementById('com').innerText='$'+(d.com_total||0).toFixed(2);document.getElementById('poscount').innerText=pos.length+'/6';let flot=0;let html='';for(let p of pos){let sym=p.sym;let entry=p.precio_entry;let monto=p.monto;let live=entry;try{let mp={'XAUUSD':'PAXGUSDT','BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT'};if(mp[sym]){let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${mp[sym]}`).then(x=>x.json());live=parseFloat(pr.price);}}catch(e){live=entry;}if(Math.abs(live-entry)/entry>0.25)live=entry;let bruto=monto*(live-entry)/entry;let neto=bruto-monto*0.003-live/entry*monto*0.003;flot+=neto;let color=neto>=0?'#00ff88':'#ff4444';let pct=(live-entry)/entry*100;html+=`<div class=pos style='border-left-color:${color}' onclick="location='/chart/${sym}'"><div><b>${sym} N${p.nivel||1} $${monto}</b><br><small>$${entry.toFixed(2)}→$${live.toFixed(2)} ${pct.toFixed(1)}%</small><br><small>NETO <b style='color:${color}'>$${neto.toFixed(2)}</b> 🟩🟦</small></div><div style='color:${color};font-weight:900'>${neto.toFixed(2)}$</div></div>`;}if(pos.length==0)html="<div style='padding:25px;text-align:center;opacity:.6;border:2px dashed #333;border-radius:14px'>🔥 V38.7 LISTO<br>0/6 POS<br>$5000 limpios<br>BTC/ETH/SOL/XAU 24/7<br>NVDA/TSLA solo 7:30-14:00 Lun-Vie</div>";document.getElementById('poslist').innerHTML=html;document.getElementById('total').innerText='$'+(b+flot).toFixed(2);document.getElementById('flot').innerText=(flot>=0?'+':'')+flot.toFixed(2)+'$';}catch(e){}}async function loadPrices(){const map={'BTC':'BTCUSDT','ETH':'ETHUSDT','SOL':'SOLUSDT','XAUUSD':'PAXGUSDT'};for(let s in map){try{let pr=await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${map[s]}`).then(x=>x.json());document.getElementById('p-'+s).innerText='$'+parseFloat(pr.price).toFixed(1);let kl=await fetch(`https://api.binance.com/api/v3/klines?symbol=${map[s]}&interval=1h&limit=20`).then(x=>x.json());let closes=kl.map(x=>+x[4]);let g=0,l=0;for(let i=1;i<15;i++){let d=closes[closes.length-i]-closes[closes.length-i-1];if(d>0)g+=d;else l+=-d;}let re=document.getElementById('r-'+s);if(re){re.innerText=(100-(100/(1+g/(l||1)))).toFixed(0);}}catch(e){}}}loadDash();loadPrices();setInterval(loadDash,10000);</script>"""
 
 @app.route("/chart/<sym>")
 def chart(sym):
@@ -140,11 +146,12 @@ def h(m):
     markup.row("BTC","ETH","SOL"); markup.row("XAUUSD","NVDA","TSLA"); markup.row("DASHBOARD","AUTO ON","AUTO OFF")
     if "RESET5K CONFIRMAR" in txt:
         data["b"]=5000; data["pos"]=[]; data["gan_total"]=0; data["com_total"]=0; save()
-        bot.send_message(uid,"✅ V38.5 DEFINITIVO $5000 REINICIADO - FIX $1982", reply_markup=markup); return
+        bot.send_message(uid,"✅ V38.7 NY $5000 REINICIADO", reply_markup=markup); return
     elif "RESET5K" in txt: bot.send_message(uid,"⚠️ Escribe RESET5K CONFIRMAR", reply_markup=markup); return
     if any(k in txt for k in ["DASH","BALANCE","SALDO","START","HOLA"]):
         tot,flot=totals()
-        bot.send_message(uid,f"V38.5 DEFINITIVO 6POS 🔥\n💰 Total NETO ${tot:.2f}\nSaldo ${data['b']:.2f}\nFlot {flot:+.2f}$\nPos {len(data['pos'])}/6\nAUTO {'ON' if data.get('auto') else 'OFF'}\nHist NETO ${data.get('gan_total',0):+.2f}\nhttps://telegram-bot-cijp.onrender.com", reply_markup=markup)
+        ny_status = "ABIERTO" if ny_open() else "CERRADO"
+        bot.send_message(uid,f"V38.7 HORARIO NY 🔥\n💰 Total NETO ${tot:.2f}\nSaldo ${data['b']:.2f}\nFlot {flot:+.2f}$\nPos {len(data['pos'])}/6\nNY: {ny_status}\nAUTO {'ON' if data.get('auto') else 'OFF'}\nHist NETO ${data.get('gan_total',0):+.2f}\nhttps://telegram-bot-cijp.onrender.com", reply_markup=markup)
     elif txt in ALL_COINS:
         if len(data["pos"])>=MAX_POS: bot.send_message(uid,f"❌ Lleno {MAX_POS}/{MAX_POS}", reply_markup=markup)
         else:
@@ -159,7 +166,7 @@ def h(m):
                     else:
                         data["pos"].append({"sym":txt,"monto":monto,"precio_entry":pr,"gan":0,"max_price":pr,"nivel":nivel}); data["b"]-=monto; save()
                         bot.send_message(uid,f"✅ N{nivel} {txt} ${pr:.2f} x ${monto}\nhttps://telegram-bot-cijp.onrender.com/chart/{txt}", reply_markup=markup)
-    elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"AUTO ON 6POS 🔥", reply_markup=markup)
+    elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"AUTO ON NY 🔥\nBTC/ETH/SOL/XAU 24/7\nNVDA/TSLA 7:30-14:00 Lun-Vie", reply_markup=markup)
     elif "AUTO OFF" in txt: data["auto"]=False; save(); bot.send_message(uid,"AUTO OFF", reply_markup=markup)
 
 def auto_loop():
@@ -189,8 +196,11 @@ def auto_loop():
                             try: bot.send_message(uid,f"💰 VENTA {p['sym']} {pct:.1f}% Neto ${gan:.2f}")
                             except: pass
                 for sym in ALL_COINS:
+                    # OPCION A: NVDA/TSLA solo si NY abierto
+                    if sym in ["NVDA","TSLA"] and not ny_open(): continue
                     closes=C(sym); rsi=RSI(closes); pr=P(sym)
                     if pr==0: continue
+                    if sym in ["NVDA","TSLA"] and rsi==60: continue # No RSI real
                     count=sum(1 for x in data["pos"] if x["sym"]==sym)
                     if count>=2 or len(data["pos"])>=MAX_POS: continue
                     nivel=count+1; monto=get_monto(nivel)
@@ -203,7 +213,7 @@ def auto_loop():
                     if should:
                         data["pos"].append({"sym":sym,"monto":monto,"precio_entry":pr,"gan":0,"max_price":pr,"nivel":nivel}); data["b"]-=monto; save()
                         for uid in data["alert_users"]:
-                            try: bot.send_message(uid,f"🔥 N{nivel} {sym} ${pr:.2f} x ${monto} RSI {rsi:.0f}")
+                            try: bot.send_message(uid,f"🔥 N{nivel} {sym} ${pr:.2f} x ${monto} RSI {rsi:.0f} NY:{'OPEN' if sym in ['NVDA','TSLA'] else '24/7'}")
                             except: pass
             time.sleep(20)
         except: time.sleep(10)
@@ -217,7 +227,7 @@ def resumen_diario():
                 today_str=now_mex.strftime("%Y-%m-%d")
                 if last_report_date!=today_str:
                     tot,flot=totals()
-                    texto=f"📊 V38.5 6POS - 10PM\n💰 NETO: ${tot:.2f}\nSaldo: ${data['b']:.2f}\nPos: {len(data['pos'])}/6\n"
+                    texto=f"📊 V38.7 NY - 10PM\n💰 NETO: ${tot:.2f}\nSaldo: ${data['b']:.2f}\nPos: {len(data['pos'])}/6\n"
                     for uid in data["alert_users"]:
                         try: bot.send_message(uid,texto)
                         except: pass
