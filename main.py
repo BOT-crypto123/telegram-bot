@@ -10,7 +10,6 @@ MAX_POS = 8
 app = Flask(__name__)
 bot = telebot.TeleBot(TOKEN, threaded=False)
 
-# Cache de precios para nunca mostrar 0.0
 LAST_PRICE = {"XAUUSD":3350,"BTC":108500,"ETH":2650,"SOL":145,"NVDA":183.5,"TSLA":248.2}
 
 def load():
@@ -29,18 +28,17 @@ data=load()
 def P(sym):
     global LAST_PRICE
     try:
+        cg={"BTC":"bitcoin","ETH":"ethereum","SOL":"solana","XAUUSD":"pax-gold"}
+        if sym in cg:
+            r=requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cg[sym]}&vs_currencies=usd",timeout=5).json()
+            price=float(r[cg[sym]]["usd"])
+            if price>0: LAST_PRICE[sym]=price; return price
+    except: pass
+    try:
         mp={"XAUUSD":"PAXGUSDT","BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT"}
         if sym in mp:
             r=requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={mp[sym]}",timeout=3).json()
             price=float(r["price"])
-            if price>0: LAST_PRICE[sym]=price; return price
-    except: pass
-    # Fallback CoinGecko para crypto
-    try:
-        cg={"BTC":"bitcoin","ETH":"ethereum","SOL":"solana"}
-        if sym in cg:
-            r=requests.get(f"https://api.coingecko.com/api/v3/simple/price?ids={cg[sym]}&vs_currencies=usd",timeout=4).json()
-            price=float(r[cg[sym]]["usd"])
             if price>0: LAST_PRICE[sym]=price; return price
     except: pass
     return LAST_PRICE.get(sym,100)
@@ -48,7 +46,9 @@ def P(sym):
 def C(sym):
     try:
         mp={"XAUUSD":"PAXGUSDT","BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT"}
-        r=requests.get(f"https://api.binance.com/api/v3/klines?symbol={mp.get(sym,'BTCUSDT')}&interval=1h&limit=80",timeout=5).json()
+        s=mp.get(sym,None)
+        if not s: return []
+        r=requests.get(f"https://api.binance.com/api/v3/klines?symbol={s}&interval=1h&limit=80",timeout=5).json()
         return [float(x[4]) for x in r]
     except: return []
 
@@ -59,7 +59,8 @@ def RSI(a):
         d=a[-i]-a[-i-1]
         if d>0: g+=d
         else: l+=-d
-    return 100-(100/(1+g/(l or 1))) if l!=0 else 70
+    if l==0: return 70
+    return 100-(100/(1+g/l))
 
 def totals():
     flot=0
@@ -95,14 +96,13 @@ def dash():
         pct=((pr-p["precio_entry"])/p["precio_entry"]*100) if p["precio_entry"]>0 else 0
         trail=f"<br><small style='color:#00ccff'>TRAILING max ${p.get('max_price',pr):.1f}</small>" if pct>4 else ""
         pos_html+=f"<div onclick=\"window.location='/chart/{p['sym']}'\" style='display:flex;justify-content:space-between;padding:14px;border-bottom:1px solid #222;cursor:pointer'><div><b>{p['sym']} N{p.get('nivel',1)} ${p['monto']}</b> <span style='font-size:11px'>${p['precio_entry']:.1f}→${pr:.1f} {pct:+.1f}%</span>{trail}</div><span style='color:{col}'>{p.get('gan',0):+.2f}$</span></div>"
-    if not pos_html: pos_html=f"<div style='padding:20px;text-align:center;opacity:.5'>Sin pos - esperando RSI&lt;32<br>N1 ${get_monto(1)} N2 ${get_monto(2)} N3 ${get_monto(3)}</div>"
+    if not pos_html: pos_html=f"<div style='padding:20px;text-align:center;opacity:.5'>Sin pos - esperando RSI&lt;32<br>N1 ${get_monto(1)} N2 ${get_monto(2)} N3 ${get_monto(3)}<br><small style='color:#00ff88'>AUTO {'ON 🔥' if data.get('auto') else 'OFF'}</small></div>"
     coins=""
     for s in ALL_COINS:
         pr=P(s); rsi=RSI(C(s)); count=sum(1 for x in data["pos"] if x["sym"]==s)
         c2="#ffcc00" if rsi<32 else "#333"
         coins+=f"<div onclick=\"window.location='/chart/{s}'\" style='background:#151515;border:2px solid {c2};border-radius:14px;padding:10px;cursor:pointer'><b>{s} {count}/3</b><br>${pr:.1f}<br>RSI {rsi:.0f}<br><small style='color:#00ff88'>N1 {get_monto(1)}$</small><br><small style='font-size:9px;color:#00ccff'>GRAFICA VIVA ►</small></div>"
-    # LOGO EMBEBIDO EN CSS/SVG - NO NECESITA ARCHIVO
-    return f"""<meta name=viewport content="width=device-width,initial-scale=1"><style>body{{background:#080808;color:#fff;font-family:Arial;padding:10px}}.card{{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}}.gold{{color:#ffcc00;font-weight:800;font-size:12px}}.big{{font-size:34px;font-weight:900}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.power{{background:linear-gradient(90deg,#ffcc00,#ff4400);color:#000;padding:5px 12px;border-radius:20px;font-weight:900;font-size:11px}}.logo-wrap{{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #ffe87a, #ffcc00 40%, #b89600);border:3px solid #ffcc00;display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 0 30px rgba(255,204,0,.6);font-size:48px}}</style>
+    return f"""<meta name=viewport content="width=device-width,initial-scale=1"><style>body{{background:#080808;color:#fff;font-family:Arial;padding:10px}}.card{{background:#111;border-radius:20px;padding:16px;margin-bottom:12px;border:1px solid #222}}.gold{{color:#ffcc00;font-weight:800;font-size:12px}}.big{{font-size:34px;font-weight:900}}.grid{{display:grid;grid-template-columns:1fr 1fr;gap:8px}}.logo-wrap{{width:110px;height:110px;border-radius:50%;background:radial-gradient(circle at 30% 30%, #ffe87a, #ffcc00 40%, #b89600);border:3px solid #ffcc00;display:flex;align-items:center;justify-content:center;margin:0 auto;box-shadow:0 0 30px rgba(255,204,0,.6);font-size:48px}}</style>
     <div class=card style=text-align:center><div class=logo-wrap>🔺</div><div style=font-size:10px;margin-top:8px;letter-spacing:2px;color:#ffcc00;font-weight:900>V36 PODEROSA 🔥</div><br><div class=gold>PIRAMIDE + TRAILING + BOLA + 24/7</div><div class=big>${tot:.2f}</div>Saldo ${data['b']:.2f} <span style='color:{col}'>Flot {flot:+.2f}$</span> Pos {len(data['pos'])}/{MAX_POS}<br><small>Bola 10% | N1 1x N2 1.2x N3 1.5x | Trailing 3% si +4%</small></div>
     <div class=card><div class=gold>POSICIONES - TOCA PARA GRAFICA VIVA</div>{pos_html}</div>
     <div class=card><div class=gold>6 MEJORES - MAX 3 POR MONEDA</div><div class=grid>{coins}</div></div>"""
@@ -154,9 +154,9 @@ def webhook():
 def h(m):
     txt=(m.text or "").upper().strip(); uid=m.chat.id
     if uid not in data["alert_users"]: data["alert_users"].append(uid)
-    if "RESET5K" in txt: data["b"]=5000; data["pos"]=[]; save(); bot.send_message(uid,"✅ V36.1 $5000 6 MEJORES + GRAFICA VIVA + 24/7 ON")
+    if "RESET5K" in txt: data["b"]=5000; data["pos"]=[]; save(); bot.send_message(uid,"✅ V36.1 $5000 6 MEJORES + GRAFICA VIVA + AUTO ON")
     elif any(k in txt for k in ["DASH","BALANCE","SALDO","START","HOLA"]):
-        tot,flot=totals(); bot.send_message(uid,f"V36.1 🔥\nhttps://telegram-bot-cijp.onrender.com\nTotal ${tot:.2f} Saldo ${data['b']:.2f} Flot {flot:+.2f}$\nPos {len(data['pos'])}/{MAX_POS}\nN1 ${get_monto(1)} N2 ${get_monto(2)} N3 ${get_monto(3)}")
+        tot,flot=totals(); bot.send_message(uid,f"V36.1 🔥\nhttps://telegram-bot-cijp.onrender.com\nTotal ${tot:.2f} Saldo ${data['b']:.2f} Flot {flot:+.2f}$\nPos {len(data['pos'])}/{MAX_POS}\nAUTO {'ON' if data.get('auto') else 'OFF'}\nN1 ${get_monto(1)} N2 ${get_monto(2)} N3 ${get_monto(3)}")
     elif txt in ALL_COINS:
         if len(data["pos"])>=MAX_POS: bot.send_message(uid,"❌ Lleno 8/8")
         else:
@@ -167,8 +167,8 @@ def h(m):
                 if data["b"]<monto: bot.send_message(uid,f"❌ Saldo ${data['b']:.2f} necesita ${monto}")
                 else:
                     pr=P(txt); data["pos"].append({"sym":txt,"monto":monto,"precio_entry":pr,"gan":0,"max_price":pr,"nivel":nivel}); data["b"]-=monto; save(); bot.send_message(uid,f"✅ N{nivel} {txt} ${pr:.2f} x ${monto}\nhttps://telegram-bot-cijp.onrender.com/chart/{txt}")
-    elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"AUTO ON 🔥")
-    elif "AUTO OFF" in txt: data["auto"]=False; save(); bot.send_message(uid,"AUTO OFF")
+    elif "AUTO ON" in txt: data["auto"]=True; save(); bot.send_message(uid,"AUTO ON 🔥 24/7 CAZANDO RSI<32")
+    elif "AUTO OFF" in txt: data["auto"]=False; save(); bot.send_message(uid,"AUTO OFF - SOLO MANUAL")
 
 def auto_loop():
     while True:
@@ -201,6 +201,9 @@ def auto_loop():
                         if count==2 and rsi<22 and pr < avg*0.90: should=True
                     if should:
                         data["pos"].append({"sym":sym,"monto":monto,"precio_entry":pr,"gan":0,"max_price":pr,"nivel":nivel}); data["b"]-=monto; save()
+                        for uid in data["alert_users"]:
+                            try: bot.send_message(uid,f"🤖 AUTO N{nivel} {sym} ${pr:.2f} x ${monto} RSI {rsi:.0f}\nhttps://telegram-bot-cijp.onrender.com/chart/{sym}")
+                            except: pass
             time.sleep(60)
         except: time.sleep(20)
 
