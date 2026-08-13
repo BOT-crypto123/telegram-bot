@@ -1,6 +1,5 @@
-flask
+Flask
 pyTelegramBotAPI
 yfinance
 matplotlib
 pytz
-requests
