@@ -1,4 +1,4 @@
-# MAQUINA V50.9.3 FINAL FLOTANTE REAL - GANANCIA - COMISION = NETO REAL
+# MAQUINA V50.9.5 FINAL - DATOS ARRIBA - BRUTA - COM = NETA REAL
 import os, json, requests, random
 from flask import Flask, request
 from datetime import datetime
@@ -25,7 +25,7 @@ def get_price(s):
             r=requests.get(f"https://api.kraken.com/0/public/Ticker?pair={m}",timeout=5).json()
             return float(list(r['result'].values())[0]['c'][0])
     except: pass
-    return {"BTC":62812,"ETH":1872,"SOL":74,"NVDA":135,"TSLA":341,"XAUUSD":4437}[s]
+    return {"BTC":62800,"ETH":1872,"SOL":74,"NVDA":135,"TSLA":341,"XAUUSD":4437}[s]
 def get_velas(s):
     try:
         if s in ["BTC","ETH","SOL"]:
@@ -65,10 +65,10 @@ def decidir(s):
         if BOT1_VENDE and BOT2_APOYA:
             gan_bruto=tr["bola"]*bruto/100; fee=tr["bola"]*FEE_RT; gan_neto=gan_bruto-fee
             ESTADO["demo_balance"]+=tr["bola"]+gan_neto; ESTADO["fees"]+=fee
-            motivo=f"{'TP' if neto>=0.68 else 'SL' if neto<=-4.32 else 'TRAIL'} {neto:.2f}% NETO"
+            motivo=f"{'TP' if neto>=0.68 else 'SL' if neto<=-4.32 else 'TRAIL'} {neto:.2f}%"
             ESTADO["demo_trades"].append({"f":datetime.now().strftime("%m-%d %H:%M"),"s":s,"bola":tr["bola"],"bruto":bruto,"fee":fee,"gan_bruto":gan_bruto,"pct":neto,"pnl":gan_neto,"mot":motivo})
             ESTADO["open_trades"].remove(tr); save_estado()
-            ventas.append(f"💰 {s} BRUTO {bruto:+.2f}% ${gan_bruto:+.2f} - COM ${fee:.2f} = NETO REAL {neto:+.2f}% ${gan_neto:+.2f}")
+            ventas.append(f"💰 {s} BRUTA {bruto:+.2f}% ${gan_bruto:+.2f} - COM ${fee:.2f} = NETA {neto:+.2f}% ${gan_neto:+.2f}")
     if not lineas: return {"tipo":"SIN LINEAS BOT1","det":"BOT1 no ve líneas\n"+"\n".join(ventas),"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":[]}
     pulidas=[l for l in lineas if l['rebotes']>=2]
     if not pulidas: return {"tipo":"BOT2 PULIENDO 1R","det":f"BOT2 borró {len(lineas)} de 1R\n"+"\n".join(ventas),"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
@@ -85,19 +85,20 @@ def decidir(s):
             ESTADO["demo_balance"]-=bola+fee_e; ESTADO["fees"]+=fee_e
             ESTADO["open_trades"].append({"simbolo":s,"entrada_real":precio,"entrada":precio*(1+FEE_LADO),"bola":bola,"linea":top['precio'],"max_neto":-10})
             ESTADO["jefe_hoy"][key]=True; save_estado()
-        return {"tipo":f"{'BOT2 NY' if ny else 'BOT1'} COMPRA 3 BOTS ${bola}","det":det+f"\n✅ COMPRA - Fee entrada ${fee_e:.2f}","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+        return {"tipo":f"COMPRA 3 BOTS ${bola}","det":det+f"\n✅ COMPRA Fee ${fee_e:.2f}","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
     return {"tipo":"ESPERA APOYO 3 BOTS","det":det+"\n⏳ Falta apoyo","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
 
 @app.route('/')
 def dash():
-    ny=is_ny(); flot_bruto=0; flot_neto=0; flot_cards=""
+    ny=is_ny(); flot_bruto=0; flot_neto=0; flot_cards=""; total_bolas=sum(t["bola"] for t in ESTADO["open_trades"])
     for tr in ESTADO["open_trades"]:
-        pa=get_price(tr["simbolo"]); bruto=(pa-tr["entrada_real"])/tr["entrada_real"]*100; gan_bruto=tr["bola"]*bruto/100
-        fee=tr["bola"]*FEE_RT; neto=bruto-FEE_RT*100; gan_neto=tr["bola"]*neto/100
+        pa=get_price(tr["simbolo"]); bruto=(pa-tr["entrada_real"])/tr["entrada_real"]*100
+        gan_bruto=tr["bola"]*bruto/100; fee=tr["bola"]*FEE_RT; neto=bruto-FEE_RT*100; gan_neto=tr["bola"]*neto/100
         flot_bruto+=gan_bruto; flot_neto+=gan_neto
         color="#00ff88" if gan_neto>=0 else "#ff4444"
-        flot_cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;border-radius:10px;padding:10px;margin:8px 0"><b>{tr["simbolo"]} Bola ${tr["bola"]}</b> ${tr["entrada_real"]:.2f} → ${pa:.2f}<br>GANANCIA BRUTA {bruto:+.2f}% ${gan_bruto:+.2f}<br>- COMISION ${fee:.2f}<br>= <b style="color:{color}">GANANCIA REAL NETA {neto:+.2f}% ${gan_neto:+.2f}</b></div>'
-    h=f'<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:bold}}</style></head><body><h2>💰 MAQUINA V50.9.3 FLOT REAL 💸</h2>💵 SALDO NETO ${ESTADO["demo_balance"]:.2f} | COMISIONES ${ESTADO["fees"]:.2f} | ABIERTO {len(ESTADO["open_trades"])} | NY {"🟢" if ny else "🔴"}<br><small>FORMULA: GANANCIA BRUTA - COMISION = GANANCIA REAL NETA</small><br><br><div style="background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px"><b>💹 FLOTANTE ABIERTO ({len(ESTADO["open_trades"])})</b><br>BRUTA TOTAL ${flot_bruto:+.2f} - COM TOTAL ${sum(t["bola"]*FEE_RT for t in ESTADO["open_trades"]):.2f} = <b style="color:{"#00ff88" if flot_neto>=0 else "#ff4444"}">NETA REAL ${flot_neto:+.2f}</b><br>{flot_cards if flot_cards else "Sin posiciones"}</div><br>'
+        flot_cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;border-radius:10px;padding:10px;margin:8px 0"><b>{tr["simbolo"]} Bola ${tr["bola"]}</b> ${tr["entrada_real"]:.2f} → ${pa:.2f}<br>BRUTA {bruto:+.2f}% ${gan_bruto:+.2f} - COM ${fee:.2f} = <b style="color:{color}">NETA REAL {neto:+.2f}% ${gan_neto:+.2f}</b></div>'
+    com_abierto=sum(t["bola"]*FEE_RT for t in ESTADO["open_trades"]); patrimonio=ESTADO["demo_balance"]+total_bolas+flot_neto
+    h=f'<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.header{{background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px;margin-bottom:14px}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:bold}}</style></head><body><h2>💰 MAQUINA V50.9.5 DATOS REALES 💸</h2><div class="header">💵 LIQUIDO ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${total_bolas:.2f} | ABIERTO {len(ESTADO["open_trades"])} | NY {"🟢" if ny else "🔴"}<br>📊 BRUTA TOTAL ${flot_bruto:+.2f} - COM TOTAL ${com_abierto:.2f} = NETA REAL ${flot_neto:+.2f}<br>🏦 PATRIMONIO ${patrimonio:.2f} ({patrimonio-10000:+.2f}) | COM HIST ${ESTADO["fees"]:.2f}<br><small>FORMULA: GANANCIA BRUTA - COMISION = GANANCIA REAL NETA | TP +0.68% NETO</small></div><div style="background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px"><b>💹 FLOTANTE ({len(ESTADO["open_trades"])})</b><br>{flot_cards if flot_cards else "Sin posiciones"}</div><br>'
     for s in SYMBOLS:
         d=decidir(s); h+=f'<div class="card"><b>{s}</b> ${get_price(s):.2f} - {d["tipo"]}<br><small>{d["det"].replace(chr(10),"<br>")}</small><br><br><a class="btn" href="/graf/{s}">GRAFICA VIVA 📈</a></div>'
     return h+"</body></html>"
@@ -116,29 +117,25 @@ def graf(s):
     ax.set_xlim(st,n); ax.set_title(f'{s} BRUTA - COM = NETA REAL',color='white',fontsize=10); ax.tick_params(colors='white')
     rsi_vals=[rsi_calc(closes[:i+1]) for i in range(15,len(closes))]; ax2.plot(range(len(closes)-len(rsi_vals),len(closes)),rsi_vals,color='#00ffff')
     import io,base64; buf=io.BytesIO(); plt.tight_layout(); plt.savefig(buf,format='png',facecolor='black',dpi=130); buf.seek(0); img=base64.b64encode(buf.read()).decode(); plt.close('all')
-    return f'<html style="background:#000;color:#fff"><body><h2>{s} GANANCIA - COMISION = NETA</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER A MAQUINA 💰</a></body></html>'
+    return f'<html style="background:#000;color:#fff"><body><h2>{s} BRUTA - COM = NETA</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER A MAQUINA 💰</a></body></html>'
 
 @bot.message_handler(func=lambda m: True)
 def all_msg(m):
     t=m.text.strip().upper()
-    if t=="DASHBOARD":
-        bot.send_message(m.chat.id,f"💰 DASHBOARD V50.9.3 FLOT REAL\n💵 NETO ${ESTADO['demo_balance']:.2f} | COM ${ESTADO['fees']:.2f} | ABIERTO {len(ESTADO['open_trades'])}\nhttps://telegram-bot-cijp.onrender.com/")
+    if t=="DASHBOARD": bot.send_message(m.chat.id,f"💰 V50.9.5 DATOS REALES\nhttps://telegram-bot-cijp.onrender.com/")
     elif "AUTO" in t:
-        if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON - 3 BOTS COMPRAN Y VENDEN - BRUTA - COM = NETA")
+        if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON")
         else: ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔️ AUTO OFF")
     elif t in SYMBOLS:
         d=decidir(t); bot.send_message(m.chat.id,f"💰 {t} ${get_price(t):.2f}\n{d['det']}\n{d['tipo']}\nhttps://telegram-bot-cijp.onrender.com/graf/{t}")
     elif "BALANCE" in t or "STATS" in t or "/BALANCE" in t or "/STATS" in t:
-        trs=ESTADO["demo_trades"][-20:]; lines=[]
-        for x in trs: lines.append(f"{x['f']} {x['s']} Bola ${x['bola']}\n BRUTA {x.get('bruto',0):+.2f}% ${x.get('gan_bruto',0):+.2f}\n - COM ${x.get('fee',0):.2f}\n = NETA REAL {x['pct']:+.2f}% ${x['pnl']:+.2f} {x['mot']}")
-        txt="\n\n".join(lines) or "Sin ventas aún"; flot_neto=0; flot_lines=[]
+        total_bolas=sum(tr["bola"] for tr in ESTADO["open_trades"]); flot_bruto=0; flot_neto=0; flot_lines=[]
         for tr in ESTADO["open_trades"]:
-            pa=get_price(tr["simbolo"]); bruto=(pa-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100; gan_neto=tr["bola"]*neto/100; gan_bruto=tr["bola"]*bruto/100; fee=tr["bola"]*FEE_RT
-            flot_neto+=gan_neto; flot_lines.append(f"{tr['simbolo']} Bola ${tr['bola']}\n BRUTA {bruto:+.2f}% ${gan_bruto:+.2f}\n - COM ${fee:.2f}\n = NETA FLOT {neto:+.2f}% ${gan_neto:+.2f}")
-        flot_txt="\n\n".join(flot_lines) or "Sin abierto"; prof=ESTADO["demo_balance"]-10000; total_bruto=sum(x.get('gan_bruto',0) for x in ESTADO["demo_trades"])
-        bot.send_message(m.chat.id,f"💰 MAQUINA V50.9.3 FLOT REAL 💸\nFORMULA: BRUTA - COM = NETA REAL\n\nBAL INICIAL $10000\nBRUTA CERRADA ${total_bruto:+.2f}\n- COM TOTAL ${ESTADO['fees']:.2f}\n= NETO LIQUIDO ${ESTADO['demo_balance']:.2f} ({prof:+.2f})\n\n💹 FLOTANTE ABIERTO ({len(ESTADO['open_trades'])}):\n{flot_txt}\nTOTAL FLOT NETA REAL ${flot_neto:+.2f}\n\nSI VENDES TODO AHORA: ${ESTADO['demo_balance']+flot_neto:.2f}\n\nCERRADAS:\n{txt}\n\nhttps://telegram-bot-cijp.onrender.com/")
-    else:
-        bot.send_message(m.chat.id,"💰 MAQUINA V50.9.3\nBRUTA - COM = NETA REAL\nBTC ETH SOL NVDA TSLA XAUUSD\nSTATS / DASHBOARD")
+            pa=get_price(tr["simbolo"]); bruto=(pa-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100; gan_neto=tr["bola"]*neto/100; gan_bruto=tr["bola"]*bruto/100; fee=tr["bola"]*FEE_RT; flot_bruto+=gan_bruto; flot_neto+=gan_neto
+            flot_lines.append(f"{tr['simbolo']} ${tr['bola']}\n BRUTA {bruto:+.2f}% ${gan_bruto:+.2f} - COM ${fee:.2f} = NETA {neto:+.2f}% ${gan_neto:+.2f}")
+        flot_txt="\n\n".join(flot_lines) or "Sin abierto"; patrimonio=ESTADO["demo_balance"]+total_bolas+flot_neto
+        bot.send_message(m.chat.id,f"💰 V50.9.5 DATOS REALES\nFORMULA: BRUTA - COM = NETA REAL\nLIQUIDO ${ESTADO['demo_balance']:.2f} | EN BOLAS ${total_bolas:.2f} | ABIERTO {len(ESTADO['open_trades'])}\nBRUTA TOTAL ${flot_bruto:+.2f} - COM ${sum(t['bola']*FEE_RT for t in ESTADO['open_trades']):.2f} = NETA REAL ${flot_neto:+.2f}\nPATRIMONIO ${patrimonio:.2f} ({patrimonio-10000:+.2f})\n\nFLOT:\n{flot_txt}\nhttps://telegram-bot-cijp.onrender.com/")
+    else: bot.send_message(m.chat.id,"💰 MAQUINA V50.9.5\nBTC ETH SOL NVDA TSLA XAUUSD\nSTATS / DASHBOARD")
 
 @app.route('/webhook',methods=['POST'])
 @app.route(f'/{TOKEN}',methods=['POST'])
