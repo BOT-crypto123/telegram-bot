@@ -1,4 +1,4 @@
-# V55 FINAL - SE AYUDAN ENTRE TODAS - 3/3 OBLIGATORIO - TRAIL 1.2% - 2 TRADES MAX
+# V55.1 FIX - MAX 2 POR SIMBOLO + DASHBOARD FIX + VENTAS SIEMPRE
 import os, json, requests, random
 from flask import Flask, request
 from datetime import datetime
@@ -100,7 +100,10 @@ def JEFE_venta(tr, precio):
 def decidir(s):
     opens,highs,lows,closes=get_velas(s); precio=closes[-1]; ventas=[]; tend=get_tendencia(closes)
     hoy=datetime.now().strftime('%Y-%m-%d')
-    if ESTADO["trades_hoy_fecha"]!=hoy: ESTADO["trades_hoy_fecha"]=hoy; ESTADO["trades_hoy_count"]=0; save_estado()
+    if ESTADO["trades_hoy_fecha"]!=hoy:
+        ESTADO["trades_hoy_fecha"]=hoy; ESTADO["trades_hoy_count"]=0; ESTADO["jefe_hoy"]={}
+        save_estado()
+    # VENTAS PRIMERO SIEMPRE
     for tr in ESTADO["open_trades"][:]:
         if tr["simbolo"]!=s: continue
         bruto=(precio-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100; tr["max_neto"]=max(tr.get("max_neto",neto),neto)
@@ -118,8 +121,12 @@ def decidir(s):
     det=f"{modo} TEND {tend}\n{t1c}\n{t2c}\n{t3c}\n---\nAYUDA MUTUA: B1 {'✅' if B1 else '❌'} + B2 {'✅' if B2 else '❌'} + B3 {'✅' if J3 else '❌'} = {votos}/3"
     if ventas: det="\n".join(ventas)+"\n\n"+det
     key=f"{s}_{hoy}"
-    if ESTADO["trades_hoy_count"]>=2: return {"tipo":"MAX 2 HOY 🔒","det":det,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
-    if key in ESTADO["jefe_hoy"]: return {"tipo":"YA CAZO HOY 🔒","det":det,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+    # FIX MAX POR SIMBOLO
+    count_symbol = sum(1 for k in ESTADO["jefe_hoy"] if k.startswith(s+"_"))
+    if count_symbol>=2:
+        return {"tipo":"MAX 2 HOY ESTE SIMBOLO 🔒","det":det,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+    if key in ESTADO["jefe_hoy"] and not ventas:
+        return {"tipo":"YA CAZO HOY 🔒","det":det,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
     if not is_ny() and s not in ["BTC","ETH","SOL"]: return {"tipo":"NOCHE PAUSA ACCIONES ⏸️","det":det,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
     if B1 and B2 and J3:
         fee_e=bola*FEE_LADO; ESTADO["demo_balance"]-=bola+fee_e; ESTADO["fees"]+=fee_e
@@ -133,9 +140,9 @@ def dash():
     ny=is_ny(); fb=0; fn=0; cards=""; tb=sum(t["bola"] for t in ESTADO["open_trades"])
     for tr in ESTADO["open_trades"]:
         pa=get_price(tr["simbolo"]); br=(pa-tr["entrada_real"])/tr["entrada_real"]*100; fee=tr["bola"]*FEE_RT; ne=br-FEE_RT*100; gn=tr["bola"]*ne/100; fb+=tr["bola"]*br/100; fn+=gn
-        cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;padding:8px;margin:6px 0">{tr["simbolo"]} ${tr["bola"]} NETA {ne:+.2f}%</div>'
+        cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;padding:8px;margin:6px 0">{tr["simbolo"]} ${tr["bola"]} NETA {ne:+.2f}% Entrada {tr["entrada_real"]:.2f}</div>'
     pat=ESTADO["demo_balance"]+tb+fn
-    h=f'<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.titulo{{background:#111;border:3px solid #FFD700;border-radius:16px;padding:18px;text-align:center}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}</style></head><body><div class="titulo"><h1>💰 V55 FINAL AYUDA MUTUA 3/3 TRAIL 1.2% 💰</h1></div><div>💳 ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${tb:.2f} | NETA {fn:+.2f} | PAT ${pat:.2f} | HOY {ESTADO["trades_hoy_count"]}/2 | {"🟢 NY B2 MANDA B1 APOYA" if ny else "🌙 NOCHE B1 MANDA B2 ANALIZA"}</div><div>{cards}</div>'
+    h=f'<html><head><meta name="viewport" content="width=device-width"><meta http-equiv="refresh" content="30"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.titulo{{background:#111;border:3px solid #FFD700;border-radius:16px;padding:18px;text-align:center}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}</style></head><body><div class="titulo"><h1>💰 V55.1 FIX AYUDA MUTUA 3/3 💰</h1></div><div>💳 ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${tb:.2f} | NETA {fn:+.2f} | PAT ${pat:.2f} | HOY {ESTADO["trades_hoy_count"]} trades | {"🟢 NY B2 MANDA" if ny else "🌙 NOCHE B1 MANDA"}</div><div>{cards}</div>'
     for s in SYMBOLS:
         d=decidir(s); h+=f'<div class="card"><b>{s}</b> ${get_price(s):.2f} - {d["tipo"]}<br><small>{d["det"].replace(chr(10),"<br>")}</small><br><br><a href="/graf/{s}" style="background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none">GRAFICA</a></div>'
     return h+"</body></html>"
@@ -151,28 +158,38 @@ def graf(s):
     for x in d["lineas"]: ax.axhline(x['precio'],color='#00ff00',ls='--',alpha=0.8)
     for tr in ESTADO["open_trades"]:
         if tr["simbolo"]==s: ax.axhline(tr["entrada_real"],color='orange',ls='-',alpha=0.9)
-    ax.set_xlim(st,n); ax.set_title(f'{s} V55 AYUDA MUTUA',color='white'); ax.tick_params(colors='white')
+    ax.set_xlim(st,n); ax.set_title(f'{s} V55.1 FIX',color='white'); ax.tick_params(colors='white')
     rsi_vals=[rsi_calc(closes[:i+1]) for i in range(15,len(closes))]; ax2.plot(range(len(closes)-len(rsi_vals),len(closes)),rsi_vals,color='#00ffff')
     import io,base64; buf=io.BytesIO(); plt.tight_layout(); plt.savefig(buf,format='png',facecolor='black',dpi=130); buf.seek(0); img=base64.b64encode(buf.read()).decode(); plt.close('all')
-    return f'<html style="background:#000;color:#fff"><body><h2>{s} V55 FINAL</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER</a></body></html>'
+    return f'<html style="background:#000;color:#fff"><body><h2>{s} V55.1</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER AL DASH</a></body></html>'
 
 @bot.message_handler(func=lambda m: True)
 def all_msg(m):
     t=m.text.strip().upper()
+    if "DASHBOARD" in t or t=="DASH":
+        url=os.getenv("RENDER_EXTERNAL_URL") or os.getenv("RENDER_EXTERNAL_HOSTNAME") or ""
+        if url and not url.startswith("http"): url="https://"+url
+        if not url: url="Abre tu link de Render en el navegador - es tu dashboard"
+        bot.send_message(m.chat.id, f"🌐 TU DASHBOARD V55.1 FIX:\n{url}\n\nSi no te sale, entra a render.com -> tu app -> abre el link.onrender.com")
+        return
+    if "AUTO ON" in t:
+        ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON"); return
+    if "AUTO OFF" in t:
+        ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔ AUTO OFF"); return
     if "BALANCE" in t:
-        tb=sum(tr["bola"] for tr in ESTADO["open_trades"]); fn=0; ca=sum(tr["bola"]*FEE_RT for tr in ESTADO["open_trades"])
+        tb=sum(tr["bola"] for tr in ESTADO["open_trades"]); fn=0
         for tr in ESTADO["open_trades"]:
             pa=get_price(tr["simbolo"]); br=(pa-tr["entrada_real"])/tr["entrada_real"]*100; ne=br-FEE_RT*100; fn+=tr["bola"]*ne/100
         pat=ESTADO["demo_balance"]+tb+fn
-        msg=f'''💰 V55 FINAL AYUDA MUTUA 3/3
+        msg=f'''💰 V55.1 FIX AYUDA MUTUA 3/3
 {"🟢 NY B2 MANDA B1 APOYA" if is_ny() else "🌙 NOCHE B1 MANDA B2 ANALIZA"}
 💳 ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${tb:.2f} | NETA {fn:+.2f} | PAT ${pat:.2f}
-HOY {ESTADO["trades_hoy_count"]}/2
-TRAIL 1.2% - VENTA Verde 2/3 Rojo 2/2 - SE AYUDAN ENTRE TODAS
+HOY {ESTADO["trades_hoy_count"]} trades
+TRAIL 1.2% - MAX 2 POR SIMBOLO - FIX VENTAS SIEMPRE
 '''
         bot.send_message(m.chat.id, msg); return
     if t in SYMBOLS: d=decidir(t); bot.send_message(m.chat.id,f"💰 {t} ${get_price(t):.2f}\n{d['det']}\n{d['tipo']}")
-    else: bot.send_message(m.chat.id,"💰 V55 FINAL AYUDA MUTUA\n/balance\nBTC ETH SOL NVDA TSLA XAUUSD")
+    else: bot.send_message(m.chat.id,"💰 V55.1 FIX\n/balance\nDASHBOARD\nBTC ETH SOL NVDA TSLA XAUUSD")
 
 @app.route('/webhook',methods=['POST'])
 @app.route(f'/{TOKEN}',methods=['POST'])
