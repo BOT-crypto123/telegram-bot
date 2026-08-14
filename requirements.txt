@@ -1,6 +1,4 @@
-Flask
-pyTelegramBotAPI
-matplotlib
+flask
 pytz
-pandas
 requests
+python-telegram-bot
