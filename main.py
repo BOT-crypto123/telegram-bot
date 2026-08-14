@@ -1,4 +1,4 @@
-# V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈 - TITULO CENTRADO + BALANCE TELEGRAM COMPLETO
+# V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈 - TITULO CENTRADO LIMPIO
 import os, json, requests, random
 from flask import Flask, request
 from datetime import datetime
@@ -131,8 +131,9 @@ def dash():
         cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;border-radius:10px;padding:10px;margin:8px 0"><b>{tr["simbolo"]} ${tr["bola"]}</b> BRUTA {br:+.2f}% - COM ${fee:.2f} = <b style="color:{col}">NETA {ne:+.2f}% ${gn:+.2f}</b><br><small>B1 {"✅" if v1 else "❌"} B2 {"✅" if v2 else "❌"} J3 {"✅" if v3 else "❌"} = {sum([v1,v2,v3])}/3</small></div>'
     ca=sum(t["bola"]*FEE_RT for t in ESTADO["open_trades"]); pat=ESTADO["demo_balance"]+tb+fn
     modo=f'🟢 NY ABIERTO - BOT2 APOYA BOT1 Y JEFE' if ny and ESTADO["auto"] else f'🔴 NY CERRADO - VENTAS 2/3'
-    h=f'''<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.titulo{{background:#111;border:3px solid #FFD700;border-radius:16px;padding:20px;margin-bottom:14px;text-align:center}}.titulo h1{{margin:0;font-size:26px;line-height:1.3;text-align:center;color:#fff}}.header{{background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px;text-align:left}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none}}</style></head><body>
-    <div class="titulo"><h1>💰 V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈<br>- TITULO CENTRADO + BALANCE TELEGRAM COMPLETO</h1></div>
+    # TITULO CENTRADO LIMPIO - SOLO LO QUE MARCASTE EN ROJO
+    h=f'''<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.titulo{{background:#111;border:3px solid #FFD700;border-radius:16px;padding:22px;margin-bottom:14px;display:flex;justify-content:center;align-items:center;text-align:center}}.titulo h1{{margin:0;font-size:28px;line-height:1.3;text-align:center;color:#fff;font-weight:bold;width:100%}}.header{{background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px;text-align:left}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none}}</style></head><body>
+    <div class="titulo"><h1>💰 V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈</h1></div>
     <div class="header">{modo}<br>💳 LIQUIDO ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${tb:.2f} | 📊 BRUTA ${fb:+.2f} - COM ${ca:.2f} = NETA REAL ${fn:+.2f}<br>🏦 PATRIMONIO ${pat:.2f} ({pat-10000:+.2f})<br><small>BOT1 ruptura | BOT2 NY RSI apoya BOT1+JEFE | JEFE asegura | COMPRA 3/3 VENTA 2/3</small></div>
     <div style="background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px;margin-top:10px"><b>FLOTANTE NETA {fn:+.2f} ({len(ESTADO["open_trades"])})</b><br>{cards if cards else "Sin posiciones - Esperando 3/3"}</div><br>'''
     for s in SYMBOLS:
@@ -184,12 +185,12 @@ FLOTANTE NETA {fn:+.2f} ({len(ESTADO["open_trades"])})
 https://telegram-bot-cijp.onrender.com/
 '''
         bot.send_message(m.chat.id, msg); return
-    if t=="DASHBOARD": bot.send_message(m.chat.id,f"💰 V54.1 CENTRADO 💰💴💶💵💷💸📊📈\nhttps://telegram-bot-cijp.onrender.com/")
+    if t=="DASHBOARD": bot.send_message(m.chat.id,f"💰 V54.1 💰💴💶💵💷💸📊📈\nhttps://telegram-bot-cijp.onrender.com/")
     elif "AUTO" in t:
         if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON V54.1")
         else: ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔️ AUTO OFF")
     elif t in SYMBOLS: d=decidir(t); bot.send_message(m.chat.id,f"💰 {t} ${get_price(t):.2f}\n{d['det']}\n{d['tipo']}\nhttps://telegram-bot-cijp.onrender.com/graf/{t}")
-    else: bot.send_message(m.chat.id,"💰 V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈\n/balance - Balance completo como dashboard\nBTC ETH SOL NVDA TSLA XAUUSD")
+    else: bot.send_message(m.chat.id,"💰 V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈\n/balance - Balance completo\nBTC ETH SOL NVDA TSLA XAUUSD")
 
 @app.route('/webhook',methods=['POST'])
 @app.route(f'/{TOKEN}',methods=['POST'])
