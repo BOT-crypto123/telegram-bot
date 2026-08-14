@@ -6,19 +6,23 @@ import pytz
 from datetime import datetime
 from flask import Flask
 
-# ========== FIX PARA RENDER (WEB SERVICE) ==========
+# ========== FIX PARA RENDER (WEB SERVICE) - NO TOCAR ==========
 app = Flask(__name__)
 
-@app.route('/')
+@app.route('/', methods=['GET','POST','HEAD'])
 def home():
-    return "🔥 LA MAQUINA DE HACER DINERO V48.5 MODO 10K ACTIVA 💰 - LIVE"
+    return "🔥 LA MAQUINA DE HACER DINERO V48.5 MODO 10K ACTIVA 💰 - LIVE", 200
+
+@app.route('/<path:path>', methods=['GET','POST','HEAD'])
+def catch_all(path):
+    return "OK", 200
 
 def run_server():
     port = int(os.environ.get("PORT", 10000))
     app.run(host='0.0.0.0', port=port)
 
 threading.Thread(target=run_server, daemon=True).start()
-# ====================================================
+# ================================================================
 
 # ========== CONFIG MAQUINA 10K ==========
 CONFIG = {
@@ -70,9 +74,7 @@ def guardar_memoria(resultado, ganancia):
         json.dump(mem, f)
     return mem
 
-# --- AQUI VAN TUS FILTROS DEL BOT 2 ---
 def filtro_ny():
-    # tu logica NY
     return True
 
 def filtro_noticias():
@@ -83,8 +85,6 @@ def filtro_spread():
 
 def triple_candado():
     mem = cargar_memoria()
-    # TU LOGICA REAL DE TRIPLE AQUI
-    # Por ahora retorna TRIPLE si pasa filtros
     if filtro_ny() and filtro_noticias():
         return "TRIPLE", mem["lote"]
     return "NADA", 0
@@ -123,7 +123,6 @@ def main_bot():
             
             if tipo != "NADA":
                 print(f"🎯 SEÑAL {tipo} LOTE {lote} - {datetime.now()}")
-                # AQUI TU LOGICA PARA ABRIR OPERACION
             else:
                 lote_caz = jefe_cazador()
                 if lote_caz:
@@ -136,6 +135,5 @@ def main_bot():
             time.sleep(60)
 
 if __name__ == "__main__":
-    # Esperar 3 seg a que Flask prenda el puerto
     time.sleep(3)
     main_bot()
