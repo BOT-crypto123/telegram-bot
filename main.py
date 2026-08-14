@@ -5,7 +5,18 @@
 import time, json, os
 from datetime import datetime
 import pytz
+from flask import Flask
+import threading
 
+app = Flask(__name__)
+@app.route('/')
+def home():
+    return "LA MAQUINA V48.5 MODO 10K ACTIVA 💰"
+
+def run_server():
+    app.run(host='0.0.0.0', port=10000)
+
+threading.Thread(target=run_server, daemon=True).start()
 CONFIG = {
     "MAQUINA_1": 300,
     "MAQUINA_2": 300,
