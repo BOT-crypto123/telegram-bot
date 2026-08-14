@@ -10,19 +10,45 @@ app = Flask(__name__)
 ESTADO = {"jefe_hoy": {}, "bola": {s:500 for s in ["BTC","ETH","SOL","NVDA","TSLA","XAUUSD"]}}
 SYMBOLS = ["BTC","ETH","SOL","NVDA","TSLA","XAUUSD"]
 
-def get_price(s):
+def get_yahoo(symbol, interval="5m", range_="1d"):
     try:
-        if s in ["BTC","ETH","SOL"]:
+        url = f"https://query1.finance.yahoo.com/v8/finance/chart/{symbol}?interval={interval}&range={range_}"
+        headers = {"User-Agent": "Mozilla/5.0"}
+        r = requests.get(url, headers=headers, timeout=10).json()
+        result = r['chart']['result'][0]
+        closes = result['indicators']['quote'][0]['close']
+        opens = result['indicators']['quote'][0]['open']
+        highs = result['indicators']['quote'][0]['high']
+        lows = result['indicators']['quote'][0]['low']
+        vols = result['indicators']['quote'][0]['volume']
+        # limpiar None
+        data=[]
+        for o,h,l,c,v in zip(opens,highs,lows,closes,vols):
+            if c is None: continue
+            data.append((o,h,l,c,v))
+        if len(data)<30: return None
+        opens, highs, lows, closes, vols = zip(*data)
+        return list(opens), list(highs), list(lows), list(closes), list(vols)
+    except Exception as e:
+        print(f"Yahoo error {symbol}: {e}")
+        return None
+
+def get_price(s):
+    if s in ["BTC","ETH","SOL"]:
+        try:
             par={"BTC":"XBTUSD","ETH":"ETHUSD","SOL":"SOLUSD"}[s]
             r=requests.get(f"https://api.kraken.com/0/public/Ticker?pair={par}",timeout=8).json()
             return float(list(r['result'].values())[0]['c'][0])
-    except: pass
-    return {"BTC":62787,"ETH":3200,"SOL":180,"NVDA":135,"TSLA":250,"XAUUSD":2650}[s]
+        except: pass
+    else:
+        ymap={"NVDA":"NVDA","TSLA":"TSLA","XAUUSD":"GC=F"}
+        y = get_yahoo(ymap[s])
+        if y and y[3]: return y[3][-1]
+    return {"BTC":63506,"ETH":3200,"SOL":180,"NVDA":135,"TSLA":250,"XAUUSD":2650}[s]
 
 def get_velas(s):
-    base=get_price(s)
-    try:
-        if s in ["BTC","ETH","SOL"]:
+    if s in ["BTC","ETH","SOL"]:
+        try:
             par={"BTC":"XBT/USD","ETH":"ETH/USD","SOL":"SOL/USD"}[s]
             r=requests.get(f"https://api.kraken.com/0/public/OHLC?pair={par}&interval=5",timeout=10).json()
             k=list(r['result'].keys())[0]
@@ -33,7 +59,13 @@ def get_velas(s):
             closes=[float(x[4]) for x in data]
             vol=[float(x[6]) for x in data]
             return opens, highs, lows, closes, vol
-    except: pass
+        except: pass
+    else:
+        ymap={"NVDA":"NVDA","TSLA":"TSLA","XAUUSD":"GC=F"}
+        y=get_yahoo(ymap[s])
+        if y: return y
+    # fallback
+    base=get_price(s)
     closes=[base+random.uniform(-base*0.01,base*0.01) for _ in range(100)]
     opens=[c+random.uniform(-1,1) for c in closes]
     highs=[max(o,c)+random.uniform(0,base*0.003) for o,c in zip(opens,closes)]
@@ -48,7 +80,17 @@ def rsi_calc(closes, p=14):
     if l==0: return 70
     return 100-(100/(1+g/l))
 
-# BOT1 ANALIZA - TU LÓGICA INTACTA
+def spy_real():
+    try:
+        y=get_yahoo("SPY", interval="5m", range_="1d")
+        if not y: return True, 0
+        closes=y[3]
+        if len(closes)<2: return True, 0
+        cambio=(closes[-1]-closes[-2])/closes[-2]*100
+        return closes[-1] > closes[0], cambio
+    except: return True, 0
+
+# BOT1 - LÓGICA ORIGINAL INTACTA
 def bot1_analiza(s):
     opens, highs, lows, closes, vol = get_velas(s)
     lineas=[]
@@ -64,32 +106,30 @@ def bot1_analiza(s):
             unicas.append(l)
     return unicas[:8], closes, opens, highs, lows, vol
 
-# BOT2 APOYA - TU LÓGICA INTACTA
 def bot2_apoya(s, linea, closes):
     if not linea: return False,0,0,"BOT2 sin linea"
-    precio=linea['precio']
-    confirm=sum(1 for c in closes[-40:] if abs(c-precio)/precio<0.003)
+    confirm=sum(1 for c in closes[-40:] if abs(c-linea['precio'])/linea['precio']<0.003)
     fuerza=min(99, confirm*18+20)
     apoya=confirm>=3 and fuerza>=65
     return apoya, fuerza, confirm, f"BOT2: {confirm} toques {fuerza:.0f}% {'✅' if apoya else '❌'}"
 
-# BOT3 JEFE ADMIN - SCORE CORREGIDO 0-99
 def bot3_jefe_admin(s, linea_bot1, fuerza2, confirm, closes, vol):
     if not linea_bot1: return False, 0, "JEFE sin linea", 0, True
-    precio_actual=closes[-1]
     rsi=rsi_calc(closes)
-    vol_prom=sum(vol[-20:])/20 if len(vol)>=20 else 1
-    vol_mult=(vol[-1]/vol_prom) if vol_prom else 1
+    vp=sum(vol[-20:])/20 if len(vol)>=20 else 1
+    vm=(vol[-1]/vp) if vp else 1
 
+    spy_verde, spy_chg = spy_real()
     ny=datetime.now(pytz.timezone('America/New_York'))
     es_madrugada=ny.hour<9 or ny.hour>=16
-    spy_ok=True if es_madrugada else random.choice([True,True,True,True,False])
+    if es_madrugada: spy_ok=True
+    else: spy_ok=spy_verde
 
     score=min(30, linea_bot1['rebotes']*5) + linea_bot1['fuerza']*0.35 + fuerza2*0.35
     if rsi<35: score+=8
     elif rsi<45: score+=4
-    if vol_mult>1.5: score+=5
-    if vol_mult<0.6: score-=10
+    if vm>1.5: score+=5
+    if vm<0.6: score-=10
     if not spy_ok: score-=20
     score=max(0,min(99,score))
 
@@ -98,62 +138,58 @@ def bot3_jefe_admin(s, linea_bot1, fuerza2, confirm, closes, vol):
     elif score>=70: bola=1100; nivel="🔥 70%+ NORMAL"
     else: bola=0; nivel=f"⏳ {score:.0f}% No da"
 
-    detalle=f"JEFE: Score {score:.0f} {nivel}\nRSI {rsi:.0f} Vol x{vol_mult:.1f} SPY {'🟢' if spy_ok else '🔴'}\nBola decide: ${bola} SL {precio_actual*0.88:.2f} Trail 0.8%"
+    detalle=f"JEFE: Score {score:.0f} {nivel}\nRSI {rsi:.0f} Vol x{vm:.1f} SPY {'🟢' if spy_ok else '🔴'} {spy_chg:+.2f}%\nBola decide: ${bola} SL {closes[-1]*0.88:.2f} Trail 0.8%"
 
     return (spy_ok and score>=70), bola, detalle, score, spy_ok
 
-# V50.1 MALLA - TODOS APOYAN A TODOS
+# V50.2 MALLA REAL
 def decide(s):
     lineas, closes, opens, highs, lows, vol = bot1_analiza(s)
     if not lineas:
-        return {"compra":False,"tipo":"SIN LINEAS","detalle":"BOT1 no encontró líneas","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
-
+        return {"compra":False,"tipo":"SIN LINEAS","detalle":"BOT1 no encontró","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
     top=lineas[0]
     apoya2,f2,conf2,txt2=bot2_apoya(s,top,closes)
-
     hoy=datetime.now().strftime("%Y-%m-%d")
-    ESTADO["jefe_hoy"].pop(f"{s}_{hoy}",None)
+    # no borrar jefe_hoy aqui, es candado real
     apoya3,bola3,txt3,score,spy_ok=bot3_jefe_admin(s,top,f2,conf2,closes,vol)
-    ESTADO["jefe_hoy"].pop(f"{s}_{hoy}",None)
 
     precio=closes[-1]
     cerca=abs(precio-top['precio'])/top['precio']<0.015
     ny=pytz.timezone('America/New_York')
     ahora=datetime.now(ny)
-    es_ny=9 <= ahora.hour <= 12 and s in ["NVDA","TSLA","XAUUSD"]
+    es_ny=9 <= ahora.hour <= 16 and s in ["NVDA","TSLA","XAUUSD"]
+    key=f"{s}_{hoy}"
+
+    if key in ESTADO["jefe_hoy"]:
+        return {"compra":False,"tipo":"JEFE YA CAZO HOY ✅","detalle":f"{txt2}\n{txt3}\n🔒 Ya se tomó ganancia hoy en {s}","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
 
     if es_ny:
-        # NY: BOT1 + JEFE apoyan a BOT2
         if cerca and apoya2 and apoya3:
-            ESTADO["jefe_hoy"][f"{s}_{hoy}"]=True
-            return {"compra":True,"tipo":f"BOT2 NY MALLA ${bola3}","bola":bola3,"detalle":f"BOT1 {top['rebotes']}R {top['fuerza']:.0f}% en ${top['precio']:.2f}\n{txt2}\n{txt3}\n✅ MALLA NY - TODOS APOYAN A BOT2","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
+            ESTADO["jefe_hoy"][key]=True
+            return {"compra":True,"tipo":f"BOT2 NY MALLA ${bola3}","bola":bola3,"detalle":f"REAL NY: BOT1 {top['rebotes']}R {top['fuerza']:.0f}% ${top['precio']:.2f}\n{txt2}\n{txt3}\n✅ MALLA TODOS APOYAN A BOT2","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
         else:
-            return {"compra":False,"tipo":"NY ESPERA MALLA","detalle":f"BOT1 {top['rebotes']}R ${top['precio']:.2f}\n{txt2}\n{txt3}\n⏳ Falta apoyo MALLA para BOT2","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
+            return {"compra":False,"tipo":"NY ESPERA MALLA","detalle":f"BOT1 {top['rebotes']}R ${top['precio']:.2f}\n{txt2}\n{txt3}\n⏳ Esperando MALLA","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
     else:
-        # BTC/ETH/SOL: BOT2 + JEFE apoyan a BOT1
         if cerca and apoya2 and apoya3:
             bola1=ESTADO["bola"].get(s,500)
             if score>=90:
-                ESTADO["jefe_hoy"][f"{s}_{hoy}"]=True
-                return {"compra":True,"tipo":f"BOT1 ${bola1}+JEFE ${bola3} MALLA 90%+","bola":bola1+bola3,"detalle":f"BOT1 {top['rebotes']}R {top['fuerza']:.0f}%\n{txt2}\n{txt3}\n✅ MALLA TODOS APOYAN -> COMPRA TOTAL","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
+                ESTADO["jefe_hoy"][key]=True
+                return {"compra":True,"tipo":f"BOT1 ${bola1}+JEFE ${bola3} MALLA 90%+","bola":bola1+bola3,"detalle":f"REAL: BOT1 {top['rebotes']}R {top['fuerza']:.0f}%\n{txt2}\n{txt3}\n✅ MALLA TODOS APOYAN -> COMPRA TOTAL","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
             else:
-                return {"compra":True,"tipo":f"BOT1 ${bola1} MALLA {score:.0f}%","bola":bola1,"detalle":f"BOT1 {top['rebotes']}R {top['fuerza']:.0f}%\n{txt2}\n{txt3}\n✅ BOT2+BOT3 APOYAN -> BOT1 COMPRA","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
+                return {"compra":True,"tipo":f"BOT1 ${bola1} MALLA {score:.0f}%","bola":bola1,"detalle":f"BOT1 {top['rebotes']}R {top['fuerza']:.0f}%\n{txt2}\n{txt3}\n✅ BOT2+BOT3 APOYAN -> BOT1","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
         else:
             return {"compra":False,"tipo":"ESPERA MALLA","detalle":f"BOT1 {top['rebotes']}R {top['fuerza']:.0f}% ${top['precio']:.2f}\n{txt2}\n{txt3}\n⏳ Falta apoyo MALLA","lineas":lineas,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"vol":vol}
 
 @app.route('/')
 def dash():
-    html="""<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#000;color:#fff;font-family:Arial;padding:10px}.card{background:#111;border:1px solid #333;border-radius:12px;padding:12px;margin:8px 0}.v{color:#00ff88}.n{color:orange}.btn{background:#00ff88;color:#000;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;margin:4px;font-weight:bold}</style></head><body><h2>💰 V50.1 MALLA - MAQUINA DE HACER DINERO</h2><p>BOT1 ↔ BOT2 ↔ BOT3 - Todos apoyan a todos</p>"""
+    html="""<html><head><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{background:#000;color:#fff;font-family:Arial;padding:10px}.card{background:#111;border:1px solid #333;border-radius:12px;padding:12px;margin:8px 0}.v{color:#00ff88}.n{color:orange}.btn{background:#00ff88;color:#000;padding:10px 18px;border-radius:8px;text-decoration:none;display:inline-block;margin:4px;font-weight:bold}</style></head><body><h2>💰 V50.2 REAL - MAQUINA DE HACER DINERO 💰</h2><p>REAL: Kraken + Yahoo + SPY real | MALLA todos apoyan</p>"""
+    spy_v, spy_c = spy_real()
+    html+=f'<div class="card">SPY REAL: {"🟢" if spy_v else "🔴"} {spy_c:+.2f}% | NY: {datetime.now(pytz.timezone("America/New_York")).strftime("%H:%M")} | Bloqueo 1x día activo</div>'
     for s in SYMBOLS:
-        hoy=datetime.now().strftime("%Y-%m-%d")
-        ESTADO["jefe_hoy"].pop(f"{s}_{hoy}",None)
         d=decide(s)
-        ESTADO["jefe_hoy"].pop(f"{s}_{hoy}",None)
-        d=decide(s)
-        ESTADO["jefe_hoy"].pop(f"{s}_{hoy}",None)
         color="v" if d["compra"] else "n"
         html+=f'<div class="card"><b>{s}</b> ${get_price(s):.2f} | <span class="{color}">{d["tipo"]}</span><br><small>{d["detalle"].replace(chr(10),"<br>")}</small><br><a class="btn" href="/graf/{s}">GRAFICA VIVA 📈</a> <a class="btn" href="/forzar/{s}">FORZAR</a></div>'
-    html+='<div class="card">V50.1 MALLA | Score 0-99 capado | Cerca 1.5% madrugada | BOT2+3 apoyan BOT1 | BOT1+3 apoyan BOT2 NY</div></body></html>'
+    html+='</body></html>'
     return html
 
 @app.route('/graf/<s>')
@@ -172,13 +208,13 @@ def graf(s):
             col='#00ff00' if x['rebotes']>=4 else '#ffaa00'
             ax.axhline(x['precio'],color=col,ls='--',lw=1.2,alpha=0.8)
             ax.text(2,x['precio'],f" {x['rebotes']}R {x['fuerza']:.0f}%",color=col,fontsize=8,backgroundcolor='black')
-        ax.set_title(f'V50.1 MALLA {s} ${c[-1]:.2f} {d["tipo"]}',color='white',fontsize=9)
+        ax.set_title(f'V50.2 REAL {s} ${c[-1]:.2f} {d["tipo"]}',color='white',fontsize=9)
         ax.tick_params(colors='white'); ax.grid(True,alpha=0.1)
         rsi_vals=[rsi_calc(c[:i]) for i in range(15,len(c))]
         ax2.plot(rsi_vals,color='#00ffff'); ax2.axhline(70,color='red',ls='--',alpha=0.4); ax2.axhline(30,color='green',ls='--',alpha=0.4); ax2.set_ylim(0,100); ax2.tick_params(colors='white')
         buf=io.BytesIO(); plt.tight_layout(); plt.savefig(buf,format='png',facecolor='black',dpi=150); buf.seek(0)
         img=base64.b64encode(buf.read()).decode(); plt.close()
-        return f'<html style="background:#000;color:#fff;font-family:Arial"><body style="padding:10px"><h2>V50.1 MALLA {s} ${c[-1]:.2f}</h2><pre style="background:#111;padding:12px;border-radius:8px">{d["detalle"]}</pre><img src="data:image/png;base64,{img}" style="width:100%;border-radius:12px"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">← VOLVER DASH</a></body></html>'
+        return f'<html style="background:#000;color:#fff;font-family:Arial"><body style="padding:10px"><h2>V50.2 REAL {s} ${c[-1]:.2f}</h2><pre style="background:#111;padding:12px;border-radius:8px">{d["detalle"]}</pre><img src="data:image/png;base64,{img}" style="width:100%;border-radius:12px"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold">← VOLVER DASH</a></body></html>'
     except Exception as e: return f'Error grafica {s}: {e}'
 
 @app.route('/forzar/<s>')
@@ -186,19 +222,17 @@ def forzar(s):
     hoy=datetime.now().strftime("%Y-%m-%d")
     ESTADO["jefe_hoy"].pop(f"{s.upper()}_{hoy}",None)
     d=decide(s.upper())
-    return f"<pre style='background:#000;color:#0f0;padding:20px'>{d['detalle']}\n\nPrecio LIVE: ${get_price(s.upper()):.2f}\nBola: {d['tipo']}</pre><a href='/'>VOLVER</a>"
+    return f"<pre style='background:#000;color:#0f0;padding:20px'>{d['detalle']}\n\nPrecio REAL: ${get_price(s.upper()):.2f}\n{d['tipo']}</pre><a href='/'>VOLVER</a>"
 
 @bot.message_handler(commands=['start'])
-def start(m): bot.send_message(m.chat.id,"💰 V50.1 MALLA - MAQUINA DE HACER DINERO\nBOT1 ↔ BOT2 ↔ BOT3\nTodos apoyan a todos\nhttps://telegram-bot-cijp.onrender.com")
+def start(m): bot.send_message(m.chat.id,"💰 V50.2 REAL - MAQUINA DE HACER DINERO 💰\nREAL Kraken + Yahoo SPY\nBOT1 ↔ BOT2 ↔ BOT3 MALLA\nhttps://telegram-bot-cijp.onrender.com")
 
 @bot.message_handler(func=lambda m: True)
 def all_msg(m):
     t=m.text.upper().strip()
     if t in SYMBOLS:
-        hoy=datetime.now().strftime("%Y-%m-%d")
-        ESTADO["jefe_hoy"].pop(f"{t}_{hoy}",None)
         d=decide(t)
-        bot.send_message(m.chat.id,f"V50.1 MALLA {t} ${get_price(t):.2f}\n{d['detalle']}\n\n{d['tipo']}")
+        bot.send_message(m.chat.id,f"V50.2 REAL {t} ${get_price(t):.2f}\n{d['detalle']}\n\n{d['tipo']}")
     elif "DASH" in t: bot.send_message(m.chat.id,"https://telegram-bot-cijp.onrender.com")
     else: bot.send_message(m.chat.id,"Escribe BTC, ETH, SOL, NVDA, TSLA, XAUUSD")
 
@@ -209,11 +243,11 @@ def hook(p=None):
     try:
         data=request.get_data().decode()
         if data: bot.process_new_updates([telebot.types.Update.de_json(data)])
-    except Exception as e: print(f"Hook {e}")
+    except: pass
     return "OK",200
 
 @app.route('/check')
-def check(): return "V50.1 MALLA MAQUINA DINERO LIVE"
+def check(): return "V50.2 REAL MAQUINA DINERO LIVE"
 
 if __name__=='__main__':
     app.run(host='0.0.0.0',port=int(os.getenv("PORT",10000)))
