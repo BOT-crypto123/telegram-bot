@@ -1,22 +1,26 @@
-# ==========================================
-# LA MAQUINA DE HACER DINERO V48.5 - MODO 10K SEGURO
-# 3 VATOS - JEFE CON MEMORIA
-# ==========================================
-import time, json, os
-from datetime import datetime
-import pytz
-from flask import Flask
+import os
+import time
+import json
 import threading
+import pytz
+from datetime import datetime
+from flask import Flask
 
+# ========== FIX PARA RENDER (WEB SERVICE) ==========
 app = Flask(__name__)
+
 @app.route('/')
 def home():
-    return "LA MAQUINA V48.5 MODO 10K ACTIVA 💰"
+    return "🔥 LA MAQUINA DE HACER DINERO V48.5 MODO 10K ACTIVA 💰 - LIVE"
 
 def run_server():
-    app.run(host='0.0.0.0', port=10000)
+    port = int(os.environ.get("PORT", 10000))
+    app.run(host='0.0.0.0', port=port)
 
 threading.Thread(target=run_server, daemon=True).start()
+# ====================================================
+
+# ========== CONFIG MAQUINA 10K ==========
 CONFIG = {
     "MAQUINA_1": 300,
     "MAQUINA_2": 300,
@@ -26,64 +30,112 @@ CONFIG = {
     "DOBLE": 900,
     "CAZADOR": 500,
     "TOPE_PERDIDA": -800,
-    "META_GANANCIA": 600
+    "META_GANANCIA": 600,
+    "TZ": "America/Mexico_City"
 }
 
 MEMORIA_FILE = "memoria_jefe.json"
+TOKEN = os.environ.get("BOT_TOKEN", "TU_TOKEN_AQUI")
+# =========================================
 
 def cargar_memoria():
     try:
-        with open(MEMORIA_FILE, "r") as f: return json.load(f)
-    except: return {"ultimo": "GANO", "racha": 0, "lote": CONFIG["TRIPLE_BASE"]}
+        if os.path.exists(MEMORIA_FILE):
+            with open(MEMORIA_FILE, "r") as f:
+                return json.load(f)
+    except: pass
+    return {"ultimo": "GANO", "racha": 0, "lote": CONFIG["TRIPLE_BASE"], "ganancia_hoy": 0, "fecha": ""}
 
-def guardar_memoria(resultado):
+def guardar_memoria(resultado, ganancia):
     mem = cargar_memoria()
+    hoy = datetime.now(pytz.timezone(CONFIG["TZ"])).strftime("%Y-%m-%d")
+    
+    if mem.get("fecha") != hoy:
+        mem["ganancia_hoy"] = 0
+        mem["fecha"] = hoy
+
+    mem["ganancia_hoy"] += ganancia
+
     if resultado == "GANO":
         mem["racha"] = mem["racha"] + 1 if mem["ultimo"] == "GANO" else 1
-        mem["lote"] = CONFIG["TRIPLE_BASE"] if mem["racha"]==0 else CONFIG["TRIPLE_R1"] if mem["racha"]==1 else CONFIG["TRIPLE_R2"]
+        if mem["racha"] == 0: mem["lote"] = CONFIG["TRIPLE_BASE"]
+        elif mem["racha"] == 1: mem["lote"] = CONFIG["TRIPLE_R1"]
+        else: mem["lote"] = CONFIG["TRIPLE_R2"]
     else:
         mem["racha"] = -1
         mem["lote"] = 600
-    mem["ultimo"] = resultado
-    with open(MEMORIA_FILE, "w") as f: json.dump(mem, f)
 
-# --- TUS 8 FUNCIONES DEL BOT 2 VAN AQUÍ (NO LAS TOCO) ---
-# filtro_ny(), filtro_noticias(), filtro_spread(), etc...
+    mem["ultimo"] = resultado
+    with open(MEMORIA_FILE, "w") as f:
+        json.dump(mem, f)
+    return mem
+
+# --- AQUI VAN TUS FILTROS DEL BOT 2 ---
+def filtro_ny():
+    # tu logica NY
+    return True
+
+def filtro_noticias():
+    return True
+
+def filtro_spread():
+    return True
 
 def triple_candado():
-    # Aqui va tu logica triple/doble
-    memoria = cargar_memoria()
-    return "TRIPLE", memoria["lote"] # Ejemplo
+    mem = cargar_memoria()
+    # TU LOGICA REAL DE TRIPLE AQUI
+    # Por ahora retorna TRIPLE si pasa filtros
+    if filtro_ny() and filtro_noticias():
+        return "TRIPLE", mem["lote"]
+    return "NADA", 0
 
 def jefe_cazador():
-    memoria = cargar_memoria()
-    if memoria["racha"] == -1: return None # Si perdio, no caza hoy
-    # logica cazador 75% fuerza
+    mem = cargar_memoria()
+    if mem["racha"] == -1:
+        print("🧠 JEFE EN DESCANSO - Perdio ayer, no caza hoy")
+        return None
     return CONFIG["CAZADOR"]
 
-def main():
-    ganancia_hoy = 0
+def main_bot():
     print("🔥 LA MAQUINA DE HACER DINERO V48.5 INICIADA - MODO 10K 🔥")
+    print(f"✅ Flask corriendo en puerto {os.environ.get('PORT', 10000)}")
+    
     while True:
-        if ganancia_hoy >= CONFIG["META_GANANCIA"]:
-            print(f"💰 META DEL DIA CUMPLIDA: +${ganancia_hoy} - APAGANDO")
-            time.sleep(3600*6) # Duerme 6 horas
-            continue
-        if ganancia_hoy <= CONFIG["TOPE_PERDIDA"]:
-            print(f"🛑 TOPE PERDIDA: {ganancia_hoy} - APAGANDO")
-            time.sleep(3600*12)
-            continue
-        
-        # LOGICA DE 3 VATOS
-        tipo, lote = triple_candado()
-        if tipo != "NADA":
-            # Abrir operacion
-            pass
-        else:
-            lote_caz = jefe_cazador()
-            if lote_caz: pass
+        try:
+            mem = cargar_memoria()
+            ganancia_hoy = mem.get("ganancia_hoy", 0)
+            hoy = datetime.now(pytz.timezone(CONFIG["TZ"])).strftime("%Y-%m-%d")
+            
+            if mem.get("fecha") != hoy:
+                ganancia_hoy = 0
 
-        time.sleep(60)
+            if ganancia_hoy >= CONFIG["META_GANANCIA"]:
+                print(f"💰 META CUMPLIDA: +${ganancia_hoy} - Durmiendo 6h")
+                time.sleep(3600 * 6)
+                continue
+
+            if ganancia_hoy <= CONFIG["TOPE_PERDIDA"]:
+                print(f"🛑 TOPE PERDIDA: ${ganancia_hoy} - Durmiendo 12h")
+                time.sleep(3600 * 12)
+                continue
+
+            tipo, lote = triple_candado()
+            
+            if tipo != "NADA":
+                print(f"🎯 SEÑAL {tipo} LOTE {lote} - {datetime.now()}")
+                # AQUI TU LOGICA PARA ABRIR OPERACION
+            else:
+                lote_caz = jefe_cazador()
+                if lote_caz:
+                    print(f"🦁 JEFE CAZADOR ACTIVO LOTE {lote_caz}")
+
+            time.sleep(60)
+
+        except Exception as e:
+            print(f"Error: {e}")
+            time.sleep(60)
 
 if __name__ == "__main__":
-    main()
+    # Esperar 3 seg a que Flask prenda el puerto
+    time.sleep(3)
+    main_bot()
