@@ -1,8 +1,6 @@
 Flask
 pyTelegramBotAPI
-yfinance
 matplotlib
 pytz
 pandas
 requests
-curl_cffi
