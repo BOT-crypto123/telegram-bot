@@ -1,4 +1,4 @@
-# V54 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈 - CADA BOT VENDE CON SU LOGICA, DECISION ENTRE LOS 3, BOT2 NY APOYA BOT1 Y JEFE
+# V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈 - TITULO CENTRADO + BALANCE TELEGRAM COMPLETO
 import os, json, requests, random
 from flask import Flask, request
 from datetime import datetime
@@ -130,8 +130,11 @@ def dash():
         v1,_=BOT1_venta(tr,pa,get_velas(tr["simbolo"])[3]); v2,_=BOT2_venta(tr,pa,get_velas(tr["simbolo"])[3]); v3,_=JEFE_venta(tr,pa)
         cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;border-radius:10px;padding:10px;margin:8px 0"><b>{tr["simbolo"]} ${tr["bola"]}</b> BRUTA {br:+.2f}% - COM ${fee:.2f} = <b style="color:{col}">NETA {ne:+.2f}% ${gn:+.2f}</b><br><small>B1 {"✅" if v1 else "❌"} B2 {"✅" if v2 else "❌"} J3 {"✅" if v3 else "❌"} = {sum([v1,v2,v3])}/3</small></div>'
     ca=sum(t["bola"]*FEE_RT for t in ESTADO["open_trades"]); pat=ESTADO["demo_balance"]+tb+fn
-    modo=f'🟢 NY ABIERTO - BOT2 APOYA BOT1 Y JEFE - DECISION 3' if ny and ESTADO["auto"] else f'🔴 NY CERRADO - VENTAS 2/3'
-    h=f'<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.header{{background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none}}</style></head><body><h2>💰 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈 V54 - CADA BOT VENDE, DECISION ENTRE 3, BOT2 NY APOYA</h2><div class="header">{modo}<br>💵 LIQUIDO ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${tb:.2f} | 📊 BRUTA ${fb:+.2f} - COM ${ca:.2f} = NETA REAL ${fn:+.2f}<br>🏦 PATRIMONIO ${pat:.2f} ({pat-10000:+.2f})<br><small>BOT1 ruptura | BOT2 NY RSI apoya BOT1+JEFE | JEFE asegura | COMPRA 3/3 VENTA 2/3</small></div><div style="background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px"><b>FLOTANTE NETA {fn:+.2f} ({len(ESTADO["open_trades"])})</b><br>{cards if cards else "Sin posiciones - Esperando 3/3"}</div><br>'
+    modo=f'🟢 NY ABIERTO - BOT2 APOYA BOT1 Y JEFE' if ny and ESTADO["auto"] else f'🔴 NY CERRADO - VENTAS 2/3'
+    h=f'''<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.titulo{{background:#111;border:3px solid #FFD700;border-radius:16px;padding:20px;margin-bottom:14px;text-align:center}}.titulo h1{{margin:0;font-size:26px;line-height:1.3;text-align:center;color:#fff}}.header{{background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px;text-align:left}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none}}</style></head><body>
+    <div class="titulo"><h1>💰 V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈<br>- TITULO CENTRADO + BALANCE TELEGRAM COMPLETO</h1></div>
+    <div class="header">{modo}<br>💳 LIQUIDO ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${tb:.2f} | 📊 BRUTA ${fb:+.2f} - COM ${ca:.2f} = NETA REAL ${fn:+.2f}<br>🏦 PATRIMONIO ${pat:.2f} ({pat-10000:+.2f})<br><small>BOT1 ruptura | BOT2 NY RSI apoya BOT1+JEFE | JEFE asegura | COMPRA 3/3 VENTA 2/3</small></div>
+    <div style="background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px;margin-top:10px"><b>FLOTANTE NETA {fn:+.2f} ({len(ESTADO["open_trades"])})</b><br>{cards if cards else "Sin posiciones - Esperando 3/3"}</div><br>'''
     for s in SYMBOLS:
         d=decidir(s); h+=f'<div class="card"><b>{s}</b> ${get_price(s):.2f} - {d["tipo"]}<br><small>{d["det"].replace(chr(10),"<br>")}</small><br><br><a class="btn" href="/graf/{s}">GRAFICA 📈</a></div>'
     return h+"</body></html>"
@@ -147,24 +150,46 @@ def graf(s):
     for x in d["lineas"]: ax.axhline(x['precio'],color='#00ff00',ls='--',alpha=0.8)
     for tr in ESTADO["open_trades"]:
         if tr["simbolo"]==s: ax.axhline(tr["entrada_real"],color='orange',ls='-',alpha=0.9)
-    ax.set_xlim(st,n); ax.set_title(f'{s} V54 CADA BOT VENDE - DECISION 2/3',color='white',fontsize=10); ax.tick_params(colors='white')
+    ax.set_xlim(st,n); ax.set_title(f'{s} V54.1',color='white',fontsize=10); ax.tick_params(colors='white')
     rsi_vals=[rsi_calc(closes[:i+1]) for i in range(15,len(closes))]; ax2.plot(range(len(closes)-len(rsi_vals),len(closes)),rsi_vals,color='#00ffff')
     import io,base64; buf=io.BytesIO(); plt.tight_layout(); plt.savefig(buf,format='png',facecolor='black',dpi=130); buf.seek(0); img=base64.b64encode(buf.read()).decode(); plt.close('all')
-    return f'<html style="background:#000;color:#fff"><body><h2>{s} V54 MAQUINA DE HACER DINERO 💰📊📈</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER 💰</a></body></html>'
+    return f'<html style="background:#000;color:#fff"><body><h2>{s} V54.1 MAQUINA DE HACER DINERO</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER</a></body></html>'
 
 @bot.message_handler(func=lambda m: True)
 def all_msg(m):
     t=m.text.strip().upper()
-    if t=="DASHBOARD": bot.send_message(m.chat.id,f"💰 MAQUINA V54 💰💴💶💵💷💸📊📈\nhttps://telegram-bot-cijp.onrender.com/")
+    if "BALANCE" in t or "/BALANCE" in t or "STATS" in t:
+        tb=sum(tr["bola"] for tr in ESTADO["open_trades"]); fb=0; fn=0; lines=[]
+        ca=sum(tr["bola"]*FEE_RT for tr in ESTADO["open_trades"])
+        for tr in ESTADO["open_trades"]:
+            pa=get_price(tr["simbolo"]); br=(pa-tr["entrada_real"])/tr["entrada_real"]*100; gb=tr["bola"]*br/100; fee=tr["bola"]*FEE_RT; ne=br-FEE_RT*100; gn=tr["bola"]*ne/100
+            fb+=gb; fn+=gn
+            v1,_=BOT1_venta(tr,pa,get_velas(tr["simbolo"])[3]); v2,_=BOT2_venta(tr,pa,get_velas(tr["simbolo"])[3]); v3,_=JEFE_venta(tr,pa)
+            lines.append(f"🔹 {tr['simbolo']} Bola ${tr['bola']}\n {tr['entrada_real']:.2f}->{pa:.2f}\n BRUTA {br:+.2f}% ${gb:+.2f} - COM ${fee:.2f} = NETA {ne:+.2f}% ${gn:+.2f}\n VOTOS {sum([v1,v2,v3])}/3")
+        pat=ESTADO["demo_balance"]+tb+fn
+        ny_txt="🟢 NY ABIERTO" if is_ny() else "🔴 NY CERRADO"
+        flot_txt="\n\n".join(lines) if lines else "Sin posiciones - Esperando 3/3"
+        msg=f'''💰 V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈
+{ny_txt} - VENTAS 2/3
+💳 LIQUIDO ${ESTADO["demo_balance"]:.2f}
+💼 EN BOLAS ${tb:.2f}
+📊 BRUTA ${fb:+.2f} - COM ${ca:.2f} = NETA REAL ${fn:+.2f}
+🏦 PATRIMONIO ${pat:.2f} ({pat-10000:+.2f})
+💸 FEES ${ESTADO["fees"]:.2f}
+BOT1 ruptura | BOT2 NY RSI apoya BOT1+JEFE | JEFE asegura | COMPRA 3/3 VENTA 2/3
+
+FLOTANTE NETA {fn:+.2f} ({len(ESTADO["open_trades"])})
+{flot_txt}
+
+https://telegram-bot-cijp.onrender.com/
+'''
+        bot.send_message(m.chat.id, msg); return
+    if t=="DASHBOARD": bot.send_message(m.chat.id,f"💰 V54.1 CENTRADO 💰💴💶💵💷💸📊📈\nhttps://telegram-bot-cijp.onrender.com/")
     elif "AUTO" in t:
-        if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON - V54 3 BOTS VENDEN, DECISION 2/3, BOT2 NY APOYA")
-        else: ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔️ AUTO OFF - Ventas 2/3 siguen")
-    elif t in SYMBOLS:
-        d=decidir(t); bot.send_message(m.chat.id,f"💰 {t} ${get_price(t):.2f}\n{d['det']}\n{d['tipo']}\nhttps://telegram-bot-cijp.onrender.com/graf/{t}")
-    elif "BALANCE" in t or "STATS" in t:
-        tb=sum(tr["bola"] for tr in ESTADO["open_trades"]); pat=ESTADO["demo_balance"]+tb
-        bot.send_message(m.chat.id,f"💰 V54 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈\nLIQUIDO ${ESTADO['demo_balance']:.2f} PATRIMONIO ${pat:.2f}\nhttps://telegram-bot-cijp.onrender.com/")
-    else: bot.send_message(m.chat.id,"💰 V54 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈\nBOT1,BOT2 NY,BOT3 venden cada uno su lógica, decisión 2/3\nBTC ETH SOL NVDA TSLA XAUUSD\nSTATS")
+        if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON V54.1")
+        else: ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔️ AUTO OFF")
+    elif t in SYMBOLS: d=decidir(t); bot.send_message(m.chat.id,f"💰 {t} ${get_price(t):.2f}\n{d['det']}\n{d['tipo']}\nhttps://telegram-bot-cijp.onrender.com/graf/{t}")
+    else: bot.send_message(m.chat.id,"💰 V54.1 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈\n/balance - Balance completo como dashboard\nBTC ETH SOL NVDA TSLA XAUUSD")
 
 @app.route('/webhook',methods=['POST'])
 @app.route(f'/{TOKEN}',methods=['POST'])
