@@ -1,4 +1,4 @@
-# MAQUINA DE HACER DINERO V50.9 FINAL - 3 BOTS COLAB + FEES 0.82% + FIX DASHBOARD
+# MAQUINA DE HACER DINERO V50.9.1 FINAL DETALLADA - 3 BOTS COLAB + FEES 0.82% + DETALLE NETO
 import os, json, requests, random
 from flask import Flask, request
 from datetime import datetime
@@ -93,10 +93,10 @@ def decidir(s):
             ESTADO["demo_balance"]+=tr["bola"]+gan_neto
             ESTADO["fees"]+=fee
             motivo=f"{'TP' if neto>=0.68 else 'SL' if neto<=-4.32 else 'TRAIL'} {neto:.2f}% NETO"
-            ESTADO["demo_trades"].append({"f":datetime.now().strftime("%m-%d %H:%M"),"s":s,"bola":tr["bola"],"pct":neto,"pnl":gan_neto,"mot":motivo})
+            ESTADO["demo_trades"].append({"f":datetime.now().strftime("%m-%d %H:%M"),"s":s,"bola":tr["bola"],"bruto":bruto,"fee":fee,"gan_bruto":gan_bruto,"pct":neto,"pnl":gan_neto,"mot":motivo})
             ESTADO["open_trades"].remove(tr)
             save_estado()
-            ventas.append(f"💰 VENTA 3 BOTS: {s} {motivo} ${gan_neto:+.2f} (fee ${fee:.2f})")
+            ventas.append(f"💰 VENTA 3 BOTS: {s} Bruto {bruto:+.2f}% ${gan_bruto:+.2f} - Fee ${fee:.2f} = NETO {neto:+.2f}% ${gan_neto:+.2f} {motivo}")
     if not lineas:
         return {"tipo":"SIN LINEAS BOT1","det":"BOT1 no ve líneas\n"+"\n".join(ventas),"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":[]}
     pulidas=[l for l in lineas if l['rebotes']>=2]
@@ -110,7 +110,7 @@ def decidir(s):
     if s=="XAUUSD" and score<90: score*=0.7
     bola=2500 if score>=90 else 1100 if score>=70 else 0
     key=f"{s}_{datetime.now().strftime('%Y-%m-%d')}"
-    det=f"📈 BOT1 {top['rebotes']}R {top['fuerza']:.0f}% ${top['precio']:.2f}\n📊 BOT2 {len(pulidas)} pulidas | {conf} toques {f2:.0f}% {'✅ APOYA' if BOT2_APOYA_COMPRA else '❌'}\n👑 JEFE Score {score:.0f}% Bola ${bola} SL -4.32% TP +0.68% NETO fee 0.82% NY {'🟢' if ny else '🔴'}"
+    det=f"📈 BOT1 {top['rebotes']}R {top['fuerza']:.0f}% ${top['precio']:.2f}\n📊 BOT2 {len(pulidas)} pulidas | {conf} toques {f2:.0f}% {'✅ APOYA' if BOT2_APOYA_COMPRA else '❌'}\n👑 JEFE Puntuación {score:.0f}% Bola ${bola} SL -4.32% TP +0.68% Tarifa NETO 0.82% NY {'🟢' if ny else '🔴'}"
     if ventas: det="\n".join(ventas)+"\n"+det
     if key in ESTADO["jefe_hoy"]:
         return {"tipo":"JEFE YA CAZO 1x DIA 🔒","det":det+"\n🔒 Apoya pero no compra","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
@@ -122,13 +122,13 @@ def decidir(s):
             ESTADO["open_trades"].append({"simbolo":s,"entrada_real":precio,"entrada":precio*(1+FEE_LADO),"bola":bola,"linea":top['precio'],"max_neto":-10})
             ESTADO["jefe_hoy"][key]=True
             save_estado()
-        return {"tipo":f"{'BOT2 NY' if ny else 'BOT1'} COMPRA 3 BOTS ${bola}","det":det+f"\n✅ COMPRA 3 BOTS - fee ${fee_e:.2f}","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+        return {"tipo":f"{'BOT2 NY' if ny else 'BOT1'} COMPRA 3 BOTS ${bola}","det":det+f"\n✅ COMPRA 3 BOTS - fee entrada ${fee_e:.2f} | Total fee al vender ${bola*FEE_RT:.2f}","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
     return {"tipo":"ESPERA APOYO 3 BOTS","det":det+"\n⏳ Falta apoyo","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
 
 @app.route('/')
 def dash():
     ny=is_ny()
-    h=f'<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:bold}}</style></head><body><h2>💰 MAQUINA V50.9 FINAL 💸</h2>💵 BAL NETO ${ESTADO["demo_balance"]:.2f} | FEES ${ESTADO["fees"]:.2f} | OPEN {len(ESTADO["open_trades"])} | NY {"🟢" if ny else "🔴"}<br><small>TP 0.68% NETO SL -4.32% NETO FEE 0.82% - 3 BOTS COLAB</small><br><br>'
+    h=f'<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:bold}}</style></head><body><h2>💰 MAQUINA V50.9.1 FINAL DETALLADA 💸</h2>💵 SALDO NETO ${ESTADO["demo_balance"]:.2f} | COMISIONES ${ESTADO["fees"]:.2f} | ABIERTO {len(ESTADO["open_trades"])} | NY {"🟢" if ny else "🔴"}<br><small>TP 0.68% NETO SL -4.32% NETO COMISIÓN 0.82% - 3 BOTS COLAB<br>GANANCIA = BRUTO - COMISIÓN</small><br><br>'
     for s in SYMBOLS:
         d=decidir(s)
         h+=f'<div class="card"><b>{s}</b> ${get_price(s):.2f} - {d["tipo"]}<br><small>{d["det"].replace(chr(10),"<br>")}</small><br><br><a class="btn" href="/graf/{s}">GRAFICA VIVA 📈</a></div>'
@@ -146,27 +146,34 @@ def graf(s):
     for x in d["lineas"]: ax.axhline(x['precio'],color='#00ff00',ls='--',alpha=0.8)
     for tr in ESTADO["open_trades"]:
         if tr["simbolo"]==s: ax.axhline(tr["entrada_real"],color='orange',ls='-',alpha=0.9)
-    ax.set_xlim(st,n); ax.set_title(f'{s} {d["tipo"]} FEES REALES',color='white',fontsize=10); ax.tick_params(colors='white')
+    ax.set_xlim(st,n); ax.set_title(f'{s} {d["tipo"]} - BRUTO - FEE = NETO',color='white',fontsize=10); ax.tick_params(colors='white')
     rsi_vals=[rsi_calc(closes[:i+1]) for i in range(15,len(closes))]
     ax2.plot(range(len(closes)-len(rsi_vals),len(closes)),rsi_vals,color='#00ffff')
     import io,base64; buf=io.BytesIO(); plt.tight_layout(); plt.savefig(buf,format='png',facecolor='black',dpi=130); buf.seek(0); img=base64.b64encode(buf.read()).decode(); plt.close('all')
-    return f'<html style="background:#000;color:#fff"><body><h2>{s} MAQUINA FINAL</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER A MAQUINA 💰</a></body></html>'
+    return f'<html style="background:#000;color:#fff"><body><h2>{s} MAQUINA FINAL - DETALLE FEES</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER A MAQUINA 💰</a></body></html>'
 
 @bot.message_handler(func=lambda m: True)
 def all_msg(m):
     t=m.text.strip().upper()
     if t=="DASHBOARD":
-        bot.send_message(m.chat.id,f"💰 DASHBOARD MAQUINA V50.9 FINAL\n💵 BAL NETO ${ESTADO['demo_balance']:.2f} | FEES ${ESTADO['fees']:.2f} | OPEN {len(ESTADO['open_trades'])}\n\nhttps://telegram-bot-cijp.onrender.com/\n\nPica para ver las 6 monedas + gráficas vivas 📈")
+        bot.send_message(m.chat.id,f"💰 DASHBOARD MAQUINA V50.9.1\n💵 SALDO NETO ${ESTADO['demo_balance']:.2f} | COMISIONES ${ESTADO['fees']:.2f} | ABIERTO {len(ESTADO['open_trades'])}\n\nhttps://telegram-bot-cijp.onrender.com/\n\nPica para ver las 6 monedas + gráficas vivas 📈")
     elif "AUTO" in t:
-        if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON - 3 BOTS colaborando")
-        else: ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔️ AUTO OFF")
+        if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON - 3 BOTS colaborando COMPRAN Y VENDEN")
+        else: ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔️ AUTO OFF - Solo observan, no compran ni venden")
     elif t in SYMBOLS:
         d=decidir(t); bot.send_message(m.chat.id,f"💰 {t} ${get_price(t):.2f} REAL FEES 0.82%\n{d['det']}\n{d['tipo']}\nhttps://telegram-bot-cijp.onrender.com/graf/{t}")
-    elif "STATS" in t:
-        trs=ESTADO["demo_trades"][-20:]; txt="\n".join([f"{x['f']} {x['s']} {x['pct']:+.2f}% NETO ${x['pnl']:+.2f} {x['mot']}" for x in trs]) or "Sin ventas aún"
-        prof=ESTADO["demo_balance"]-10000; bot.send_message(m.chat.id,f"💰 MAQUINA V50.9 FINAL 💸\nBAL NETO: ${ESTADO['demo_balance']:.2f} ({prof:+.2f})\nFEES REALES: ${ESTADO['fees']:.2f}\nOPEN: {len(ESTADO['open_trades'])}\n\n{txt}\n\nhttps://telegram-bot-cijp.onrender.com/")
+    elif "BALANCE" in t or "STATS" in t or "/BALANCE" in t or "/STATS" in t:
+        trs=ESTADO["demo_trades"][-20:]
+        lines=[]
+        for x in trs:
+            bruto=x.get('bruto',0); fee=x.get('fee',0); gan_b=x.get('gan_bruto',0)
+            lines.append(f"{x['f']} {x['s']} Bola ${x['bola']}\n Bruto {bruto:+.2f}% ${gan_b:+.2f}\n - Fee ${fee:.2f}\n = NETO {x['pct']:+.2f}% ${x['pnl']:+.2f} {x['mot']}")
+        txt="\n\n".join(lines) or "Sin ventas aún"
+        prof=ESTADO["demo_balance"]-10000
+        total_bruto=sum(x.get('gan_bruto',0) for x in ESTADO["demo_trades"])
+        bot.send_message(m.chat.id,f"💰 MAQUINA V50.9.1 DETALLADA 💸\n\nBAL INICIAL: $10000.00\nGANANCIA BRUTA ACUM: ${total_bruto:+.2f}\n- COMISIONES TOTALES: ${ESTADO['fees']:.2f}\n= BAL NETO: ${ESTADO['demo_balance']:.2f} ({prof:+.2f})\nOPEN: {len(ESTADO['open_trades'])} | AUTO: {'ON ✅' if ESTADO['auto'] else 'OFF ⛔️'}\n\nDETALLE ULTIMAS VENTAS:\n{txt}\n\nhttps://telegram-bot-cijp.onrender.com/")
     else:
-        bot.send_message(m.chat.id,"💰 MAQUINA V50.9 FINAL\nBOT1 lineas + BOT2 pule + BOT2 NY + JEFE bola\nLOS 3 COMPRAN Y LOS 3 VENDEN (BOT1 TAMBIEN VENDE)\nFEE 0.82% REAL INCLUIDO\n\nBTC ETH SOL NVDA TSLA XAUUSD\nEscribe STATS o DASHBOARD")
+        bot.send_message(m.chat.id,"💰 MAQUINA V50.9.1 DETALLADA\nBOT1 lineas + BOT2 pule + BOT2 NY + JEFE bola\nLOS 3 COMPRAN Y LOS 3 VENDEN (BOT1 TAMBIEN VENDE)\nFEE 0.82% REAL INCLUIDO\n\nBTC ETH SOL NVDA TSLA XAUUSD\nEscribe STATS o DASHBOARD o /balance")
 
 @app.route('/webhook',methods=['POST'])
 @app.route(f'/{TOKEN}',methods=['POST'])
