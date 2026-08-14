@@ -1,4 +1,4 @@
-# MAQUINA DE HACER DINERO 💰💸💷💵💶💴📈 V51 FINAL - NY AUTO + TOPE SALDO + 3 BOTS APOYADOS
+# V54 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈 - CADA BOT VENDE CON SU LOGICA, DECISION ENTRE LOS 3, BOT2 NY APOYA BOT1 Y JEFE
 import os, json, requests, random
 from flask import Flask, request
 from datetime import datetime
@@ -43,7 +43,7 @@ def rsi_calc(closes,p=14):
     return 70 if l==0 else 100-(100/(1+g/l))
 def is_ny():
     tz=pytz.timezone("America/Mexico_City"); n=datetime.now(tz); return 8 <= n.hour < 12
-def BOT1_lineas(closes):
+def BOT1_compra(closes):
     lineas=[]
     for i in range(25,len(closes)-10):
         p=closes[i]; rebotes=sum(1 for c in closes[max(0,i-35):i+10] if abs(c-p)/p<0.0025)
@@ -51,59 +51,89 @@ def BOT1_lineas(closes):
     unicas=[]
     for lin in sorted(lineas,key=lambda x:x['rebotes'],reverse=True):
         if not any(abs(lin['precio']-u['precio'])/u['precio']<0.006 for u in unicas): unicas.append(lin)
-    return unicas[:6]
+    lineas=unicas[:6]
+    SI=len([l for l in lineas if l['rebotes']>=2])>0
+    top=sorted([l for l in lineas if l['rebotes']>=2],key=lambda x:x['rebotes'],reverse=True)[0] if SI else None
+    return SI, top, lineas, f"BOT1 COMPRA {'✅ SI' if SI else '❌ NO'} {top['rebotes']}R {top['fuerza']:.0f}%" if SI else "BOT1 COMPRA ❌ NO"
+def BOT1_venta(tr, precio, closes):
+    bruto=(precio-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100; max_neto=tr.get("max_neto",neto)
+    rompe=abs(precio-tr["linea"])/tr["linea"]>0.015 if "linea" in tr else False
+    V=neto>=0.68 or neto<=-4.32 or (max_neto>=0.30 and neto<=max_neto-0.70) or rompe
+    mot=f"TP {neto:.2f}%" if neto>=0.68 else f"SL {neto:.2f}%" if neto<=-4.32 else f"TRAIL {max_neto:.2f}->{neto:.2f}%" if (max_neto>=0.30 and neto<=max_neto-0.70) else "RUPTURA" if rompe else "HOLD"
+    return V, f"BOT1 VENTA {'✅ VENDE' if V else '❌ HOLD'} {mot}"
+def BOT2_compra_NY(closes, top, score):
+    ny=is_ny()
+    if not ny: return False,0,0,"BOT2 COMPRA ❌ NO - NY 🔴 CERRADO no apoyo a BOT1 ni JEFE"
+    if not top: return False,0,0,"BOT2 COMPRA ❌ NO - Sin BOT1"
+    conf=sum(1 for c in closes[-50:] if abs(c-top['precio'])/top['precio']<0.003); f2=min(99,conf*18+20); rsi=rsi_calc(closes)
+    SI=conf>=3 and f2>=65 and 35<rsi<75 and score>=70
+    return SI, conf, f2, f"BOT2 NY 🟢 {'✅ SI APOYA BOT1+JEFE' if SI else '❌ NO'} {conf}tq {f2:.0f}% RSI {rsi:.0f}"
+def BOT2_venta(tr, precio, closes):
+    bruto=(precio-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100; max_neto=tr.get("max_neto",neto); rsi=rsi_calc(closes)
+    V=neto>=0.68 or neto<=-4.32 or (max_neto>=0.30 and rsi<60) or rsi>72
+    mot=f"TP {neto:.2f}%" if neto>=0.68 else f"SL {neto:.2f}%" if neto<=-4.32 else f"RSI TRAIL {rsi:.0f}" if (max_neto>=0.30 and rsi<60) else f"RSI SOBRE {rsi:.0f}" if rsi>72 else "HOLD"
+    return V, f"BOT2 VENTA {'✅ VENDE' if V else '❌ HOLD'} {mot}"
+def JEFE_compra(top, f2):
+    if not top: return False,0,0,"JEFE COMPRA ❌ NO"
+    score=min(30,top['rebotes']*5)+top['fuerza']*0.35+f2*0.35
+    bola=2500 if score>=90 else 1100 if score>=70 else 0
+    ny=is_ny(); ok=ESTADO["demo_balance"] >= bola+bola*FEE_LADO
+    SI=score>=70 and bola>0 and ny and ESTADO["auto"] and ok
+    return SI, score, bola, f"JEFE COMPRA {'✅ SI' if SI else '❌ NO'} Score {score:.0f}% Bola ${bola} NY {'🟢' if ny else '🔴'}"
+def JEFE_venta(tr, precio):
+    bruto=(precio-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100; max_neto=tr.get("max_neto",neto)
+    V=neto>=0.68 or neto<=-4.32 or (max_neto>=0.50 and neto<=0.20)
+    mot=f"TP ASEG {neto:.2f}%" if neto>=0.68 else f"SL PROT {neto:.2f}%" if neto<=-4.32 else f"ASEGURA {max_neto:.2f}->{neto:.2f}%" if (max_neto>=0.50 and neto<=0.20) else "HOLD"
+    return V, f"JEFE VENTA {'✅ VENDE' if V else '❌ HOLD'} {mot}"
 def decidir(s):
-    opens,highs,lows,closes=get_velas(s); precio=closes[-1]; ny=is_ny(); lineas=BOT1_lineas(closes); ventas=[]
+    opens,highs,lows,closes=get_velas(s); precio=closes[-1]; ventas=[]
     for tr in ESTADO["open_trades"][:]:
         if tr["simbolo"]!=s: continue
         bruto=(precio-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100
-        max_neto=tr.get("max_neto",neto)
-        if neto>max_neto: max_neto=neto
-        tr["max_neto"]=max_neto
-        BOT1_VENDE=neto>=0.68 or neto<=-4.32 or (max_neto>=0.30 and neto<=max_neto-0.70)
-        BOT2_APOYA_VENTA=neto>=0.68 or neto<=-4.32 or (max_neto>=0.30 and rsi_calc(closes)<60)
-        if BOT1_VENDE and BOT2_APOYA_VENTA:
-            gan_bruto=tr["bola"]*bruto/100; fee=tr["bola"]*FEE_RT; gan_neto=gan_bruto-fee
-            ESTADO["demo_balance"]+=tr["bola"]+gan_neto; ESTADO["fees"]+=fee
-            motivo=f"{'TP' if neto>=0.68 else 'SL' if neto<=-4.32 else 'TRAIL'} {neto:.2f}%"
-            ESTADO["demo_trades"].append({"f":datetime.now().strftime("%m-%d %H:%M"),"s":s,"bola":tr["bola"],"bruto":bruto,"fee":fee,"gan_bruto":gan_bruto,"pct":neto,"pnl":gan_neto,"mot":motivo})
+        tr["max_neto"]=max(tr.get("max_neto",neto),neto)
+        v1,t1=BOT1_venta(tr,precio,closes); v2,t2=BOT2_venta(tr,precio,closes); v3,t3=JEFE_venta(tr,precio)
+        if sum([v1,v2,v3])>=2:
+            gb=tr["bola"]*bruto/100; fee=tr["bola"]*FEE_RT; gn=gb-fee
+            ESTADO["demo_balance"]+=tr["bola"]+gn; ESTADO["fees"]+=fee
             ESTADO["open_trades"].remove(tr); save_estado()
-            ventas.append(f"💰 VENTA 3 BOTS APOYADOS {s} BRUTA {bruto:+.2f}% ${gan_bruto:+.2f} - COM ${fee:.2f} = NETA REAL {neto:+.2f}% ${gan_neto:+.2f}")
-    if not lineas: return {"tipo":"BOT1 SIN LINEAS","det":"BOT1 no ve líneas\n"+"\n".join(ventas),"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":[]}
-    pulidas=[l for l in lineas if l['rebotes']>=2]
-    if not pulidas: return {"tipo":"BOT2 PULIENDO 1R - NO APOYA","det":f"BOT2 borró {len(lineas)} de 1R - BOT1 y BOT2 no se ponen de acuerdo\n"+"\n".join(ventas),"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
-    top=pulidas[0]; conf=sum(1 for c in closes[-50:] if abs(c-top['precio'])/top['precio']<0.003); f2=min(99,conf*18+20)
-    BOT2_APOYA=conf>=3 and f2>=65; score=min(30,top['rebotes']*5)+top['fuerza']*0.35+f2*0.35
-    if s=="XAUUSD" and score<90: score*=0.7
-    bola=2500 if score>=90 else 1100 if score>=70 else 0; key=f"{s}_{datetime.now().strftime('%Y-%m-%d')}"
-    det=f"📈 BOT1 {top['rebotes']}R {top['fuerza']:.0f}% ${top['precio']:.2f}\n📊 BOT2 {len(pulidas)} pulidas | {conf} toques {f2:.0f}% {'✅ APOYA A BOT1' if BOT2_APOYA else '❌ NO APOYA'}\n👑 JEFE {score:.0f}% Bola ${bola} SL -4.32% TP +0.68% NETA 0.82% NY {'🟢' if ny else '🔴'}\n💰 3 BOTS APOYADOS: {'SI ✅' if BOT2_APOYA and score>=70 else 'NO ⏳'}"
-    if ventas: det="\n".join(ventas)+"\n"+det
-    if key in ESTADO["jefe_hoy"]: return {"tipo":"JEFE YA CAZO 1x DIA 🔒 - 3 BOTS EN ESPERA","det":det+"\n🔒 Ya cazó hoy, apoya pero no compra","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
-    if not ny: return {"tipo":"NY CERRADO - AUTO PAUSA ⏸️","det":det+f"\n⏸️ NY cerrado (8am-12pm Mex) - 3 BOTS en pausa, solo venden\nFORMULA: BRUTA - COM = NETA REAL","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
-    if not ESTADO["auto"]: return {"tipo":"AUTO OFF - SOLO VENDE ⛔️","det":det+"\n⛔️ AUTO OFF - 3 BOTS no compran, solo venden","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
-    if BOT2_APOYA and score>=70:
-        fee_e=bola*FEE_LADO; total=bola+fee_e
-        if ESTADO["demo_balance"] < total:
-            return {"tipo":f"SALDO INSUFICIENTE 🚫 ${ESTADO['demo_balance']:.2f} < ${total:.2f}","det":det+f"\n🚫 TOPE SALDO: 3 BOTS quieren comprar pero no hay saldo\nNecesitas ${total:.2f} (Bola ${bola}+Fee ${fee_e:.2f}) Tienes ${ESTADO['demo_balance']:.2f}\nAviso: No entra hasta que vendas algo","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
-        ESTADO["demo_balance"]-=total; ESTADO["fees"]+=fee_e
+            ventas.append(f"💰 VENTA DECISION {sum([v1,v2,v3])}/3 {s}\n {t1}\n {t2}\n {t3}\n BRUTA {bruto:+.2f}% ${gb:+.2f} - COM ${fee:.2f} = NETA {neto:+.2f}% ${gn:+.2f}")
+    B1,top,lineas,t1c=BOT1_compra(closes)
+    pre=min(30,top['rebotes']*5)+top['fuerza']*0.35+75*0.35 if top else 0
+    B2,conf,f2,t2c=BOT2_compra_NY(closes,top,pre)
+    J3,score,bola,t3c=JEFE_compra(top,f2 if f2 else 75)
+    if top:
+        B2,conf,f2,t2c=BOT2_compra_NY(closes,top,score); J3,score,bola,t3c=JEFE_compra(top,f2)
+    key=f"{s}_{datetime.now().strftime('%Y-%m-%d')}"; votos=sum([B1,B2,J3])
+    det=f"{t1c}\n{t2c}\n{t3c}\n---\nCOMPRA: B1 {'✅' if B1 else '❌'} + B2 NY APOYA {'✅' if B2 else '❌'} + JEFE {'✅' if J3 else '❌'} = {votos}/3 {'💰 COMPRA' if votos==3 else '⏳'}"
+    if ventas: det="\n".join(ventas)+"\n\n"+det
+    else:
+        for tr in ESTADO["open_trades"]:
+            if tr["simbolo"]==s:
+                v1,t1=BOT1_venta(tr,precio,closes); v2,t2=BOT2_venta(tr,precio,closes); v3,t3=JEFE_venta(tr,precio)
+                det+=f"\n---\nVENTA ABIERTA NETA {(precio-tr['entrada_real'])/tr['entrada_real']*100-FEE_RT*100:+.2f}%\n{t1}\n{t2}\n{t3}\nVOTOS {sum([v1,v2,v3])}/3"
+    if key in ESTADO["jefe_hoy"]: return {"tipo":"JEFE YA CAZO 1x DIA 🔒","det":det+"\n🔒 Hoy ya cazó","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+    if not is_ny(): return {"tipo":"NY CERRADO ⏸️ - BOT2 PAUSA COMPRA, VENTAS 2/3","det":det+"\n⏸️ NY cerrado","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+    if not ESTADO["auto"]: return {"tipo":"AUTO OFF ⛔️","det":det,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+    if ESTADO["demo_balance"] < bola+bola*FEE_LADO and B1 and B2: return {"tipo":"SALDO INSUFICIENTE 🚫","det":det+f"\n🚫 Necesita ${bola+bola*FEE_LADO:.2f}","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+    if B1 and B2 and J3:
+        fee_e=bola*FEE_LADO; ESTADO["demo_balance"]-=bola+fee_e; ESTADO["fees"]+=fee_e
         ESTADO["open_trades"].append({"simbolo":s,"entrada_real":precio,"entrada":precio*(1+FEE_LADO),"bola":bola,"linea":top['precio'],"max_neto":-10})
         ESTADO["jefe_hoy"][key]=True; save_estado()
-        return {"tipo":f"COMPRA 3 BOTS APOYADOS 💰 ${bola}","det":det+f"\n✅ COMPRA 3 BOTS APOYADOS - Fee ${fee_e:.2f} Saldo ${ESTADO['demo_balance']:.2f}","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
-    return {"tipo":"ESPERA APOYO 3 BOTS ⏳","det":det+"\n⏳ 3 BOTS no se ponen de acuerdo todavía","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+        return {"tipo":f"COMPRA 3/3 💰 ${bola}","det":det+f"\n✅ COMPRA 3 BOTS NY INTEGRADOS","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
+    return {"tipo":f"ESPERA {votos}/3 ⏳","det":det,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
 
 @app.route('/')
 def dash():
-    ny=is_ny(); flot_bruto=0; flot_neto=0; flot_cards=""; total_bolas=sum(t["bola"] for t in ESTADO["open_trades"])
+    ny=is_ny(); fb=0; fn=0; cards=""; tb=sum(t["bola"] for t in ESTADO["open_trades"])
     for tr in ESTADO["open_trades"]:
-        pa=get_price(tr["simbolo"]); bruto=(pa-tr["entrada_real"])/tr["entrada_real"]*100
-        gan_bruto=tr["bola"]*bruto/100; fee=tr["bola"]*FEE_RT; neto=bruto-FEE_RT*100; gan_neto=tr["bola"]*neto/100
-        flot_bruto+=gan_bruto; flot_neto+=gan_neto; color="#00ff88" if gan_neto>=0 else "#ff4444"
-        flot_cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;border-radius:10px;padding:10px;margin:8px 0"><b>{tr["simbolo"]} Bola ${tr["bola"]}</b> ${tr["entrada_real"]:.2f} → ${pa:.2f}<br>BRUTA {bruto:+.2f}% ${gan_bruto:+.2f} - COM ${fee:.2f} = <b style="color:{color}">NETA REAL {neto:+.2f}% ${gan_neto:+.2f}</b><br><small>3 BOTS APOYADOS vendiendo en TP +0.68% NETA</small></div>'
-    com_abierto=sum(t["bola"]*FEE_RT for t in ESTADO["open_trades"]); patrimonio=ESTADO["demo_balance"]+total_bolas+flot_neto
-    modo=f'🟢 NY ABIERTO - 3 BOTS COMPRANDO APOYADOS' if ny and ESTADO["auto"] else f'🔴 NY CERRADO - 3 BOTS EN PAUSA (solo venden)' if not ny else '⛔️ AUTO OFF - 3 BOTS SOLO VENDEN'
-    h=f'<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.header{{background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px;margin-bottom:14px}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none;font-weight:bold}}</style></head><body><h2>💰 MAQUINA DE HACER DINERO 💸💷💵💶💴📈 V51 NY AUTO + TOPE SALDO</h2><div class="header">{modo}<br>💵 LIQUIDO ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${total_bolas:.2f} | ABIERTO {len(ESTADO["open_trades"])} | NY {"🟢" if ny else "🔴"}<br>📊 BRUTA ${flot_bruto:+.2f} - COM ${com_abierto:.2f} = NETA REAL ${flot_neto:+.2f}<br>🏦 PATRIMONIO ${patrimonio:.2f} ({patrimonio-10000:+.2f}) | COM HIST ${ESTADO["fees"]:.2f}<br><small>1.- NY 8am-12pm AUTO | 2.- TOPE SALDO | 3 BOTS COMPRAN Y VENDEN APOYADOS | BRUTA - COM = NETA</small></div><div style="background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px"><b>💹 FLOTANTE 3 BOTS APOYADOS ({len(ESTADO["open_trades"])}) BRUTA ${flot_bruto:+.2f} - COM ${com_abierto:.2f} = NETA REAL {flot_neto:+.2f}</b><br>{flot_cards if flot_cards else "Sin posiciones - Esperando apoyo de 3 BOTS"}</div><br>'
+        pa=get_price(tr["simbolo"]); br=(pa-tr["entrada_real"])/tr["entrada_real"]*100; gb=tr["bola"]*br/100; fee=tr["bola"]*FEE_RT; ne=br-FEE_RT*100; gn=tr["bola"]*ne/100; fb+=gb; fn+=gn; col="#00ff88" if gn>=0 else "#ff4444"
+        v1,_=BOT1_venta(tr,pa,get_velas(tr["simbolo"])[3]); v2,_=BOT2_venta(tr,pa,get_velas(tr["simbolo"])[3]); v3,_=JEFE_venta(tr,pa)
+        cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;border-radius:10px;padding:10px;margin:8px 0"><b>{tr["simbolo"]} ${tr["bola"]}</b> BRUTA {br:+.2f}% - COM ${fee:.2f} = <b style="color:{col}">NETA {ne:+.2f}% ${gn:+.2f}</b><br><small>B1 {"✅" if v1 else "❌"} B2 {"✅" if v2 else "❌"} J3 {"✅" if v3 else "❌"} = {sum([v1,v2,v3])}/3</small></div>'
+    ca=sum(t["bola"]*FEE_RT for t in ESTADO["open_trades"]); pat=ESTADO["demo_balance"]+tb+fn
+    modo=f'🟢 NY ABIERTO - BOT2 APOYA BOT1 Y JEFE - DECISION 3' if ny and ESTADO["auto"] else f'🔴 NY CERRADO - VENTAS 2/3'
+    h=f'<html><head><meta name="viewport" content="width=device-width"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.header{{background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}.btn{{background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none}}</style></head><body><h2>💰 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈 V54 - CADA BOT VENDE, DECISION ENTRE 3, BOT2 NY APOYA</h2><div class="header">{modo}<br>💵 LIQUIDO ${ESTADO["demo_balance"]:.2f} | EN BOLAS ${tb:.2f} | 📊 BRUTA ${fb:+.2f} - COM ${ca:.2f} = NETA REAL ${fn:+.2f}<br>🏦 PATRIMONIO ${pat:.2f} ({pat-10000:+.2f})<br><small>BOT1 ruptura | BOT2 NY RSI apoya BOT1+JEFE | JEFE asegura | COMPRA 3/3 VENTA 2/3</small></div><div style="background:#111;border:2px solid #00ff88;border-radius:14px;padding:14px"><b>FLOTANTE NETA {fn:+.2f} ({len(ESTADO["open_trades"])})</b><br>{cards if cards else "Sin posiciones - Esperando 3/3"}</div><br>'
     for s in SYMBOLS:
-        d=decidir(s); h+=f'<div class="card"><b>{s}</b> ${get_price(s):.2f} - {d["tipo"]}<br><small>{d["det"].replace(chr(10),"<br>")}</small><br><br><a class="btn" href="/graf/{s}">GRAFICA VIVA 📈 3 BOTS</a></div>'
+        d=decidir(s); h+=f'<div class="card"><b>{s}</b> ${get_price(s):.2f} - {d["tipo"]}<br><small>{d["det"].replace(chr(10),"<br>")}</small><br><br><a class="btn" href="/graf/{s}">GRAFICA 📈</a></div>'
     return h+"</body></html>"
 
 @app.route('/graf/<s>')
@@ -117,29 +147,25 @@ def graf(s):
     for x in d["lineas"]: ax.axhline(x['precio'],color='#00ff00',ls='--',alpha=0.8)
     for tr in ESTADO["open_trades"]:
         if tr["simbolo"]==s: ax.axhline(tr["entrada_real"],color='orange',ls='-',alpha=0.9)
-    ax.set_xlim(st,n); ax.set_title(f'{s} MAQUINA DE HACER DINERO - 3 BOTS APOYADOS',color='white',fontsize=10); ax.tick_params(colors='white')
+    ax.set_xlim(st,n); ax.set_title(f'{s} V54 CADA BOT VENDE - DECISION 2/3',color='white',fontsize=10); ax.tick_params(colors='white')
     rsi_vals=[rsi_calc(closes[:i+1]) for i in range(15,len(closes))]; ax2.plot(range(len(closes)-len(rsi_vals),len(closes)),rsi_vals,color='#00ffff')
     import io,base64; buf=io.BytesIO(); plt.tight_layout(); plt.savefig(buf,format='png',facecolor='black',dpi=130); buf.seek(0); img=base64.b64encode(buf.read()).decode(); plt.close('all')
-    return f'<html style="background:#000;color:#fff"><body><h2>{s} MAQUINA DE HACER DINERO 💰💸📈 - 3 BOTS APOYADOS</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER A MAQUINA DE HACER DINERO 💰</a></body></html>'
+    return f'<html style="background:#000;color:#fff"><body><h2>{s} V54 MAQUINA DE HACER DINERO 💰📊📈</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER 💰</a></body></html>'
 
 @bot.message_handler(func=lambda m: True)
 def all_msg(m):
     t=m.text.strip().upper()
-    if t=="DASHBOARD": bot.send_message(m.chat.id,f"💰 MAQUINA DE HACER DINERO 💸💷💵💶💴📈 V51\nhttps://telegram-bot-cijp.onrender.com/")
+    if t=="DASHBOARD": bot.send_message(m.chat.id,f"💰 MAQUINA V54 💰💴💶💵💷💸📊📈\nhttps://telegram-bot-cijp.onrender.com/")
     elif "AUTO" in t:
-        if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ MAQUINA DE HACER DINERO 💰 AUTO ON + NY AUTO 8am-12pm - 3 BOTS APOYADOS COMPRANDO")
-        else: ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔️ MAQUINA PAUSA - 3 BOTS solo venden, no compran")
+        if "ON" in t: ESTADO["auto"]=True; save_estado(); bot.send_message(m.chat.id,"✅ AUTO ON - V54 3 BOTS VENDEN, DECISION 2/3, BOT2 NY APOYA")
+        else: ESTADO["auto"]=False; save_estado(); bot.send_message(m.chat.id,"⛔️ AUTO OFF - Ventas 2/3 siguen")
     elif t in SYMBOLS:
-        d=decidir(t); bot.send_message(m.chat.id,f"💰 MAQUINA DE HACER DINERO {t} ${get_price(t):.2f}\n{d['det']}\n{d['tipo']}\nhttps://telegram-bot-cijp.onrender.com/graf/{t}")
-    elif "BALANCE" in t or "STATS" in t or "/BALANCE" in t or "/STATS" in t:
-        total_bolas=sum(tr["bola"] for tr in ESTADO["open_trades"]); flot_bruto=0; flot_neto=0; flot_lines=[]
-        for tr in ESTADO["open_trades"]:
-            pa=get_price(tr["simbolo"]); bruto=(pa-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100; gan_neto=tr["bola"]*neto/100; gan_bruto=tr["bola"]*bruto/100; fee=tr["bola"]*FEE_RT; flot_bruto+=gan_bruto; flot_neto+=gan_neto
-            flot_lines.append(f"{tr['simbolo']} ${tr['bola']} 3 BOTS\n BRUTA {bruto:+.2f}% ${gan_bruto:+.2f} - COM ${fee:.2f} = NETA {neto:+.2f}% ${gan_neto:+.2f}")
-        flot_txt="\n\n".join(flot_lines) or "Sin abierto - Esperando 3 BOTS apoyados"; patrimonio=ESTADO["demo_balance"]+total_bolas+flot_neto; ny=is_ny()
-        modo="🟢 NY ABIERTO 3 BOTS COMPRANDO" if ny and ESTADO["auto"] else "🔴 NY CERRADO 3 BOTS PAUSA" if not ny else "⛔️ AUTO OFF"
-        bot.send_message(m.chat.id,f"💰 MAQUINA DE HACER DINERO 💸💷💵💶💴📈 V51\n{modo}\nLIQUIDO ${ESTADO['demo_balance']:.2f} | EN BOLAS ${total_bolas:.2f} | {len(ESTADO['open_trades'])} abiertas\nBRUTA ${flot_bruto:+.2f} - COM ${sum(t['bola']*FEE_RT for t in ESTADO['open_trades']):.2f} = NETA REAL ${flot_neto:+.2f}\nPATRIMONIO ${patrimonio:.2f} ({patrimonio-10000:+.2f})\n3 BOTS COMPRAN Y VENDEN APOYADOS\n\nFLOT:\n{flot_txt}\nhttps://telegram-bot-cijp.onrender.com/")
-    else: bot.send_message(m.chat.id,"💰 MAQUINA DE HACER DINERO 💸💷💵💶💴📈 V51\n3 BOTS APOYADOS NY AUTO + TOPE SALDO\nBTC ETH SOL NVDA TSLA XAUUSD\nSTATS / DASHBOARD")
+        d=decidir(t); bot.send_message(m.chat.id,f"💰 {t} ${get_price(t):.2f}\n{d['det']}\n{d['tipo']}\nhttps://telegram-bot-cijp.onrender.com/graf/{t}")
+    elif "BALANCE" in t or "STATS" in t:
+        tb=sum(tr["bola"] for tr in ESTADO["open_trades"]); pat=ESTADO["demo_balance"]+tb
+        bot.send_message(m.chat.id,f"💰 V54 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈\nLIQUIDO ${ESTADO['demo_balance']:.2f} PATRIMONIO ${pat:.2f}\nhttps://telegram-bot-cijp.onrender.com/")
+    else: bot.send_message(m.chat.id,"💰 V54 MAQUINA DE HACER DINERO 💰💴💶💵💷💸📊📈\nBOT1,BOT2 NY,BOT3 venden cada uno su lógica, decisión 2/3\nBTC ETH SOL NVDA TSLA XAUUSD\nSTATS")
+
 @app.route('/webhook',methods=['POST'])
 @app.route(f'/{TOKEN}',methods=['POST'])
 def hook():
