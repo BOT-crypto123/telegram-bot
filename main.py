@@ -1,4 +1,4 @@
-# V55.4 FIX 500 - MAQUINA DE HACER DINERO
+# V56 - META 6% MENSUAL - MAQUINA DE HACER DINERO
 import os, json, requests, random
 from flask import Flask, request
 from datetime import datetime
@@ -6,7 +6,8 @@ import telebot, pytz
 TOKEN=os.getenv("BOT_TOKEN","8805451290:AAfie2WdkcQYM7MrG79BzD1Es_xVrHtXJ5M")
 bot=telebot.TeleBot(TOKEN); app=Flask(__name__)
 SYMBOLS=["BTC","ETH","SOL","NVDA","TSLA","XAUUSD"]; FILE_STATE="/tmp/estado_demo.json"
-FEE_LADO=0.0041; FEE_RT=0.0082; TRAILING_PCT=1.2
+FEE_LADO=0.0041; FEE_RT=0.0082; TRAILING_PCT=0.6 # <-- META 6% FIX
+MAX_ABIERTOS_TOTAL = 3 # <-- NO MAS DE 3 BOLAS ATORADAS
 
 def load_estado():
     try:
@@ -63,12 +64,12 @@ def BOT2_compra(closes, top, score):
     if not top: return False,0,0,"BOT2 NO"
     if not is_ny(): return True, 3, 75, f"BOT2 NOCHE SI RSI {rsi_calc(closes):.0f}"
     conf=sum(1 for c in closes[-50:] if abs(c-top['precio'])/top['precio']<0.003); f2=min(99,conf*18+20); rsi=rsi_calc(closes)
-    SI=conf>=3 and f2>=65 and 35<rsi<75 and score>=70
+    SI=conf>=3 and f2>=65 and 35<rsi<75 and score>=65 # BAJADO DE 70 A 65 PARA META 6%
     return SI, conf, f2, f"BOT2 NY {'SI' if SI else 'NO'} {f2:.0f}% RSI {rsi:.0f}"
 def JEFE_compra(top, f2):
     if not top: return False,0,0,"JEFE NO"
-    score=min(30,top['rebotes']*5)+top['fuerza']*0.35+f2*0.35; bola=2500 if score>=90 else 1100 if score>=70 else 0
-    ok=ESTADO["demo_balance"] >= bola+bola*FEE_LADO; SI=score>=70 and bola>0 and ESTADO["auto"] and ok
+    score=min(30,top['rebotes']*5)+top['fuerza']*0.35+f2*0.35; bola=2500 if score>=90 else 1100 if score>=65 else 0 # BAJADO A 65
+    ok=ESTADO["demo_balance"] >= bola+bola*FEE_LADO; SI=score>=65 and bola>0 and ESTADO["auto"] and ok
     return SI, score, bola, f"JEFE {'SI' if SI else 'NO'} {score:.0f}% ${bola}"
 def BOT1_venta(tr, precio, closes):
     bruto=(precio-tr["entrada_real"])/tr["entrada_real"]*100; neto=bruto-FEE_RT*100; max_neto=tr.get("max_neto",neto)
@@ -92,10 +93,14 @@ def decidir(s):
             gn=tr["bola"]*bruto/100 - tr["bola"]*FEE_RT
             ESTADO["demo_balance"]+=tr["bola"]+gn; ESTADO["fees"]+=tr["bola"]*FEE_RT; ESTADO["open_trades"].remove(tr); save_estado()
             ventas.append(f"VENTA {s} NETA {neto:+.2f}%")
+    # CANDADO NUEVO V56: MAX 3 ABIERTOS TOTALES
+    if len(ESTADO["open_trades"]) >= MAX_ABIERTOS_TOTAL:
+        B1,top,lineas,t1c=BOT1_compra(closes)
+        return {"tipo":f"MAX 3 ABIERTOS 🔒","det":f"Esperando ventas\n{t1c}","closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
     B1,top,lineas,t1c=BOT1_compra(closes); pre=min(30,top['rebotes']*5)+top['fuerza']*0.35+75*0.35 if top else 0
     B2,conf,f2,t2c=BOT2_compra(closes,top,pre); J3,score,bola,t3c=JEFE_compra(top,f2 if f2 else 75)
     if top: B2,conf,f2,t2c=BOT2_compra(closes,top,score); J3,score,bola,t3c=JEFE_compra(top,f2)
-    votos=sum([B1,B2,J3]); det=f"{'NY' if is_ny() else 'NOCHE'} TEND {tend}\n{t1c}\n{t2c}\n{t3c}\n---\n{votos}/3"
+    votos=sum([B1,B2,J3]); det=f"{'NY' if is_ny() else 'NOCHE'} TEND {tend}\n{t1c}\n{t2c}\n{t3c}\n---\n{votos}/3 TRAIL {TRAILING_PCT}%"
     if ventas: det="\n".join(ventas)+"\n\n"+det
     key=f"{s}_{hoy}"; count_symbol=sum(1 for k in ESTADO["jefe_hoy"] if k.startswith(s+"_"))
     if count_symbol>=2: return {"tipo":"MAX 2 HOY 🔒","det":det,"closes":closes,"opens":opens,"highs":highs,"lows":lows,"lineas":lineas}
@@ -115,7 +120,7 @@ def dash():
         fb+=tr["bola"]*br/100; fn+=gn; ffees+=fee
         cards+=f'<div style="background:#001a0a;border:1px solid #00ff88;padding:10px;margin:8px 0;border-radius:10px"><b>{tr["simbolo"]}</b> ${tr["bola"]} NETA {ne:+.2f}% ${gn:+.2f}</div>'
     pat=ESTADO["demo_balance"]+tb+fn
-    h=f'<html><head><meta name="viewport" content="width=device-width"><meta http-equiv="refresh" content="20"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.titulo{{background:#111;border:3px solid #FFD700;border-radius:16px;padding:18px;text-align:center}}.flot{{background:#002200;border:2px solid #00ff88;border-radius:14px;padding:14px;margin:10px 0}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}</style></head><body><div class="titulo"><h1>V55.4 MAQUINA DINERO FIX</h1></div><div class="flot">EFECTIVO ${ESTADO["demo_balance"]:.2f} | BOLAS ${tb:.2f}<br>BRUTO ${fb:+.2f} | FEES -${ffees:.2f} | NETO ${fn:+.2f}<br>PAT ${pat:.2f} | UTIL ${pat-10000:+.2f} | FEES HIST ${ESTADO["fees"]:.2f}</div><div>{cards}</div>'
+    h=f'<html><head><meta name="viewport" content="width=device-width"><meta http-equiv="refresh" content="20"><style>body{{background:#000;color:#fff;font-family:Arial;padding:10px}}.titulo{{background:#111;border:3px solid #FFD700;border-radius:16px;padding:18px;text-align:center}}.flot{{background:#002200;border:2px solid #00ff88;border-radius:14px;padding:14px;margin:10px 0}}.card{{background:#111;border:1px solid #222;border-radius:14px;padding:14px;margin:10px 0}}</style></head><body><div class="titulo"><h1>V56 META 6% - TRAIL 0.6%</h1><p>Target $33/dia = 6.6% mes</p></div><div class="flot">EFECTIVO ${ESTADO["demo_balance"]:.2f} | BOLAS ${tb:.2f}<br>BRUTO ${fb:+.2f} | FEES -${ffees:.2f} | NETO ${fn:+.2f}<br>PAT ${pat:.2f} | UTIL ${pat-10000:+.2f} | FEES HIST ${ESTADO["fees"]:.2f}</div><div>{cards}</div>'
     for s in SYMBOLS:
         d=decidir(s); h+=f'<div class="card"><b>{s}</b> ${get_price(s):.2f} - {d["tipo"]}<br><small>{d["det"].replace(chr(10),"<br>")}</small><br><br><a href="/graf/{s}" style="background:#00ff88;color:#000;padding:8px 14px;border-radius:8px;text-decoration:none">GRAFICA</a></div>'
     return h+'</body></html>'
@@ -131,7 +136,7 @@ def graf(s):
     for x in d["lineas"]: ax.axhline(x['precio'],color='#00ff00',ls='--',alpha=0.8)
     for tr in ESTADO["open_trades"]:
         if tr["simbolo"]==s: ax.axhline(tr["entrada_real"],color='orange',ls='-',alpha=0.9)
-    ax.set_xlim(st,n); ax.set_title(f'{s} V55.4',color='white'); ax.tick_params(colors='white')
+    ax.set_xlim(st,n); ax.set_title(f'{s} V56 TRAIL 0.6%',color='white'); ax.tick_params(colors='white')
     rsi_vals=[rsi_calc(closes[:i+1]) for i in range(15,len(closes))]; ax2.plot(range(len(closes)-len(rsi_vals),len(closes)),rsi_vals,color='#00ffff')
     import io,base64; buf=io.BytesIO(); plt.tight_layout(); plt.savefig(buf,format='png',facecolor='black',dpi=130); buf.seek(0); img=base64.b64encode(buf.read()).decode(); plt.close('all')
     return f'<html style="background:#000;color:#fff"><body><h2>{s}</h2><pre>{d["det"]}</pre><img src="data:image/png;base64,{img}" style="width:100%"><br><br><a href="/" style="background:#00ff88;color:#000;padding:12px 22px;border-radius:10px;text-decoration:none;font-weight:bold">VOLVER</a></body></html>'
@@ -143,12 +148,12 @@ def all_msg(m):
         global ESTADO
         ESTADO={"jefe_hoy":{},"demo_balance":10000.0,"open_trades":[],"auto":True,"fees":0.0,"trades_hoy_fecha":"","trades_hoy_count":0}
         save_estado()
-        bot.send_message(m.chat.id, "RESET COMPLETO $10,000 LIMPIO - 0 FEES - MAQUINA LISTA")
+        bot.send_message(m.chat.id, "V56 RESET $10,000 LIMPIO - TRAIL 0.6% - LISTO PARA META 6%")
         return
     if "DASHBOARD" in t or t=="DASH":
         url=os.getenv("RENDER_EXTERNAL_URL") or ""
         if url and not url.startswith("http"): url="https://"+url
-        bot.send_message(m.chat.id, f"DASHBOARD V55.4:\n{url or 'Tu link'}"); return
+        bot.send_message(m.chat.id, f"DASHBOARD V56:\n{url or 'Tu link'}"); return
     if "BALANCE" in t or "FLOT" in t:
         tb=0; fb=0; fn=0; ffees=0; detalle=""
         for tr in ESTADO["open_trades"]:
@@ -156,7 +161,7 @@ def all_msg(m):
             tb+=tr["bola"]; fb+=tr["bola"]*br/100; fn+=gn; ffees+=fee
             detalle+=f"\n{tr['simbolo']} ${tr['bola']}: {ne:+.2f}% ${gn:+.2f}\n"
         pat=ESTADO["demo_balance"]+tb+fn
-        msg=f'''V55.4 DESGLOSE
+        msg=f'''V56 DESGLOSE TRAIL 0.6%
 EFECTIVO: ${ESTADO["demo_balance"]:.2f}
 BOLAS: ${tb:.2f}
 BRUTO: ${fb:+.2f}
@@ -165,12 +170,13 @@ NETO: ${fn:+.2f}
 {detalle}
 ---
 PAT: ${pat:.2f}
-UTIL: ${pat-10000:+.2f}
+UTIL: ${pat-10000:+.2f} ({(pat-10000)/100:.2f}%)
 FEES HIST: ${ESTADO["fees"]:.2f}
+META: $33/dia para 6.6% mes
 '''
         bot.send_message(m.chat.id, msg); return
     if t in SYMBOLS: d=decidir(t); bot.send_message(m.chat.id,f"{t} ${get_price(t):.2f}\n{d['det']}\n{d['tipo']}")
-    else: bot.send_message(m.chat.id,"Comandos:\n/balance\nRESET ESTADO\nDASHBOARD")
+    else: bot.send_message(m.chat.id,"Comandos V56:\n/balance\nRESET ESTADO\nDASHBOARD")
 
 @app.route('/webhook',methods=['POST'])
 @app.route(f'/{TOKEN}',methods=['POST'])
