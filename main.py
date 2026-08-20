@@ -1,12 +1,11 @@
 import os, time, requests, threading
 from flask import Flask, jsonify, request
-from collections import deque, defaultdict
 app = Flask(__name__)
 BOT_TOKEN = "8805451290:AAFie2WdkcQYM7MrG79BzD1Es_xVrHtXJ5M"
 RENDER_URL = "https://telegram-bot-cijp.onrender.com"
 
 CONFIG = {
-    "VERSION": "V81 DETALLADO",
+    "VERSION": "V81.1 FIX",
     "COINS": ["BTC", "ETH", "SOL", "DOGE"],
     "ACTIVOS": ["SOL", "ETH", "DOGE"],
     "MAX": 3,
@@ -19,10 +18,10 @@ CONFIG = {
     "bolas": [],
     "prices": {"SOL": 1483, "DOGE": 1.30, "BTC": 1216631, "ETH": 65000},
     "high": {},
-    "history": {"SOL": deque(maxlen=60), "DOGE": deque(maxlen=60), "BTC": deque(maxlen=60), "ETH": deque(maxlen=60)},
+    "history": {"SOL": [], "DOGE": [], "BTC": [], "ETH": []},
     "trades_hoy": 6,
     "profit_hoy": 99.21,
-    "profit_por_moneda": defaultdict(float),
+    "profit_por_moneda": {"BTC":0, "ETH":0, "SOL":0, "DOGE":0},
     "trades_log": [],
     "chat_id": 0
 }
@@ -33,6 +32,7 @@ def get_all_prices():
             r = requests.get(f"https://api.coinbase.com/v2/prices/{coin}-MXN/spot", timeout=4).json()
             CONFIG["prices"][coin] = float(r["data"]["amount"])
             CONFIG["history"][coin].append(CONFIG["prices"][coin])
+            if len(CONFIG["history"][coin])>60: CONFIG["history"][coin].pop(0)
         except: pass
 
 def send_tg(text):
@@ -46,24 +46,24 @@ def check_auto():
         try:
             get_all_prices()
             for coin in CONFIG["ACTIVOS"]:
-                hist = list(CONFIG["history"][coin])
+                hist = CONFIG["history"][coin]
                 if len(hist) < 5: continue
                 price = CONFIG["prices"][coin]
                 max_15 = max(hist[-15:]) if len(hist)>=15 else max(hist)
                 dip = (price - max_15) / max_15 * 100
                 if CONFIG["AUTO"] and dip <= -0.1 and len(CONFIG["bolas"]) < CONFIG["MAX"]:
                     costo = CONFIG["BALANCE"] / CONFIG["MAX"]
-                    nid = len(CONFIG["bolas"])+int(time.time())%1000
+                    nid = int(time.time())%10000
                     CONFIG["bolas"].append({"id": nid, "coin": coin, "entry": price, "costo": costo, "time": time.strftime("%H:%M")})
-                    CONFIG["high"][nid] = price
-                    msg = f"🟢 COMPRÉ {coin} ${price:.2f} | BOLA ${costo:.2f} | {len(CONFIG['bolas'])}/{CONFIG['MAX']}\nDASH {RENDER_URL}"
-                    send_tg(msg)
+                    CONFIG["high"][str(nid)] = price
+                    send_tg(f"COMPRE {coin} ${price:.2f} | BOLA ${costo:.2f}\nDASH {RENDER_URL}")
                     CONFIG["trades_log"].insert(0, f"{time.strftime('%H:%M')} COMPRO {coin} ${price:.2f}")
                 for b in CONFIG["bolas"][:]:
                     if b["coin"]!= coin: continue
-                    if b["id"] not in CONFIG["high"]: CONFIG["high"][b["id"]] = b["entry"]
-                    if price > CONFIG["high"][b["id"]]: CONFIG["high"][b["id"]] = price
-                    high = CONFIG["high"][b["id"]]
+                    key=str(b["id"])
+                    if key not in CONFIG["high"]: CONFIG["high"][key] = b["entry"]
+                    if price > CONFIG["high"][key]: CONFIG["high"][key] = price
+                    high = CONFIG["high"][key]
                     gain = (price - b["entry"])/b["entry"]*100
                     trail = (price - high)/high*100
                     if gain >= CONFIG["RETAIL_PCT"] and trail <= -CONFIG["TRAIL_PCT"]:
@@ -74,12 +74,13 @@ def check_auto():
                         CONFIG["profit_hoy"] += neto
                         CONFIG["profit_por_moneda"][b["coin"]] += neto
                         CONFIG["trades_hoy"] += 1
-                        msg = f"💰 VENDÍ {b['coin']} ${price:.2f} | Entrada ${b['entry']:.2f} | +${neto:.2f} NETO ({gain:.2f}%)\nBALANCE ${CONFIG['BALANCE']:.2f}\nDASH {RENDER_URL}"
-                        send_tg(msg)
+                        send_tg(f"VENDI {b['coin']} ${price:.2f} Entrada ${b['entry']:.2f} +${neto:.2f} NETO ({gain:.2f}%)\nBALANCE ${CONFIG['BALANCE']:.2f}")
                         CONFIG["trades_log"].insert(0, f"{time.strftime('%H:%M')} VENDIO {b['coin']} +${neto:.2f} ({gain:.2f}%)")
                         CONFIG["bolas"].remove(b)
             time.sleep(30)
-        except: time.sleep(30)
+        except Exception as e:
+            print(e)
+            time.sleep(30)
 
 threading.Thread(target=check_auto, daemon=True).start()
 
@@ -96,23 +97,20 @@ def dash():
     for c in CONFIG["COINS"]:
         html += f"{c} ${CONFIG['prices'][c]:.2f} | "
     html += f"<br>BOLAS {len(CONFIG['bolas'])}/{CONFIG['MAX']} | BOLA ${costo:.2f}<br>HOY {CONFIG['trades_hoy']} +${CONFIG['profit_hoy']:.2f} NETO | FLOAT ${tb:.2f}</div>"
-    html += "<div style='background:#111;padding:10px;margin:10px 0;border:1px solid #0f0'>"
-    html += "<b>📊 GANANCIA POR MONEDA</b><br>"
+    html += "<div style='background:#111;padding:10px;margin:10px 0;border:1px solid #0f0'><b>GANANCIA POR MONEDA</b><br>"
     for c in CONFIG["COINS"]:
         html += f"{c}: +${CONFIG['profit_por_moneda'][c]:.2f}<br>"
     html += "</div>"
-    html += "<div style='background:#151515;padding:10px;margin:10px 0'>"
-    html += "<b>🎯 BOLAS ACTIVAS (ENTRADAS)</b><br>"
+    html += "<div style='background:#151515;padding:10px;margin:10px 0'><b>BOLAS ACTIVAS (ENTRADAS)</b><br>"
     if not CONFIG["bolas"]:
         html += "Sin bolas - esperando caida -0.1%<br>"
     for b in CONFIG["bolas"]:
         cur = CONFIG["prices"][b["coin"]]
         gain = (cur-b["entry"])/b["entry"]*100
         usd = b["costo"]*gain/100
-        html += f"BOLA {b['id']} | {b['coin']} | Entrada ${b['entry']:.2f} -> Ahora ${cur:.2f} | {gain:.2f}% (${usd:.2f}) | {b['time']}<br>"
+        html += f"BOLA {b['id']} | {b['coin']} Entrada ${b['entry']:.2f} -> Ahora ${cur:.2f} | {gain:.2f}% (${usd:.2f}) | {b['time']}<br>"
     html += "</div>"
-    html += "<div style='background:#0a0a0a;padding:10px;font-size:12px'>"
-    html += "<b>📜 ULTIMOS TRADES</b><br>"
+    html += "<div style='background:#0a0a0a;padding:10px;font-size:12px'><b>ULTIMOS TRADES</b><br>"
     for log in CONFIG["trades_log"][:15]:
         html += f"{log}<br>"
     html += "</div>"
@@ -143,18 +141,15 @@ def webhook():
     data=request.get_json()
     if not data or "message" not in data: return jsonify({"ok":True})
     CONFIG["chat_id"]=data["message"]["chat"]["id"]
-    from flask import Response
-    import json
-    text = f"DASH {RENDER_URL}\nV81 {CONFIG['BALANCE']:.2f} +{CONFIG['profit_hoy']:.2f} HOY\n"
-    for c in CONFIG["COINS"]:
-        text+=f"{c} +${CONFIG['profit_por_moneda'][c]:.2f} | "
+    text = f"DASH {RENDER_URL}\nV81 FIX {CONFIG['BALANCE']:.2f} +{CONFIG['profit_hoy']:.2f} HOY\n"
     try:
         requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": CONFIG["chat_id"], "text": text}, timeout=5)
     except: pass
     return jsonify({"ok":True})
 
 @app.route("/estado")
-def estado(): return jsonify(dict(CONFIG))
+def estado():
+    return jsonify({"balance": CONFIG["BALANCE"], "profit": CONFIG["profit_hoy"], "bolas": CONFIG["bolas"]})
 
 if __name__=="__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
