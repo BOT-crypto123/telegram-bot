@@ -1,6 +1,3 @@
-Flask
-pyTelegramBotAPI
-requests
-matplotlib
-pytz
-gunicorn
+flask
+yfinance
+pandas
