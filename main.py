@@ -6,8 +6,9 @@ BOT_TOKEN = "8805451290:AAFie2WdkcQYM7MrG79BzD1Es_xVrHtXJ5M"
 RENDER_URL = "https://telegram-bot-cijp.onrender.com"
 
 CONFIG = {
-    "VERSION": "V79 SOL/DOGE NIEVE",
+    "VERSION": "V80 NIEVE",
     "COINS": ["BTC", "ETH", "SOL", "DOGE"],
+    "ACTIVOS": ["SOL", "DOGE"],
     "SELECTED": "SOL",
     "MAX": 3,
     "TRAIL_PCT": 0.2,
@@ -16,7 +17,6 @@ CONFIG = {
     "BALANCE_INICIAL": 10000.0,
     "FEES": 0.1,
     "AUTO": True,
-    "NIEVE": True,
     "bolas": [],
     "prices": {"SOL": 1483, "DOGE": 1.30, "BTC": 1216631, "ETH": 65000},
     "high": {},
@@ -42,13 +42,12 @@ def check_auto():
     while True:
         try:
             get_all_prices()
-            for coin in ["SOL", "DOGE"]:
+            for coin in CONFIG["ACTIVOS"]:
                 hist = list(CONFIG["history"][coin])
                 if len(hist) < 5: continue
                 price = CONFIG["prices"][coin]
                 max_15 = max(hist[-15:]) if len(hist)>=15 else max(hist)
                 dip = (price - max_15) / max_15 * 100
-                # COMPRA RAPIDA -0.1% para que veas trades hoy
                 if CONFIG["AUTO"] and dip <= -0.1 and len(CONFIG["bolas"]) < CONFIG["MAX"]:
                     costo = CONFIG["BALANCE"] / CONFIG["MAX"]
                     nid = len(CONFIG["bolas"])+1
@@ -81,14 +80,14 @@ def get_dash_text():
         price = CONFIG["prices"][b["coin"]]
         tb += b["costo"]*(price-b["entry"])/b["entry"]/100
     txt = f"DASH {RENDER_URL}\n"
-    txt += f"V79 {CONFIG['SELECTED']} NIEVE {CONFIG['BALANCE']:.2f} MXN\n"
+    txt += f"V80 {','.join(CONFIG['ACTIVOS'])} NIEVE {CONFIG['BALANCE']:.2f} MXN\n"
     txt += f"{len(CONFIG['bolas'])}/{CONFIG['MAX']} | RETAIL {CONFIG['RETAIL_PCT']}% TRAIL {CONFIG['TRAIL_PCT']}%\n"
-    txt += f"SOL ${CONFIG['prices']['SOL']:.2f} MXN\n"
-    txt += f"DOGE ${CONFIG['prices']['DOGE']:.2f} MXN\n"
-    txt += f"BTC ${CONFIG['prices']['BTC']:.0f} MXN\n"
+    for c in CONFIG["COINS"]:
+        on = "ON" if c in CONFIG["ACTIVOS"] else "OFF"
+        txt += f"{c} {on} ${CONFIG['prices'][c]:.2f}\n"
     txt += f"BALANCE {CONFIG['BALANCE']:.2f} (ini {CONFIG['BALANCE_INICIAL']})\n"
-    txt += f"HOY {CONFIG['trades_hoy']} trades +${CONFIG['profit_hoy']:.2f}\n"
-    txt += f"FLOAT ${tb:.2f} | BOLA ${CONFIG['BALANCE']/CONFIG['MAX']:.2f} NIEVE ON"
+    txt += f"HOY {CONFIG['trades_hoy']} trades +${CONFIG['profit_hoy']:.2f} NETO\n"
+    txt += f"FLOAT ${tb:.2f} | BOLA ${CONFIG['BALANCE']/CONFIG['MAX']:.2f} NIEVE ON | AUTO {'ON' if CONFIG['AUTO'] else 'OFF'}"
     return txt
 
 @app.route("/")
@@ -99,27 +98,35 @@ def dash():
     for b in CONFIG["bolas"]:
         tb += b["costo"]*(CONFIG["prices"][b["coin"]]-b["entry"])/b["entry"]/100
     html = f"<html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='refresh' content='10'></head><body style='font-family:monospace;background:#0a0a0a;color:#e0e0e0;padding:12px'>"
-    html += f"<h3 style='color:#0f0'>{CONFIG['VERSION']} | ${CONFIG['BALANCE']:.2f}</h3>"
+    html += f"<h3 style='color:#0f0'>{CONFIG['VERSION']} | ${CONFIG['BALANCE']:.2f} | {','.join(CONFIG['ACTIVOS'])}</h3>"
     html += f"<div style='background:#1a1a1a;padding:12px;border-left:4px solid #0f0'>"
-    html += f"SOL ${CONFIG['prices']['SOL']:.2f} | DOGE ${CONFIG['prices']['DOGE']:.2f}<br>"
-    html += f"BOLAS {len(CONFIG['bolas'])}/{CONFIG['MAX']} | BOLA ${costo:.2f}<br>HOY {CONFIG['trades_hoy']} +${CONFIG['profit_hoy']:.2f} | FLOAT ${tb:.2f} | NIEVE ON</div>"
+    for c in CONFIG["COINS"]:
+        html += f"{c} ${CONFIG['prices'][c]:.2f} | "
+    html += f"<br>BOLAS {len(CONFIG['bolas'])}/{CONFIG['MAX']} | BOLA ${costo:.2f}<br>HOY {CONFIG['trades_hoy']} +${CONFIG['profit_hoy']:.2f} NETO | FLOAT ${tb:.2f} | NIEVE ON</div>"
     html += f"<div style='background:#111;padding:10px;margin:8px 0'>"
     for c in CONFIG["COINS"]:
-        bg = "#00c853" if c==CONFIG["SELECTED"] else "#333"
-        html += f"<a href='/sel/{c}' style='margin:3px;padding:8px 14px;background:{bg};color:#fff;text-decoration:none;border-radius:6px'>{c}</a>"
+        bg = "#00c853" if c in CONFIG["ACTIVOS"] else "#333"
+        label = f"{c} ON" if c in CONFIG["ACTIVOS"] else f"{c} OFF"
+        html += f"<a href='/toggle/{c}' style='margin:3px;padding:8px 14px;background:{bg};color:#fff;text-decoration:none;border-radius:6px'>{label}</a>"
     html += "</div>"
-    html += f"<div style='text-align:center'><a href='/toggle_auto' style='padding:10px 20px;background:{'#00c853' if CONFIG['AUTO'] else '#f00'};color:#fff;text-decoration:none;border-radius:8px'>AUTO {'ON' if CONFIG['AUTO'] else 'OFF'}</a></div>"
+    html += f"<div style='text-align:center;margin-top:10px'><a href='/toggle_auto' style='padding:10px 20px;background:{'#00c853' if CONFIG['AUTO'] else '#f00'};color:#fff;text-decoration:none;border-radius:8px'>AUTO {'ON' if CONFIG['AUTO'] else 'OFF'}</a></div>"
     html += "</body></html>"
     return html
 
-@app.route("/sel/<coin>")
-def sel(coin):
-    CONFIG["SELECTED"]=coin
+@app.route("/toggle/<coin>")
+def toggle_coin(coin):
+    if coin in CONFIG["ACTIVOS"]:
+        if len(CONFIG["ACTIVOS"])>1:
+            CONFIG["ACTIVOS"].remove(coin)
+    else:
+        CONFIG["ACTIVOS"].append(coin)
     return dash()
+
 @app.route("/toggle_auto")
-def toggle():
+def toggle_auto():
     CONFIG["AUTO"]=not CONFIG["AUTO"]
     return dash()
+
 @app.route("/"+BOT_TOKEN, methods=["POST"])
 def webhook():
     data=request.get_json()
@@ -127,6 +134,7 @@ def webhook():
     chat_id=data["message"]["chat"]["id"]
     send_tg(chat_id, get_dash_text())
     return jsonify({"ok":True})
+
 @app.route("/estado")
 def estado(): return jsonify(CONFIG)
 
