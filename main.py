@@ -1,154 +1,139 @@
 import os, time, requests
 from flask import Flask, jsonify, request
-
 app = Flask(__name__)
-
 BOT_TOKEN = "8805451290:AAFie2WdkcQYM7MrG79BzD1Es_xVrHtXJ5M"
 RENDER_URL = "https://telegram-bot-cijp.onrender.com"
 
 CONFIG = {
+    "VERSION": "V70 DASH TOTAL",
     "MAX": 5,
-    "TRAIL_PCT": 0.1,
-    "VERSION": "V63 FINAL",
-    "BALANCE_TOTAL": 10000,
-    "AUTO": False,
-    "SYMBOL": "BTC-USD",
-    "bolas": [69500, 69800, 70000, 70200, 70500],
-    "flot_retail": -68.66,
-    "last_price": 0,
-    "cache_msg": "Iniciando...",
-    "cache_time": 0
+    "TRAIL_PCT": 0.4,
+    "RETAIL_PCT": 0.8,
+    "BALANCE": 10000,
+    "FEES": 0.1,
+    "AUTO_COMPRA": False, # False = solo alerta, True = compra automatico
+    "bolas": [
+        {"id":1, "entry":69500},
+        {"id":2, "entry":69800},
+        {"id":3, "entry":70000},
+        {"id":4, "entry":70200},
+        {"id":5, "entry":70500},
+    ],
+    "last_price": 115500,
+    "cache_time": 0,
+    "ultima_alerta": 0
 }
 
 def get_price():
-    # 3 fuentes, si una falla usa otra
     try:
-        # 1. Coinbase - el mas estable en USA
-        r = requests.get("https://api.coinbase.com/v2/prices/BTC-USD/spot", timeout=5).json()
-        price = float(r["data"]["amount"])
-        if price > 0:
-            return price
-    except: pass
-    try:
-        # 2. CoinGecko
-        r = requests.get("https://api.coingecko.com/api/v3/simple/price?ids=bitcoin&vs_currencies=usd", timeout=5).json()
-        return float(r["bitcoin"]["usd"])
-    except: pass
-    return 0
+        r=requests.get("https://api.coinbase.com/v2/prices/BTC-USD/spot",timeout=5).json()
+        return float(r["data"]["amount"])
+    except: return 115500
 
-def get_analysis():
-    if time.time() - CONFIG["cache_time"] < 90 and "Iniciando" not in CONFIG["cache_msg"]:
-        return CONFIG["cache_msg"]
-    try:
-        # Candles de Coinbase para EMA
-        url = "https://api.exchange.coinbase.com/products/BTC-USD/candles?granularity=900"
-        headers = {"User-Agent": "Mozilla/5.0"}
-        data = requests.get(url, headers=headers, timeout=8).json()
-        # data = [[time, low, high, open, close, volume],...] mas reciente primero
-        if not isinstance(data, list) or len(data) < 200:
-            raise Exception("Coinbase lista corta")
-
-        data.reverse() # mas viejo a nuevo
-        closes = [float(c[4]) for c in data]
-        price = closes[-1]
-        CONFIG["last_price"] = price
-
-        # EMA 200
-        ema = sum(closes[-200:]) / 200
-        k = 2 / (200 + 1)
-        for p in closes[-200:]:
-            ema = p * k + ema * (1-k)
-
-        if price > ema:
-            msg = "🟢 <b>BTC-USD COMPRA</b>\nPrecio: $%.2f\nEMA200: $%.2f\nTRAIL %.1f%% MAX %d | %d/5\nFLOT $%.2f" % (price, ema, CONFIG["TRAIL_PCT"], CONFIG["MAX"], len(CONFIG["bolas"]), CONFIG["flot_retail"])
-        else:
-            msg = "🔴 <b>BTC-USD ESPERA</b>\nPrecio: $%.2f\nEMA200: $%.2f\nBLOQUEADO EMA" % (price, ema)
-
-        CONFIG["cache_msg"] = msg
-        CONFIG["cache_time"] = time.time()
-        return msg
-    except Exception as e:
-        print("ANALISIS ERR: %s" % e)
-        p = get_price()
-        if p > 0:
-            CONFIG["last_price"] = p
-            msg = "🟡 BTC-USD $%.2f (precio live, EMA no disponible)" % p
-            CONFIG["cache_msg"] = msg
-            CONFIG["cache_time"] = time.time()
-            return msg
-        return "Error: %s" % str(e)[:100]
-
-def send_telegram(chat_id, text):
-    try:
-        url = "https://api.telegram.org/bot%s/sendMessage" % BOT_TOKEN
-        kb = {"keyboard": [["BTC","ETH","SOL"],["AUTO ON","DASHBOARD"]], "resize_keyboard": True}
-        requests.post(url, json={"chat_id": chat_id, "text": text, "reply_markup": kb, "parse_mode": "HTML"}, timeout=10)
-    except: pass
+def calc():
+    price=get_price()
+    if time.time()-CONFIG["cache_time"]>30:
+        CONFIG["last_price"]=price; CONFIG["cache_time"]=time.time()
+    else: price=CONFIG["last_price"]
+    costo=CONFIG["BALANCE"]/CONFIG["MAX"] if CONFIG["MAX"]>0 else 0
+    rows=""; tb=tf=tn=0
+    for b in CONFIG["bolas"]:
+        bruto = price - b["entry"]
+        fees = costo * CONFIG["FEES"]/100 * 2
+        neto = bruto - fees
+        tb+=bruto; tf+=fees; tn+=neto
+        rows+=f"<tr><td>{b['id']}</td><td>${b['entry']}</td><td>${bruto:.2f}</td><td>${fees:.2f}</td><td style='color:{'lime' if neto>0 else 'red'}'><b>${neto:.2f}</b></td></tr>"
+    return price,costo,rows,tb,tf,tn
 
 @app.route("/")
-def dashboard():
-    costo = CONFIG["BALANCE_TOTAL"] / CONFIG["MAX"]
-    html = "<h3>%s | MAX %d/%d | TRAIL %.1f%% | FLOT $%.2f | AUTO %s</h3>" % (CONFIG["VERSION"], len(CONFIG["bolas"]), CONFIG["MAX"], CONFIG["TRAIL_PCT"], CONFIG["flot_retail"], "ON" if CONFIG["AUTO"] else "OFF")
-    html += "<p>Precio: %.2f | <a href='/analisis'>ANALISIS</a> | <a href='/estado'>ESTADO</a></p>" % (CONFIG["last_price"])
-    html += "<p>Costo bola: $%.2f</p><p><a href='/set_max/5'>MAX 5</a> | <a href='/set_trail/0.1'>TRAIL 0.1%%</a> | <a href='/reset'>RESET</a></p>" % costo
-    html += "<pre>%s</pre><pre>%s</pre>" % (CONFIG["cache_msg"], str(CONFIG))
-    return html
+def dash():
+    price,costo,rows,bruto,fees,neto = calc()
+    
+    max_btns = "".join([f"<a href='/set_max/{i}' style='margin:3px;padding:8px 14px;background:{'#00c853' if i==CONFIG['MAX'] else '#333'};color:white;text-decoration:none;display:inline-block;border-radius:4px'>{i}</a>" for i in range(2,11)])
+    
+    trail_btns = "".join([f"<a href='/set_trail/{p}' style='margin:3px;padding:8px 12px;background:{'#00c853' if p==CONFIG['TRAIL_PCT'] else '#333'};color:white;text-decoration:none;display:inline-block;border-radius:4px'>{p}%</a>" for p in [0.1,0.2,0.3,0.4,0.6,0.8,1.0,1.5,2.0]])
+    
+    retail_btns = "".join([f"<a href='/set_retail/{r}' style='margin:3px;padding:8px 12px;background:{'orange' if r==CONFIG['RETAIL_PCT'] else '#333'};color:white;text-decoration:none;display:inline-block;border-radius:4px'>{r}%</a>" for r in [0.1,0.2,0.3,0.4,0.6,0.8,1.0,1.5]])
 
-@app.route("/analisis")
-def analisis_route():
-    return get_analysis().replace("<b>","").replace("</b>","")
+    auto_btn = f"<a href='/toggle_auto' style='padding:10px 20px;background:{'#00c853' if CONFIG['AUTO_COMPRA'] else '#ff3d00'};color:white;text-decoration:none;font-weight:bold;border-radius:6px'>AUTO COMPRA: {'ON - Compra solo' if CONFIG['AUTO_COMPRA'] else 'OFF - Solo alerta entrada'}</a>"
+
+    return f"""
+    <html><head><meta name="viewport" content="width=device-width,initial-scale=1"><meta http-equiv="refresh" content="20"></head>
+    <body style="font-family:monospace;background:#0a0a0a;color:#e0e0e0;padding:12px">
+    <h3 style="color:#0f0">{CONFIG['VERSION']} | {len(CONFIG['bolas'])}/{CONFIG['MAX']} ABIERTAS | FLOAT ${neto:.2f}</h3>
+    
+    <div style="background:#1a1a1a;padding:12px;border-left:4px solid #0f0;margin-bottom:12px">
+    BTC: <b>${price:.2f}</b> | Costo bola: ${costo:.2f}<br>
+    <b>BRUTO ${bruto:.2f} - FEES ${fees:.2f} = NETO ${neto:.2f}</b><br>
+    FLOAT = suma Neto = <b style="color:lime">${neto:.2f}</b>
+    </div>
+
+    <div style="background:#111;padding:12px;border:1px solid #333;margin-bottom:10px;text-align:center">
+    {auto_btn}<br><br>
+    <small>ON = el bot compra solo cuando ve oportunidad<br>OFF = solo te manda alerta por Telegram de entrada</small>
+    </div>
+
+    <div style="background:#111;padding:12px;border:1px solid #333;margin-bottom:10px">
+    <b>MAXIMO OPERACIONES ABIERTAS:</b><br><br>{max_btns}<br><small>Actual: {CONFIG['MAX']} maximo</small>
+    </div>
+
+    <div style="background:#111;padding:12px;border:1px solid #333;margin-bottom:10px">
+    <b>TRAIL %:</b><br><br>{trail_btns}<br><small>Actual: {CONFIG['TRAIL_PCT']}% - Vende solo en retorno</small>
+    </div>
+
+    <div style="background:#111;padding:12px;border:1px solid orange;margin-bottom:12px">
+    <b>RETAIL variable % (ganancia objetivo):</b><br><br>{retail_btns}<br><small>Actual: {CONFIG['RETAIL_PCT']}%</small>
+    </div>
+
+    <table border=1 style="width:100%;border-collapse:collapse;background:#111" cellpadding=7>
+    <tr style="background:#222"><th>Bola</th><th>Entry</th><th>Bruto</th><th>Fees</th><th>Neto = Bruto-Fees</th></tr>
+    {rows}
+    <tr style="background:#333"><td colspan=2><b>TOTAL FLOAT</b></td><td><b>${bruto:.2f}</b></td><td><b>${fees:.2f}</b></td><td><b style="color:lime">${neto:.2f}</b></td></tr>
+    </table>
+
+    <p style="margin-top:15px">
+    <a href="/alerta_entrada" style="background:#2196f3;padding:10px 15px;color:white;text-decoration:none;border-radius:4px">PROBAR ALERTA ENTRADA</a>
+    <a href="/reset" style="background:red;padding:10px 15px;color:white;text-decoration:none;border-radius:4px;margin-left:10px">RESET 0/{CONFIG['MAX']}</a>
+    </p>
+    </body></html>
+    """
 
 @app.route("/set_max/<int:n>")
-def set_max(n):
-    CONFIG["MAX"] = n
-    return jsonify(CONFIG)
-
+def set_max(n): CONFIG["MAX"]=max(2,min(10,n)); return dash()
 @app.route("/set_trail/<float:p>")
-def set_trail(p):
-    CONFIG["TRAIL_PCT"] = p
-    return jsonify(CONFIG)
-
-@app.route("/estado")
-def estado():
-    return jsonify(CONFIG)
-
+def set_trail(p): CONFIG["TRAIL_PCT"]=p; return dash()
+@app.route("/set_retail/<float:r>")
+def set_retail(r): CONFIG["RETAIL_PCT"]=r; return dash()
+@app.route("/toggle_auto")
+def toggle_auto(): CONFIG["AUTO_COMPRA"]= not CONFIG["AUTO_COMPRA"]; return dash()
 @app.route("/reset")
-def reset():
-    CONFIG["bolas"] = []
-    CONFIG["flot_retail"] = 0
-    return jsonify(CONFIG)
+def reset(): CONFIG["bolas"]=[]; return dash()
+@app.route("/alerta_entrada")
+def alerta_entrada():
+    price,costo,rows,bruto,fees,neto = calc()
+    try:
+        url=f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        msg=f"🔔 OPORTUNIDAD ENTRADA\nBTC ${price:.2f}\nMAX {len(CONFIG['bolas'])}/{CONFIG['MAX']}\nTRAIL {CONFIG['TRAIL_PCT']}% RETAIL {CONFIG['RETAIL_PCT']}%\nFLOAT ${neto:.2f}\n{RENDER_URL}\nModo: {'AUTO' if CONFIG['AUTO_COMPRA'] else 'SOLO ALERTA'}"
+        requests.post(url, json={"chat_id": "TU_CHAT_ID", "text": msg}, timeout=5)
+    except: pass
+    return dash()
+@app.route("/estado")
+def estado(): return jsonify(CONFIG)
 
-@app.route("/%s" % BOT_TOKEN, methods=["POST"])
+@app.route(f"/{BOT_TOKEN}", methods=["POST"])
 @app.route("/webhook", methods=["POST"])
 def webhook():
-    try:
-        data = request.get_json(force=True, silent=True) or {}
-        msg = data.get("message", {})
-        text = msg.get("text","").strip().upper()
-        chat_id = msg.get("chat", {}).get("id")
-        if not chat_id: return jsonify({"ok": True})
-        print("TG: %s" % text)
-
-        if "DASHBOARD" in text:
-            send_telegram(chat_id, "%s\nTRAIL %.1f%% MAX %d | %d/5 | FLOT $%.2f\n%s" % (RENDER_URL, CONFIG["TRAIL_PCT"], CONFIG["MAX"], len(CONFIG["bolas"]), CONFIG["flot_retail"], get_analysis()))
-        elif "AUTO" in text:
-            CONFIG["AUTO"] = not CONFIG["AUTO"]
-            send_telegram(chat_id, "AUTO %s\n%s" % ("ON" if CONFIG["AUTO"] else "OFF", get_analysis()))
-        elif "BTC" in text:
-            CONFIG["SYMBOL"] = "BTC-USD"
-            send_telegram(chat_id, get_analysis())
-        elif "/START" in text:
-            send_telegram(chat_id, "✅ V63 FINAL Live\n%s\n%s" % (RENDER_URL, get_analysis()))
-        else:
-            send_telegram(chat_id, get_analysis())
-        return jsonify({"ok": True})
-    except Exception as e:
-        print(e)
-        return jsonify({"ok": True})
-
-@app.route("/<path:p>", methods=["POST"])
-def catch_all(p):
+    data=request.get_json(force=True, silent=True) or {}
+    chat_id=data.get("message",{}).get("chat",{}).get("id")
+    if chat_id:
+        price,costo,rows,bruto,fees,neto = calc()
+        url=f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        txt=f"📊 DASH {RENDER_URL}\n{len(CONFIG['bolas'])}/{CONFIG['MAX']} MAX | TRAIL {CONFIG['TRAIL_PCT']}% | RETAIL {CONFIG['RETAIL_PCT']}%\nBTC ${price:.2f}\nBRUTO ${bruto:.2f} - FEES ${fees:.2f} = NETO ${neto:.2f}\nFLOAT ${neto:.2f}\nAUTO: {'ON' if CONFIG['AUTO_COMPRA'] else 'OFF solo alerta'}"
+        try: requests.post(url, json={"chat_id": chat_id, "text": txt}, timeout=5)
+        except: pass
     return jsonify({"ok": True})
+@app.route("/<path:p>", methods=["POST"])
+def catch_all(p): return jsonify({"ok": True})
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0", port=int(os.environ.get("PORT", 10000)))
