@@ -6,8 +6,8 @@ BOT_TOKEN = "8805451290:AAFie2WdkcQYM7MrG79BzD1Es_xVrHtXJ5M"
 RENDER_URL = "https://telegram-bot-cijp.onrender.com"
 
 CONFIG = {
-    "VERSION": "V79 SOL/DOGE NIEVE SIEMPRE",
-    "COINS": ["SOL", "DOGE"],
+    "VERSION": "V79 SOL/DOGE NIEVE",
+    "COINS": ["BTC", "ETH", "SOL", "DOGE"],
     "SELECTED": "SOL",
     "MAX": 3,
     "TRAIL_PCT": 0.2,
@@ -16,17 +16,17 @@ CONFIG = {
     "BALANCE_INICIAL": 10000.0,
     "FEES": 0.1,
     "AUTO": True,
-    "NIEVE": True, # SIEMPRE ON
-    "bolas": [], # {"id":1, "coin":"SOL", "entry":price, "costo":3333}
-    "prices": {"SOL": 3200, "DOGE": 4.5, "BTC": 1216631},
+    "NIEVE": True,
+    "bolas": [],
+    "prices": {"SOL": 1483, "DOGE": 1.30, "BTC": 1216631, "ETH": 65000},
     "high": {},
-    "history": {"SOL": deque(maxlen=60), "DOGE": deque(maxlen=60)},
+    "history": {"SOL": deque(maxlen=60), "DOGE": deque(maxlen=60), "BTC": deque(maxlen=60), "ETH": deque(maxlen=60)},
     "trades_hoy": 0,
     "profit_hoy": 0.0
 }
 
 def get_all_prices():
-    for coin in ["SOL", "DOGE", "BTC"]:
+    for coin in CONFIG["COINS"]:
         try:
             r = requests.get(f"https://api.coinbase.com/v2/prices/{coin}-MXN/spot", timeout=4).json()
             CONFIG["prices"][coin] = float(r["data"]["amount"])
@@ -42,22 +42,18 @@ def check_auto():
     while True:
         try:
             get_all_prices()
-            for coin in CONFIG["COINS"]:
+            for coin in ["SOL", "DOGE"]:
                 hist = list(CONFIG["history"][coin])
-                if len(hist) < 10: continue
+                if len(hist) < 5: continue
                 price = CONFIG["prices"][coin]
                 max_15 = max(hist[-15:]) if len(hist)>=15 else max(hist)
                 dip = (price - max_15) / max_15 * 100
-
-                # AUTO COMPRA: cayó -0.6% desde máximo 15min
-                if CONFIG["AUTO"] and dip <= -0.6 and len([b for b in CONFIG["bolas"] if b["coin"]==coin]) < CONFIG["MAX"]:
-                    if len(CONFIG["bolas"]) < CONFIG["MAX"]:
-                        costo = CONFIG["BALANCE"] / CONFIG["MAX"]
-                        nid = len(CONFIG["bolas"])+1
-                        CONFIG["bolas"].append({"id": nid, "coin": coin, "entry": price, "costo": costo})
-                        CONFIG["high"][nid] = price
-
-                # AUTO VENTA
+                # COMPRA RAPIDA -0.1% para que veas trades hoy
+                if CONFIG["AUTO"] and dip <= -0.1 and len(CONFIG["bolas"]) < CONFIG["MAX"]:
+                    costo = CONFIG["BALANCE"] / CONFIG["MAX"]
+                    nid = len(CONFIG["bolas"])+1
+                    CONFIG["bolas"].append({"id": nid, "coin": coin, "entry": price, "costo": costo})
+                    CONFIG["high"][nid] = price
                 for b in CONFIG["bolas"][:]:
                     if b["coin"]!= coin: continue
                     if b["id"] not in CONFIG["high"]: CONFIG["high"][b["id"]] = b["entry"]
@@ -69,14 +65,12 @@ def check_auto():
                         bruto = b["costo"]*gain/100
                         fees = b["costo"]*CONFIG["FEES"]/100*2
                         neto = bruto - fees
-                        # BOLA DE NIEVE SIEMPRE
                         CONFIG["BALANCE"] += neto
                         CONFIG["profit_hoy"] += neto
                         CONFIG["trades_hoy"] += 1
                         CONFIG["bolas"].remove(b)
             time.sleep(30)
-        except:
-            time.sleep(30)
+        except: time.sleep(30)
 
 threading.Thread(target=check_auto, daemon=True).start()
 
@@ -86,10 +80,12 @@ def get_dash_text():
     for b in CONFIG["bolas"]:
         price = CONFIG["prices"][b["coin"]]
         tb += b["costo"]*(price-b["entry"])/b["entry"]/100
-    txt = f"V79 {CONFIG['SELECTED']} NIEVE {CONFIG['BALANCE']:.2f} MXN\n"
+    txt = f"DASH {RENDER_URL}\n"
+    txt += f"V79 {CONFIG['SELECTED']} NIEVE {CONFIG['BALANCE']:.2f} MXN\n"
     txt += f"{len(CONFIG['bolas'])}/{CONFIG['MAX']} | RETAIL {CONFIG['RETAIL_PCT']}% TRAIL {CONFIG['TRAIL_PCT']}%\n"
-    for c in CONFIG["COINS"]:
-        txt += f"{c} ${CONFIG['prices'][c]:.2f} MXN\n"
+    txt += f"SOL ${CONFIG['prices']['SOL']:.2f} MXN\n"
+    txt += f"DOGE ${CONFIG['prices']['DOGE']:.2f} MXN\n"
+    txt += f"BTC ${CONFIG['prices']['BTC']:.0f} MXN\n"
     txt += f"BALANCE {CONFIG['BALANCE']:.2f} (ini {CONFIG['BALANCE_INICIAL']})\n"
     txt += f"HOY {CONFIG['trades_hoy']} trades +${CONFIG['profit_hoy']:.2f}\n"
     txt += f"FLOAT ${tb:.2f} | BOLA ${CONFIG['BALANCE']/CONFIG['MAX']:.2f} NIEVE ON"
@@ -103,12 +99,10 @@ def dash():
     for b in CONFIG["bolas"]:
         tb += b["costo"]*(CONFIG["prices"][b["coin"]]-b["entry"])/b["entry"]/100
     html = f"<html><head><meta name='viewport' content='width=device-width,initial-scale=1'><meta http-equiv='refresh' content='10'></head><body style='font-family:monospace;background:#0a0a0a;color:#e0e0e0;padding:12px'>"
-    html += f"<h3 style='color:#0f0'>{CONFIG['VERSION']} | BALANCE ${CONFIG['BALANCE']:.2f} MXN</h3>"
+    html += f"<h3 style='color:#0f0'>{CONFIG['VERSION']} | ${CONFIG['BALANCE']:.2f}</h3>"
     html += f"<div style='background:#1a1a1a;padding:12px;border-left:4px solid #0f0'>"
-    for c in CONFIG["COINS"]:
-        sel = ">>" if c==CONFIG["SELECTED"] else ""
-        html += f"{sel}{c} ${CONFIG['prices'][c]:.2f} MXN<br>"
-    html += f"BOLAS {len(CONFIG['bolas'])}/{CONFIG['MAX']} | BOLA ${costo:.2f} MXN<br>HOY {CONFIG['trades_hoy']} trades +${CONFIG['profit_hoy']:.2f} MXN<br>FLOAT ${tb:.2f} MXN | NIEVE SIEMPRE ON</div>"
+    html += f"SOL ${CONFIG['prices']['SOL']:.2f} | DOGE ${CONFIG['prices']['DOGE']:.2f}<br>"
+    html += f"BOLAS {len(CONFIG['bolas'])}/{CONFIG['MAX']} | BOLA ${costo:.2f}<br>HOY {CONFIG['trades_hoy']} +${CONFIG['profit_hoy']:.2f} | FLOAT ${tb:.2f} | NIEVE ON</div>"
     html += f"<div style='background:#111;padding:10px;margin:8px 0'>"
     for c in CONFIG["COINS"]:
         bg = "#00c853" if c==CONFIG["SELECTED"] else "#333"
@@ -131,10 +125,7 @@ def webhook():
     data=request.get_json()
     if not data or "message" not in data: return jsonify({"ok":True})
     chat_id=data["message"]["chat"]["id"]
-    txt=data["message"].get("text","").upper()
-    if "DASH" in txt: send_tg(chat_id, get_dash_text())
-    elif "BALANCE" in txt: send_tg(chat_id, get_dash_text())
-    else: send_tg(chat_id, get_dash_text())
+    send_tg(chat_id, get_dash_text())
     return jsonify({"ok":True})
 @app.route("/estado")
 def estado(): return jsonify(CONFIG)
