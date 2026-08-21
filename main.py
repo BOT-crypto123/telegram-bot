@@ -5,9 +5,11 @@ from datetime import datetime
 app = Flask(__name__)
 FILE="bot_data.json"
 
+# COMISIONES REALES BINANCE
 FEE_ENTRADA = 0.001
 FEE_SALIDA = 0.001
 FEE_TOTAL = 0.002
+META_MES_USD = 500.0
 
 data={
     "base_inicial": 10060.05,
@@ -19,12 +21,13 @@ data={
     "pos": [],
     "coins": ["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
     "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
-    "max_entradas": 5,
-    "tp_bruto": 0.5, # 0.5% bruto = 0.3% neto real - NO MUEVO NADA MAS
+    "max_entradas": 10,
+    "tp_bruto": 0.5,
     "auto": True,
     "alert_users": [],
     "entradas": 15, "salidas": 12, "ganadas": 10, "perdidas": 2,
-    "last_alert": {}
+    "last_alert": {},
+    "usd_mxn": 18.50
 }
 
 def load():
@@ -59,7 +62,6 @@ def EMA(cl,p=20):
 def RSI_HIST(cl):
     if len(cl)<16: return 50,50
     return RSI(cl[-15:-1]), RSI(cl[-14:])
-
 def ANALIZA(sym):
     closes=C(sym)
     if len(closes)<30: return False, 50, 0, "Sin datos"
@@ -69,7 +71,13 @@ def ANALIZA(sym):
     ok = cond1 and cond2 and cond3
     motivo = f"RSI {r_now:.1f} {'✅' if cond1 else '❌'}<32, P>EMA {'✅' if cond2 else '❌'}, Mom {r_prev:.0f}->{r_now:.0f} {'✅' if cond3 else '❌'}"
     return ok, r_now, ema20, motivo
-
+def get_usdmxn():
+    try:
+        r=requests.get("https://api.exchangerate-api.com/v4/latest/USD",timeout=4).json()
+        return float(r["rates"]["MXN"])
+    except:
+        try: return float(requests.get("https://data-api.binance.vision/api/v3/ticker/price?symbol=USDTMXN",timeout=3).json()['price'])
+        except: return 18.5
 def tg(uid, txt):
     try:
         TOKEN=os.getenv("TELEGRAM_TOKEN","")
@@ -80,7 +88,7 @@ def tg(uid, txt):
 @app.route('/', methods=['GET','HEAD','POST'])
 def root():
     if request.method=='POST': return webhook()
-    return "V1002.66 ON=ROBOT OFF=AVISA LIVE",200
+    return "V1002.67 TODO COMPLETO LIVE",200
 
 @app.route('/api/prices')
 def prices():
@@ -94,29 +102,31 @@ def prices():
 
 @app.route('/api/state')
 def state():
-    bola = data["capital_actual"] / data["max_entradas"] if data["max_entradas"] else 0
+    usdmxn=get_usdmxn(); data["usd_mxn"]=usdmxn
+    bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
     for p in data["pos"]:
         price=P(p["sym"]); p["ahora"]=price
-        gan_bruta_pct = ((price-p["entry"])/p["entry"]*100) if p["entry"] else 0
-        gan_bruta_mxn = p["monto"] * gan_bruta_pct/100
-        comision_total_mxn = p["monto"]*FEE_ENTRADA + (p["monto"]+gan_bruta_mxn)*FEE_SALIDA
-        gan_neta_mxn = gan_bruta_mxn - comision_total_mxn
-        gan_neta_pct = gan_bruta_pct - FEE_TOTAL*100
+        gan_bruta_pct=((price-p["entry"])/p["entry"]*100) if p["entry"] else 0
+        gan_bruta_mxn=p["monto"]*gan_bruta_pct/100
+        com=p["monto"]*FEE_ENTRADA+(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
+        gan_neta_mxn=gan_bruta_mxn-com
+        gan_neta_pct=gan_bruta_pct-FEE_TOTAL*100
         p["gan_bruta_pct"]=gan_bruta_pct; p["gan_neta_pct"]=gan_neta_pct
         p["gan_bruta_mxn"]=gan_bruta_mxn; p["gan_neta_mxn"]=gan_neta_mxn
-        p["comision_total_mxn"]=comision_total_mxn
+        p["comision_total_mxn"]=com
         p["rsi_now"]=RSI(C(p["sym"])) if C(p["sym"]) else 50
-        p["debe_vender"]= gan_bruta_pct>=data["tp_bruto"] or p["rsi_now"]>=72 or gan_bruta_pct<=-2
-    # CUANTAS DE CUANTAS
-    winrate = (data["ganadas"]/data["salidas"]*100) if data["salidas"] else 0
+        p["debe_vender"]=gan_bruta_pct>=data["tp_bruto"] or p["rsi_now"]>=72 or gan_bruta_pct<=-2
+    winrate=(data["ganadas"]/data["salidas"]*100) if data["salidas"] else 0
+    pct_mes=min(100,(data["gan_mes"]/META_MES_USD*100)) if META_MES_USD else 0
     return jsonify({
-        "base": data["base_inicial"], "capital": data["capital_actual"], "gan_acum": data["gan_acum_total"],
-        "gan_mes": data["gan_mes"], "gan_hoy": data["gan_hoy"], "bola": bola,
-        "pos": data["pos"], "max_entradas": data["max_entradas"], "tp": data["tp_bruto"],
-        "auto": data["auto"], "coins_activas": data["coins_activas"],
-        "entradas": data["entradas"], "salidas": data["salidas"], "ganadas": data["ganadas"], "perdidas": data["perdidas"],
-        "winrate": winrate,
-        "fee_total": FEE_TOTAL*100
+        "base":data["base_inicial"],"capital":data["capital_actual"],"gan_acum":data["gan_acum_total"],
+        "gan_mes":data["gan_mes"],"gan_hoy":data["gan_hoy"],"bola":bola,
+        "pos":data["pos"],"max_entradas":data["max_entradas"],"tp":data["tp_bruto"],
+        "auto":data["auto"],"coins_activas":data["coins_activas"],
+        "entradas":data["entradas"],"salidas":data["salidas"],"ganadas":data["ganadas"],"perdidas":data["perdidas"],
+        "winrate":winrate,"fee_total":FEE_TOTAL*100,
+        "usd_mxn":usdmxn,"meta_usd":META_MES_USD,"meta_mxn":META_MES_USD*usdmxn,"pct_mes":pct_mes,
+        "gan_mes_mxn":data["gan_mes"]*usdmxn,"gan_acum_mxn":data["gan_acum_total"]*usdmxn
     })
 
 @app.route('/api/config', methods=['POST'])
@@ -147,17 +157,13 @@ def sell_api(sym):
             gan_bruta_mxn=p["monto"]*gan_bruta_pct/100
             com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
             gan_neta_mxn=gan_bruta_mxn-com_e-com_s
-            gan_neta_pct=gan_bruta_pct-FEE_TOTAL*100
             data["capital_actual"]+=p["monto"]+gan_neta_mxn
             data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["gan_hoy"]+=gan_neta_mxn
-            data["salidas"]+=1
-            if gan_neta_mxn>0: data["ganadas"]+=1
-            else: data["perdidas"]+=1
+            data["salidas"]+=1; data["ganadas"]+=1 if gan_neta_mxn>0 else 0; data["perdidas"]+=0 if gan_neta_mxn>0 else 1
             data["pos"].remove(p); save()
-            # SOLO AVISA SI ES GANANCIA - COMO PEDISTE
             if gan_neta_mxn>0:
                 for u in data["alert_users"]:
-                    tg(u,f"💰 CIERRE GANANCIA {sym}\nBRUTA {gan_bruta_pct:.2f}% = ${gan_bruta_mxn:.2f}\nComis -${com_e+com_s:.2f}\nNETA {gan_neta_pct:.2f}% = +${gan_neta_mxn:.2f}\nCuantas: {data['ganadas']}/{data['salidas']} ({data['ganadas']/data['salidas']*100:.0f}% win)\nCap ${data['capital_actual']:.2f} Bola ${data['capital_actual']/data['max_entradas']:.2f}")
+                    tg(u,f"💰 GANANCIA {sym} +${gan_neta_mxn:.2f} MXN ({gan_neta_mxn/data['usd_mxn']:.2f} USD)\nCuantas: {data['ganadas']}/{data['salidas']} ({data['ganadas']/data['salidas']*100:.0f}%)\nMes: ${data['gan_mes']:.2f} USD Acum: ${data['gan_acum_total']:.2f} USD")
             return jsonify({"ok":True})
     return jsonify({"ok":False})
 
@@ -168,60 +174,88 @@ def toggle():
 @app.route('/dashboard')
 def dash():
     return """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1"><style>
-body{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}
-.header{text-align:center;padding:14px;border:2px solid #ffcc00;border-radius:18px;background:#111;margin-bottom:10px}
-.circ-wrap{display:flex;justify-content:center;gap:14px;flex-wrap:wrap;margin-top:10px}
-.circ{width:132px;height:132px;border-radius:50%;border:4px solid #333;display:flex;align-items:center;justify-content:center;flex-direction:column;background:#0a0a0a}
-.circ.gold{border-color:#ffcc00;box-shadow:0 0 20px #ffcc00}.circ.green{border-color:#00ff88}.circ.blue{border-color:#00ccff}
-.btn{padding:10px 12px;border-radius:8px;border:none;font-weight:bold;margin:3px;font-size:12px;width:31%}
-.btn:disabled{opacity:0.25;background:#333!important;color:#555!important}
-.btn-g{background:#00ff88;color:#000}.btn-r{background:#ff4444;color:#fff}.btn-y{background:#ffcc00;color:#000}
+body{background:#0a0a0a;color:#fff;font-family:Arial;margin:0;padding:8px}
+.header{border:2px solid #ffcc00;border-radius:18px;padding:14px;background:#111;text-align:center}
+.circs{display:flex;justify-content:center;gap:18px;flex-wrap:wrap;margin-top:12px}
+.circ-box{position:relative;width:165px;height:165px}
+.circ-bg{fill:none;stroke:#222;stroke-width:10}
+.circ-progress{fill:none;stroke:#ffcc00;stroke-width:10;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:stroke-dashoffset 1s}
+.circ-progress.green{stroke:#00ff88}
+.circ-inner{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;width:120px}
+.small{font-size:11px;color:#aaa}
+.big{font-size:22px;font-weight:bold}
+.big-mxn{font-size:26px;font-weight:bold;color:#00ff88}
+.big-usd{font-size:13px;color:#ffcc00}
 .card{background:#151515;border:2px solid #333;border-radius:14px;padding:10px;position:relative}
-.card.signal-buy{border-color:#00ff88;box-shadow:0 0 12px #00ff88}.card.signal-sell{border-color:#ff4444;box-shadow:0 0 12px #ff4444}.card.off{opacity:0.4}
+.card.signal-buy{border-color:#00ff88;box-shadow:0 0 10px #00ff88}.card.signal-sell{border-color:#ff4444;box-shadow:0 0 10px #ff4444}.card.off{opacity:0.4}
+.btn{padding:10px;border-radius:8px;border:none;font-weight:bold;margin:3px;font-size:12px;width:31%}
+.btn:disabled{opacity:0.2;background:#333!important;color:#555!important}
+.btn-g{background:#00ff88;color:#000}.btn-r{background:#ff4444;color:#fff}.btn-y{background:#ffcc00;color:#000}
 .badge{position:absolute;top:6px;right:6px;font-size:10px;padding:3px 6px;border-radius:6px;font-weight:bold}
 .badge-buy{background:#00ff88;color:#000}.badge-sell{background:#ff4444;color:#fff}.badge-wait{background:#333;color:#888}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.config{background:#151515;padding:10px;border-radius:12px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between}
 table{width:100%;border-collapse:collapse;background:#151515;border-radius:12px;margin-top:10px;font-size:11px}
 th,td{padding:6px;border-bottom:1px solid #333;text-align:left}
 .neto{color:#00ff88;font-weight:bold}.desglose{font-size:10px;color:#aaa}
-.config{background:#151515;padding:10px;border-radius:12px;margin-bottom:10px;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between}
-.sum{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:10px}
-.sum div{background:#111;border:1px solid #333;border-radius:8px;padding:6px;text-align:center;font-size:12px}
 </style></head><body>
 <div class=header>
 <b style=font-size:20px;color:#ffcc00>💰 MÁQUINA BOLA DE NIEVE</b>
-<div class=circ-wrap>
-<div class=circ gold><small style=color:#ffcc00;font-size:10px>BASE + ACUM</small><span style=font-size:11px;color:#aaa>Base $<span id=base>0</span></span><span style=font-size:22px;font-weight:bold;color:#00ff88>+$<span id=acum>0</span></span><span style=font-size:12px;color:#fff>Cap $<span id=cap>0</span></span></div>
-<div class=circ blue><small>BOLA NIEVE</small><b style=font-size:20px;color:#00ccff>$<span id=bola>0</span></b><small id=bolaDet>0/0</small></div>
-<div class=circ green><small>HOY NETO</small><b style=font-size:18px;color:#00ff88>$<span id=hoy>0</span></b><small>Mes $<span id=ganMes>0</span></small></div>
+<div class=circs>
+<div class=circ-box>
+<svg width=165 height=165><circle class=circ-bg cx=82.5 cy=82.5 r=70></circle><circle id=progressMes class="circ-progress" cx=82.5 cy=82.5 r=70 stroke-dasharray="440" stroke-dashoffset="440"></circle></svg>
+<div class=circ-inner>
+<div class=small>META MES</div>
+<div class=big-usd>$500 USD</div>
+<div class=big-mxn>$<span id=metaMxn>0</span> MXN</div>
+<div class=small id=pctMesTxt>0% llenado</div>
+<div class=small style=color:#00ff88>$<span id=ganMesUsd>0</span> USD</div>
 </div>
-<div style=margin-top:10px;font-size:11px;background:#000;border-radius:8px;padding:6px><b>DESGLOSE REAL:</b> Bruta - 0.2% = Neta | TP Bruto <span id=tpBruto>0</span>% = <span id=tpNeto>0</span>% neto</div>
-<div style=margin-top:6px;font-size:12px;background:#151515;border-radius:8px;padding:6px><b>CUANTAS DE CUANTAS:</b> <span id=cuantas>0/0</span> | Win <span id=winrate>0%</span> | Entr <span id=entr>0</span> | Sal <span id=sal>0</span></div>
+</div>
+<div class=circ-box>
+<svg width=165 height=165><circle class=circ-bg cx=82.5 cy=82.5 r=70></circle><circle id=progressAcum class="circ-progress green" cx=82.5 cy=82.5 r=70 stroke-dasharray="440" stroke-dashoffset="100"></circle></svg>
+<div class=circ-inner>
+<div class=small>ACUMULADO</div>
+<div class=small>Desde 00.00</div>
+<div class=big style=color:#00ccff>$<span id=acumUsd>0</span> USD</div>
+<div class=big-mxn>$<span id=acumMxn>0</span> MXN</div>
+<div class=small>Base $10060</div>
+</div>
+</div>
+</div>
+<div style=margin-top:10px;font-size:11px;background:#000;border-radius:8px;padding:6px>USD/MXN $<span id=usdmxn>0</span> | <b>CUANTAS:</b> <span id=cuantas>0/0</span> Win <span id=winrate>0%</span> | TP Neto <span id=tpNeto>0</span>% real</div>
 </div>
 <div class=config><div>💰 Cierre: <select id=tp onchange="setTP()"><option value=0.5>0.3% NETO (0.5% Bruto)</option><option value=0.6>0.4% NETO</option><option value=0.7>0.5% NETO</option><option value=0.8>0.6% NETO</option></select></div><div>🎯 Bolas: <select id=maxEnt onchange="setMax()"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div><div><button class=btn btn-g id=autoBtn onclick="toggleAuto()" style=width:auto>...</button></div></div>
-<div id=grid style=display:grid;grid-template-columns:1fr 1fr;gap:8px></div>
+<div id=grid class=grid></div>
 <table><thead><tr><th>Moneda</th><th>Entry</th><th>Ahora</th><th>Bruta</th><th>Comis</th><th>Neta</th><th>Acción</th></tr></thead><tbody id=tbody></tbody></table>
 <script>
+function setProgress(id, pct){let c=document.getElementById(id);let circ=2*Math.PI*70;let off=circ-(pct/100)*circ;c.style.strokeDashoffset=off;}
 async function load(){
  let r=await fetch('/api/prices'); let d=await r.json();
  let r2=await fetch('/api/state'); let s=await r2.json();
- document.getElementById('base').innerText=s.base.toFixed(2); document.getElementById('cap').innerText=s.capital.toFixed(2);
- document.getElementById('acum').innerText=s.gan_acum.toFixed(2); document.getElementById('ganMes').innerText=s.gan_mes.toFixed(2);
- document.getElementById('hoy').innerText=s.gan_hoy.toFixed(2); document.getElementById('bola').innerText=s.bola.toFixed(2);
- document.getElementById('bolaDet').innerText=s.pos.length+'/'+s.max_entradas; document.getElementById('tp').value=s.tp;
- document.getElementById('tpBruto').innerText=s.tp.toFixed(1); document.getElementById('tpNeto').innerText=(s.tp - s.fee_total).toFixed(1);
- document.getElementById('maxEnt').value=s.max_entradas; document.getElementById('autoBtn').innerText=s.auto?'AUTO ON 🤖 COMPRA/VENDE SOLO':'AUTO OFF 🔔 SOLO AVISA ENTRADA';
- document.getElementById('entr').innerText=s.entradas; document.getElementById('sal').innerText=s.salidas;
- document.getElementById('cuantas').innerText=s.ganadas+'/'+s.salidas; document.getElementById('winrate').innerText=s.winrate.toFixed(0)+'%';
+ document.getElementById('metaMxn').innerText=s.meta_mxn.toFixed(0);
+ document.getElementById('acumUsd').innerText=s.gan_acum.toFixed(2);
+ document.getElementById('acumMxn').innerText=s.gan_acum_mxn.toFixed(0);
+ document.getElementById('ganMesUsd').innerText=s.gan_mes.toFixed(2);
+ document.getElementById('usdmxn').innerText=s.usd_mxn.toFixed(2);
+ document.getElementById('pctMesTxt').innerText=s.pct_mes.toFixed(0)+'% llenado - Mes $'+s.gan_mes.toFixed(2);
+ document.getElementById('cuantas').innerText=s.ganadas+'/'+s.salidas;
+ document.getElementById('winrate').innerText=s.winrate.toFixed(0)+'%';
+ document.getElementById('tpNeto').innerText=(s.tp - s.fee_total).toFixed(1)+'%';
+ document.getElementById('tp').value=s.tp; document.getElementById('maxEnt').value=s.max_entradas;
+ document.getElementById('autoBtn').innerText=s.auto?'AUTO ON 🤖 COMPRA/VENDE SOLO':'AUTO OFF 🔔 SOLO AVISA';
+ setProgress('progressMes', s.pct_mes);
+ setProgress('progressAcum', Math.min(100, s.gan_acum/500*100));
  let h=''; for(let sym in d){
   let activa=s.coins_activas[sym]; let inPos=s.pos.find(p=>p.sym==sym); let hasBuy=d[sym].ok&&!inPos; let hasSell=inPos&&inPos.debe_vender;
   let cls='card'; if(!activa) cls+=' off'; else if(hasBuy) cls+=' signal-buy'; else if(hasSell) cls+=' signal-sell';
   let badge=hasBuy?'<span class=badge badge-buy>🔔 COMPRA</span>':hasSell?'<span class=badge badge-sell>💰 VENDE</span>':'<span class=badge badge-wait>ESPERA</span>';
   h+=`<div class="${cls}">${badge}<b>${sym} $${d[sym].price.toFixed(2)}</b><br><small>RSI ${d[sym].rsi}</small><br><small style=font-size:9px>${d[sym].motivo}</small><br><div style=margin-top:6px>`;
-  if(s.auto){h+=`<div style=text-align:center;padding:6px;color:#00ff88>🤖 ROBOT ACTIVO</div><button class=btn btn-y onclick="location.href='/chart/${sym}'" style=width:95%>GRÁFICA</button>`;}
+  if(s.auto){h+=`<div style=text-align:center;padding:6px;color:#00ff88>🤖 ROBOT</div><button class=btn btn-y onclick="location.href='/chart/${sym}'" style=width:95%>GRÁFICA</button>`;}
   else{let bd=hasBuy&&activa?'':'disabled';let sd=hasSell&&activa?'':'disabled';h+=`<button class=btn btn-g onclick="buy('${sym}')" ${bd}>COMPRAR</button><button class=btn btn-r onclick="sell('${sym}')" ${sd}>VENDER</button><button class=btn btn-y onclick="location.href='/chart/${sym}'">GRÁFICA</button>`;}
   h+=`</div></div>`;} document.getElementById('grid').innerHTML=h;
  let tb=''; for(let p of s.pos){tb+=`<tr><td>${p.sym}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td class=desglose>+${p.gan_bruta_pct.toFixed(2)}%<br>$${p.gan_bruta_mxn.toFixed(2)}</td><td class=desglose style=color:#ff4444>-${s.fee_total.toFixed(1)}%<br>-$${p.comision_total_mxn.toFixed(2)}</td><td class=neto>${p.gan_neta_pct.toFixed(2)}%<br>$${p.gan_neta_mxn.toFixed(2)}</td><td>${s.auto?'<span style=color:#00ff88>Robot</span>':`<button class=btn btn-r onclick="sell('${p.sym}')">Cerrar</button>`}</td></tr>`;}
- document.getElementById('tbody').innerHTML=tb||'<tr><td colspan=7 style=text-align:center;color:#666>Sin posiciones - Esperando RSI<32</td></tr>';
+ document.getElementById('tbody').innerHTML=tb||'<tr><td colspan=7 style=text-align:center;color:#666>Sin posiciones - Esperando RSI<32 + EMA + Mom</td></tr>';
 }
 async function buy(s){await fetch('/api/buy/'+s,{method:'POST'});load();}
 async function sell(s){await fetch('/api/sell/'+s,{method:'POST'});load();}
@@ -246,8 +280,7 @@ def webhook():
         if "DASHBOARD" in txt or "/START" in txt:
             base=os.getenv("RENDER_EXTERNAL_URL","") or "https://telegram-bot-cijp.onrender.com"
             bola=data["capital_actual"]/data["max_entradas"]
-            win=data["ganadas"]/data["salidas"]*100 if data["salidas"] else 0
-            tg(chat,f"BOLA DE NIEVE\nBase ${data['base_inicial']:.2f} Acum +${data['gan_acum_total']:.2f}\nCap ${data['capital_actual']:.2f} Bola ${bola:.2f}\nCuantas: {data['ganadas']}/{data['salidas']} ({win:.0f}% win)\n{base}/dashboard")
+            tg(chat,f"META $500 USD = ${data['usd_mxn']*500:.0f} MXN\nAvance: ${data['gan_mes']:.2f} ({data['gan_mes']/500*100:.0f}%)\nAcum: ${data['gan_acum_total']:.2f} USD = ${data['gan_acum_total']*data['usd_mxn']:.0f} MXN\n{base}/dashboard")
         save()
     return {"ok":True}
 
@@ -255,29 +288,24 @@ def auto_loop():
     time.sleep(5)
     while True:
         try:
-            bola = data["capital_actual"] / data["max_entradas"] if data["max_entradas"] else 0
+            bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
             for sym in data["coins"]:
                 if not data["coins_activas"].get(sym,True): continue
                 ok,rsi,ema,mot=ANALIZA(sym)
                 closes=C(sym)
                 if not closes: continue
                 price=closes[-1]
-                # ENTRADA
                 if ok and len(data["pos"])<data["max_entradas"] and not any(p['sym']==sym for p in data["pos"]):
                     if data["auto"]:
-                        # ON = COMPRA SOLA - NO AVISA ENTRADA
                         data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"motivo":mot}); data["capital_actual"]-=bola; data["entradas"]+=1; save()
                     else:
-                        # OFF = SOLO NOTIFICA
                         last=data["last_alert"].get(sym,0)
                         if time.time()-last>3600:
-                            for u in data["alert_users"]: tg(u,f"🔔 ENTRADA DETECTADA {sym}\n{mot}\nPrecio ${price:.2f} Bola ${bola:.2f}\nAUTO OFF - Entra a dashboard y compra manual")
+                            for u in data["alert_users"]: tg(u,f"🔔 ENTRADA {sym} RSI {rsi:.1f} Bola ${bola:.2f}")
                             data["last_alert"][sym]=time.time(); save()
-                # SALIDA
                 for p in data["pos"][:]:
                     if p["sym"]==sym:
                         gan_bruta=(price-p["entry"])/p["entry"]*100
-                        # SOLO VENDE SI AUTO ON
                         if data["auto"] and (gan_bruta>=data["tp_bruto"] or rsi>=72 or gan_bruta<=-2):
                             gan_bruta_mxn=p["monto"]*gan_bruta/100
                             com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
@@ -286,10 +314,8 @@ def auto_loop():
                             data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["gan_hoy"]+=gan_neta_mxn
                             data["salidas"]+=1; data["ganadas"]+=1 if gan_neta_mxn>0 else 0; data["perdidas"]+=0 if gan_neta_mxn>0 else 1
                             data["pos"].remove(p); save()
-                            # TELEGRAM SOLO SI ES GANANCIA - COMO PEDISTE
                             if gan_neta_mxn>0:
-                                win=data["ganadas"]/data["salidas"]*100 if data["salidas"] else 0
-                                for u in data["alert_users"]: tg(u,f"💰 CIERRE GANANCIA {sym}\nNETA +${gan_neta_mxn:.2f} ({gan_bruta-FEE_TOTAL*100:.2f}%)\nCuantas: {data['ganadas']}/{data['salidas']} Win {win:.0f}%\nCap ${data['capital_actual']:.2f} Bola ${data['capital_actual']/data['max_entradas']:.2f}")
+                                for u in data["alert_users"]: tg(u,f"💰 {sym} +${gan_neta_mxn:.2f} MXN Acum ${data['gan_acum_total']:.2f}")
             time.sleep(60)
         except Exception as e:
             print(e); time.sleep(10)
