@@ -1,87 +1,92 @@
-import os
-import time
-import threading
+import os, time, threading
 from flask import Flask
 from datetime import datetime
 
-# --- SERVIDOR RENDER - OBLIGATORIO PARA QUE NO TE MARQUE ERROR DE PORT ---
 app = Flask(__name__)
 @app.route('/')
 def home():
-    return f"V105 REAL EFECTIVO - {datetime.now()} - Cazando en -0.4% - OK"
-
+    return f"V105.3 REAL CONTABLE OK - {datetime.now()}"
 def run_server():
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port, debug=False)
-
-# Hilo del servidor
+    app.run(host='0.0.0.0', port=int(os.environ.get("PORT", 10000)), debug=False)
 threading.Thread(target=run_server, daemon=True).start()
 
-# --- CONFIG V105 REAL ---
+# --- CONFIG V105.3 REAL ---
 CONFIG = {
     "BASE": 10000.0,
-    "BOLAS": 7,
+    "ACUMULADO": 316.0,
+    "BOLAS_MAX": 10,
+    "COSTO_BOLA": 1031.63,
     "FEES_PCT": 0.35,
-    "MIN_RETAIL_PCT": 0.5,
-    "TRAIL_PCT": 0.2,
+    "MIN_RETAIL_PCT": 0.3,
     "STOP_PCT": -7.0,
-    "FONDO_ENTRADA_PCT": -0.4,
-    "REBOTE_ENTRADA_PCT": 0.05,
-    "ACUMULADO": 310.0
+    "TRAIL_PCT": 0.2,
+    "FONDO_PCT": -0.4,
+    "REBOTE_PCT": 0.08,
+    "MONEDAS_PERMITIDAS": ["BTC","ETH","SOL","DOGE","XRP","ADA","AVAX"], # SHIB ELIMINADO
 }
 
-# Estado
-bolas_activas = []
-BALANCE = CONFIG["BASE"] + CONFIG["ACUMULADO"]
+bolas_activas = [
+    {"moneda": "ETH", "precio_compra": 40049.34, "costo": 1031.63},
+    {"moneda": "XRP", "precio_compra": 22.24, "costo": 1031.63}
+]
+historial_cerradas = []
+
+def precio_valido(p):
+    if not p: return False
+    if p == 0: return False
+    if p < 0.001: return False
+    return True
+
+def calcular_ganancia(precio_entrada, precio_actual, costo):
+    if not precio_valido(precio_entrada) or not precio_valido(precio_actual):
+        return 0, 0, 0
+    if precio_entrada < 0.00001:
+        return 0, 0, 0
+    pct_bruto = ((precio_actual - precio_entrada) / precio_entrada) * 100
+    pct_neto = pct_bruto - CONFIG["FEES_PCT"]
+    usd = costo * (pct_neto / 100)
+    return pct_bruto, pct_neto, usd
 
 def get_precio_actual(moneda):
-    # MOCK SEGURO - AQUI PONES TU API REAL DE COINBASE
-    # Por ahora regresa precio falso para que no truene
-    precios_mock = {"SOL": 180.5, "DOGE": 0.15, "XRP": 0.6, "ADA": 0.45, "AVAX": 30.0, "SHIB": 0.00002, "BONK": 0.00003}
-    return precios_mock.get(moneda, 100.0)  # Nunca regresa 0
+    # AQUI PONES TU API REAL DE COINBASE
+    mock = {"BTC": 1273222.19, "ETH": 39926.52, "SOL": 1531.61, "DOGE": 1.42, "XRP": 22.13, "ADA": 3.54, "AVAX": 125.33}
+    return mock.get(moneda, 0)
 
-def revisar_salidas_seguro():
-    global bolas_activas
-    if not bolas_activas:
-        return
-
-    for bola in bolas_activas[:]:
-        try:
-            precio_actual = get_precio_actual(bola.get("moneda", "SOL"))
-            precio_compra = bola.get("precio_compra", 0)
-
-            # BLINDAJE ANTI DIVISION BY ZERO
-            if not precio_actual or not precio_compra:
-                continue
-            if precio_actual == 0 or precio_compra == 0:
-                continue
-            if precio_compra < 0.0000001:
-                continue
-
-            profit_bruta_pct = ((precio_actual - precio_compra) / precio_compra) * 100
-            print(f"Chequeo {bola['moneda']}: {profit_bruta_pct:.2f}%")
-
-        except ZeroDivisionError:
-            print(f"Skip division by zero en {bola}")
+def revisar_y_mostrar():
+    print("\n--- BOLAS ABIERTAS (FLOTANTE EN ROJO) ---")
+    perdida_flotante_total = 0
+    for bola in bolas_activas:
+        actual = get_precio_actual(bola["moneda"])
+        if not precio_valido(actual):
             continue
-        except Exception as e:
-            print(f"Error en bola: {e}")
-            continue
+        bruto, neto, usd = calcular_ganancia(bola["precio_compra"], actual, bola["costo"])
+        perdida_flotante_total += usd
+        
+        color = "🟢" if neto >= 0 else "🔴"
+        estado = f"{bola['moneda']} E {bola['precio_compra']} -> {actual} ({neto:.2f}% neto) ${usd:.2f} {color} FLOTANTE"
+        
+        # SI CIERRA EN STOP -7%
+        if neto <= CONFIG["STOP_PCT"]:
+            print(f"🔴 STOP {estado} -> CERRANDO Y REGISTRANDO PERDIDA DEFINITIVA")
+            historial_cerradas.append({"moneda": bola["moneda"], "neto": neto, "usd": usd, "status": "PER"})
+            bolas_activas.remove(bola)
+            CONFIG["ACUMULADO"] += usd
+        else:
+            print(estado)
 
-def cazar_simulado():
-    # Solo para que Render vea actividad
-    print(f"[{datetime.now().strftime('%H:%M:%S')}] Cazando en {CONFIG['FONDO_ENTRADA_PCT']}% - Bolas: {len(bolas_activas)}/{CONFIG['BOLAS']} - Balance: ${BALANCE}")
+    print(f"PERDIDA FLOTANTE TOTAL: ${perdida_flotante_total:.2f}")
+    print("\n--- DESGLOSE REAL (SOLO CERRADAS) ---")
+    for h in historial_cerradas:
+        print(f"{h['moneda']} PER {h['neto']:.2f}% ${h['usd']:.2f} -> ACUMULADO: ${CONFIG['ACUMULADO']:.2f}")
 
-# --- LOOP PRINCIPAL ---
-print("🚀 V105 REAL EFECTIVO INICIADO")
+print("🚀 V105.3 REAL CONTABLE - SHIB BORRADO - LISTO")
 while True:
     try:
-        cazar_simulado()
-        revisar_salidas_seguro()
+        revisar_y_mostrar()
         time.sleep(10)
-    except ZeroDivisionError as e:
-        print(f"ZeroDivision atrapado: {e} - continuando")
-        time.sleep(5)
+    except ZeroDivisionError:
+        print("ZeroDivision bloqueado, continuando...")
+        time.sleep(3)
     except Exception as e:
-        print(f"Error general: {e}")
-        time.sleep(5)
+        print(f"Error: {e}")
+        time.sleep(3)
