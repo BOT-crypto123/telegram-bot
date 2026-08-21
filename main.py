@@ -4,7 +4,7 @@ from datetime import datetime
 from collections import defaultdict
 
 os.environ['PYTHONUNBUFFERED']='1'
-print("INICIANDO V133 FIX SIN TRIPLE COMILLA", flush=True)
+print("INICIANDO V134 FIX SYNTAX", flush=True)
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 URL = "https://telegram-bot-cijp.onrender.com"
@@ -29,9 +29,12 @@ PRECIOS = {}
 
 def send_tg(text):
     global CHAT_ID
-    if not TOKEN or not CHAT_ID: return
-    try: requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={"chat_id":CHAT_ID,"text":text}, timeout=5)
-    except: pass
+    if not TOKEN or not CHAT_ID:
+        return
+    try:
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={"chat_id":CHAT_ID,"text":text}, timeout=5)
+    except:
+        pass
 
 def get_rate_mxn():
     try:
@@ -41,7 +44,8 @@ def get_rate_mxn():
             CONFIG["RATE_MXN"]=p
             CONFIG["BASE_MXN"]=CONFIG["BASE_USD"]*p
             return p
-    except: pass
+    except:
+        pass
     return CONFIG["RATE_MXN"]
 
 def get_precio(moneda):
@@ -50,14 +54,21 @@ def get_precio(moneda):
         p = float(r.json()['price'])
         PRECIOS[moneda]=p
         return p
-    except: return PRECIOS.get(moneda, 0)
+    except:
+        return PRECIOS.get(moneda, 0)
 
-def get_total_mxn(): return CONFIG["BASE_MXN"] + CONFIG["ACUMULADO_MXN"]
-def get_costo_mxn(): return get_total_mxn() / CONFIG["BOLAS_MAX"]
-def get_costo_usd(): return get_costo_mxn() / CONFIG["RATE_MXN"]
+def get_total_mxn():
+    return CONFIG["BASE_MXN"] + CONFIG["ACUMULADO_MXN"]
+
+def get_costo_mxn():
+    return get_total_mxn() / CONFIG["BOLAS_MAX"]
+
+def get_costo_usd():
+    return get_costo_mxn() / CONFIG["RATE_MXN"]
 
 def calc_desglose(entrada, salida, costo_usd, rate):
-    if not entrada or salida==0: return {}
+    if not entrada or salida==0:
+        return {}
     pct_bruto = ((salida - entrada) / entrada) * 100
     bruta_usd = costo_usd * (pct_bruto/100)
     com_entry_usd = costo_usd * (CONFIG["FEE_ENTRY_PCT"]/100)
@@ -66,22 +77,31 @@ def calc_desglose(entrada, salida, costo_usd, rate):
     neta_usd = bruta_usd - com_total_usd
     pct_neto = (neta_usd / costo_usd) * 100
     return {
-        "pct_bruto": pct_bruto, "pct_neto": pct_neto,
-        "bruta_usd": bruta_usd, "bruta_mxn": bruta_usd * rate,
-        "com_entry_usd": com_entry_usd, "com_entry_mxn": com_entry_usd * rate,
-        "com_exit_usd": com_exit_usd, "com_exit_mxn": com_exit_usd * rate,
-        "com_total_usd": com_total_usd, "com_total_mxn": com_total_usd * rate,
-        "neta_usd": neta_usd, "neta_mxn": neta_usd * rate
+        "pct_bruto": pct_bruto,
+        "pct_neto": pct_neto,
+        "bruta_usd": bruta_usd,
+        "bruta_mxn": bruta_usd * rate,
+        "com_entry_usd": com_entry_usd,
+        "com_entry_mxn": com_entry_usd * rate,
+        "com_exit_usd": com_exit_usd,
+        "com_exit_mxn": com_exit_usd * rate,
+        "com_total_usd": com_total_usd,
+        "com_total_mxn": com_total_usd * rate,
+        "neta_usd": neta_usd,
+        "neta_mxn": neta_usd * rate
     }
 
 def get_stats():
     rate = get_rate_mxn()
     CONFIG["ACUMULADO_MXN"] = CONFIG["ACUMULADO_USD"] * rate
     CONFIG["BASE_MXN"] = CONFIG["BASE_USD"] * rate
-    flot_usd=0; flot_mxn=0; vend=0
+    flot_usd=0
+    flot_mxn=0
+    vend=0
     for b in bolas:
         p=get_precio(b["moneda"])
-        if p>0: b["actual"]=p
+        if p>0:
+            b["actual"]=p
         d = calc_desglose(b["compra"], b["actual"], b["costo_usd"], rate)
         b.update(d)
         b["usd"]=d.get("neta_usd",0)
@@ -89,17 +109,22 @@ def get_stats():
         b["neto"]=d.get("pct_neto",0)
         flot_usd+=b["usd"]
         flot_mxn+=b["mxn"]
-        if b["neto"]>=CONFIG["TP_PCT"]: vend+=1
+        if b["neto"]>=CONFIG["TP_PCT"]:
+            vend+=1
     total_mxn=get_total_mxn()
     total_usd=total_mxn/rate
     prog=(datetime.now().day/30)*100
     return total_usd,total_mxn,flot_usd,flot_mxn,prog,vend,rate,get_costo_usd(),get_costo_mxn()
 
 def comprar_bola(moneda):
-    if len(bolas)>=CONFIG["BOLAS_MAX"]: return None
-    if moneda in [x["moneda"] for x in bolas]: return None
+    if len(bolas)>=CONFIG["BOLAS_MAX"]:
+        return None
+    for x in bolas:
+        if x["moneda"]==moneda:
+            return None
     p=get_precio(moneda)
-    if p==0: return None
+    if p==0:
+        return None
     n={"id":int(time.time()*1000),"moneda":moneda,"compra":p,"costo_usd":get_costo_usd(),"costo_mxn":get_costo_mxn(),"actual":p}
     bolas.append(n)
     return n
@@ -122,12 +147,14 @@ def tabla_por_moneda():
     for h in historial:
         m=h["moneda"]
         stats[m]["entradas"]+=1
-        if h["neta_mxn"]>0: stats[m]["ganadas"]+=1
+        if h["neta_mxn"]>0:
+            stats[m]["ganadas"]+=1
         stats[m]["total_usd"]+=h["neta_usd"]
         stats[m]["total_mxn"]+=h["neta_mxn"]
         stats[m]["com_mxn"]+=h["com_total_mxn"]
         stats[m]["bruta_mxn"]+=h["bruta_mxn"]
-    for b in bolas: stats[b["moneda"]]["entradas"]+=1
+    for b in bolas:
+        stats[b["moneda"]]["entradas"]+=1
     return stats
 
 def loop_auto():
@@ -136,6 +163,30 @@ def loop_auto():
             if CONFIG["AUTO"]:
                 get_stats()
                 for b in bolas[:]:
-                    if b.get("pct_neto",0)>=CONFIG["TP_PCT"]: vender_bola(b["id"])
+                    if b.get("pct_neto",0)>=CONFIG["TP_PCT"]:
+                        vender_bola(b["id"])
                 if len(bolas)<CONFIG["BOLAS_MAX"]:
-                    disp=[m for m,on in MONEDAS.items() if on and m not in [x["moneda"] for x in bolas]]
+                    disponibles=[]
+                    for m, on in MONEDAS.items():
+                        if not on:
+                            continue
+                        ocupado=False
+                        for x in bolas:
+                            if x["moneda"]==m:
+                                ocupado=True
+                                break
+                        if not ocupado:
+                            disponibles.append(m)
+                    if len(disponibles)>0:
+                        elegir=random.choice(disponibles)
+                        comprar_bola(elegir)
+        except Exception as e:
+            print(traceback.format_exc(), flush=True)
+        time.sleep(12)
+
+threading.Thread(target=loop_auto, daemon=True).start()
+app = Flask(__name__)
+
+@app.route('/', methods=['GET'])
+def home():
+    html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><title>MAQUINA DE HACER DIN
