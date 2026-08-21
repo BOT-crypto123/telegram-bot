@@ -1,63 +1,84 @@
-import os, requests
+import os, sys, requests, threading, time
 from flask import Flask, request
 from datetime import datetime
 
-print("INICIANDO V106 WEBHOOK PURO - SIN POLLING")
+os.environ['PYTHONUNBUFFERED']='1'
+sys.stdout.reconfigure(line_buffering=True)
+
+print("INICIANDO V108 FINAL TODO COMPLETO", flush=True)
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 URL = "https://telegram-bot-cijp.onrender.com"
-CONFIG = {"BASE":10000.0,"ACUMULADO":316.0,"FEES_PCT":0.35}
-bolas = [{"moneda":"XRP","compra":22.24,"costo":1031.63},{"moneda":"ETH","compra":40049.34,"costo":1031.63}]
+CHAT_ID = None
 
-def calc(e,a,c):
-    if not e or not a: return 0,0
-    b=((a-e)/e)*100; n=b-CONFIG["FEES_PCT"]; return n, c*(n/100)
-def precio(m): return {"BTC":1273222.19,"ETH":39926.52,"SOL":1531.61,"DOGE":1.42,"XRP":22.13,"ADA":3.54,"AVAX":125.33}.get(m,0)
+# ====== TU CONFIG REAL ======
+CONFIG = {
+    "BASE": 10000.0,
+    "ACUMULADO": 316.0,
+    "BOLAS_MAX": 10,
+    "COSTO_BOLA": 1031.63,
+    "FEES_PCT": 0.50,  # TU COMISION REAL 0.5% TOTAL
+    "TP_PCT": 0.50,    # Solo vende si neto >= 0.5%
+    "SL_PCT": -3.0,
+    "AUTO": False
+}
 
-def responder(cid):
-    tot=0
-    msg=f"MAQUINA V106 BAL ${CONFIG['BASE']+CONFIG['ACUMULADO']:.2f} ACUM +${CONFIG['ACUMULADO']}\n\n"
-    for b in bolas:
-        a=precio(b['moneda']); n,us=calc(b['compra'],a,b['costo']); tot+=us
-        msg+=f"{'VERDE' if n>=0 else 'ROJO'} {b['moneda']} E {b['compra']} -> {a} {n:.2f}% ${us:.2f}\n"
-    msg+=f"\nTOTAL FLOTANTE: ${tot:.2f}\n{URL}"
+# TUS BOLAS - EDITA AQUI TUS COMPRAS REALES
+bolas = [
+    {"moneda":"XRP","compra":22.24,"costo":1031.63,"cantidad":46.38,"fecha":"2025-01-10"},
+    {"moneda":"ETH","compra":40049.34,"costo":1031.63,"cantidad":0.0257,"fecha":"2025-01-11"},
+]
+
+# PRECIOS - AQUI VA TU API REAL DE BITSO
+# Si quieres precios reales, cambia esta funcion por tu llamada a Bitso
+PRECIOS_CACHE = {"BTC":1273222,"ETH":39926,"SOL":1531,"DOGE":1.42,"XRP":22.13,"ADA":3.54,"AVAX":125.33,"BNB":9870,"LTC":1450}
+
+def get_precio_bitso(moneda):
     try:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json={"chat_id":cid,"text":msg},timeout=10)
-        print(f"Enviado DASHBOARD a {cid}")
-    except Exception as e:
-        print(f"Error envio: {e}")
+        # Descomenta esto cuando quieras precios reales de Bitso
+        # r = requests.get(f"https://api.bitso.com/v3/ticker?book={moneda.lower()}_mxn", timeout=5).json()
+        # return float(r['payload']['last'])
+        return PRECIOS_CACHE.get(moneda, 0)
+    except:
+        return PRECIOS_CACHE.get(moneda, 0)
 
-app=Flask(__name__)
+def calc_ganancia(entrada, actual, costo):
+    if not entrada or not actual or entrada < 0.001:
+        return 0, 0, 0
+    bruto = ((actual - entrada) / entrada) * 100
+    neto = bruto - CONFIG["FEES_PCT"]  # AQUI TU 0.5% REAL
+    usd = costo * (neto / 100)
+    return bruto, neto, usd
 
-@app.route('/',methods=['GET'])
-def home():
-    return f"<h1>V106 LIVE {datetime.now()} SIN 409</h1><p>Webhook activo</p>"
-
-@app.route('/',methods=['POST'])
-def webhook():
-    try:
-        data=request.get_json(force=True,silent=True)
-        if not data: return "ok",200
-        print(f"Webhook POST: {data}")
-        msg=data.get("message",{})
-        txt=msg.get("text","").strip().upper()
-        cid=msg.get("chat",{}).get("id")
-        print(f"Comando: {txt} de {cid}")
-        if txt=="DASHBOARD" and cid:
-            responder(cid)
-        if txt=="AUTO ON" and cid:
-            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json={"chat_id":cid,"text":"AUTO ON OK V106"})
-    except Exception as e:
-        print(f"Error webhook: {e}")
-    return "ok",200
-
-# Auto-configura webhook al iniciar
-if TOKEN:
-    try:
-        r=requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={URL}",timeout=10).json()
-        print(f"Webhook seteado: {r}")
-    except Exception as e:
-        print(f"Error seteando webhook: {e}")
-
-print("V106 LISTO - ESPERANDO POST DE TELEGRAM")
-app.run(host='0.0.0.0',port=int(os.environ.get("PORT",10000)))
+def dashboard_text():
+    total_flotante = 0
+    ganadoras = 0
+    msg = f"🤖 MAQUINA V108 FINAL\n"
+    msg += f"💰 BAL: ${CONFIG['BASE']+CONFIG['ACUMULADO']:.2f}\n"
+    msg += f"📈 ACUM: +${CONFIG['ACUMULADO']:.2f} BASE: ${CONFIG['BASE']:.2f}\n"
+    msg += f"🎯 AUTO: {'🟢 ON' if CONFIG['AUTO'] else '🔴 OFF'} | FEES: {CONFIG['FEES_PCT']}%\n"
+    msg += f"⚙️ TP: >={CONFIG['TP_PCT']}% NETO | SL: {CONFIG['SL_PCT']}%\n"
+    msg += f"━━━━━━━━━━━━━━\n\n"
+    
+    for i, b in enumerate(bolas, 1):
+        actual = get_precio_bitso(b['moneda'])
+        bruto, neto, usd = calc_ganancia(b['compra'], actual, b['costo'])
+        total_flotante += usd
+        if neto >= CONFIG["TP_PCT"]:
+            ganadoras += 1
+        
+        if neto >= CONFIG["TP_PCT"]:
+            estado = "🟢 VENDIBLE"
+        elif neto >= 0:
+            estado = "🟡 EN VERDE pero no llega a 0.5% neto"
+        else:
+            estado = "🔴 ROJO"
+            
+        msg += f"{estado} BOLA {i} {b['moneda']}\n"
+        msg += f"   Compra: {b['compra']} -> Ahora: {actual}\n"
+        msg += f"   Bruto: {bruto:.2f}% | NETO REAL: {neto:.2f}%\n"
+        msg += f"   Ganancia: ${usd:.2f} (costo ${b['costo']})\n\n"
+    
+    msg += f"━━━━━━━━━━━━━━\n"
+    msg += f"💵 FLOTANTE TOTAL: ${total_flotante:.2f}\n"
+    msg += f"✅ VENDIBLES (>=
