@@ -4,7 +4,7 @@ from datetime import datetime
 from collections import defaultdict
 
 os.environ['PYTHONUNBUFFERED']='1'
-print("INICIANDO V135 MISMA LOGICA FIX COMILLAS", flush=True)
+print("INICIANDO V136 MISMA LOGICA FIX FINAL", flush=True)
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 URL = "https://telegram-bot-cijp.onrender.com"
@@ -138,7 +138,7 @@ def vender_bola(id_bola):
             historial.insert(0,h)
             bolas.remove(b)
             if b["neta_usd"]>0:
-                send_tg(f"CIERRE GANADOR\n{b['moneda']} NETO {b['pct_neto']:.2f}% (BRUTO {b['pct_bruto']:.2f}%)\nNETA: ${b['neta_mxn']:.2f} MXN (${b['neta_usd']:.2f} USD)\nBRUTA: ${b['bruta_mxn']:.2f} MXN\nCOMIS: ${b['com_total_mxn']:.2f} MXN")
+                send_tg(f"CIERRE GANADOR\n{b['moneda']} NETO {b['pct_neto']:.2f}% (BRUTO {b['pct_bruto']:.2f}%)\nNETA: ${b['neta_mxn']:.2f} MXN (${b['neta_usd']:.2f} USD)")
             return b
     return None
 
@@ -180,7 +180,7 @@ def loop_auto():
                     if len(disponibles)>0:
                         elegir=random.choice(disponibles)
                         comprar_bola(elegir)
-        except Exception as e:
+        except Exception:
             print(traceback.format_exc(), flush=True)
         time.sleep(12)
 
@@ -189,62 +189,99 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def home():
-    parts=[]
-    parts.append('<!DOCTYPE html><html><head>')
-    parts.append('<meta name="viewport" content="width=device-width, initial-scale=1">')
-    parts.append('<title>MAQUINA DE HACER DINERO</title>')
-    parts.append('<style>')
-    parts.append('body{background:#061126;color:#fff;font-family:Arial;padding:10px;margin:0}')
-    parts.append('.titulo{font-size:26px;text-align:center;color:#FFD700;margin:12px 0 4px 0;font-weight:900}')
-    parts.append('.subtitulo{font-size:10px;color:#8aa;text-align:center;letter-spacing:4px;margin-bottom:12px}')
-    parts.append('.card{background:#0c1e3a;border-radius:16px;padding:14px;margin:12px 0;border:1px solid #14365f}')
-    parts.append('.btn{padding:9px 14px;border-radius:10px;border:none;margin:4px;font-weight:bold;cursor:pointer}')
-    parts.append('.on{background:#0ea5e9;color:#fff}.off{background:#0f284a;color:#5a7aa5}.tp{background:#00e5ff;color:#000;font-weight:900}')
-    parts.append('.circle-wrap{position:relative;width:270px;height:270px;margin:18px auto}')
-    parts.append('.bg{fill:none;stroke:#0f284a;stroke-width:14}.prog{fill:none;stroke:#FFD700;stroke-width:14;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}')
-    parts.append('.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}')
-    parts.append('.mxn-big{font-size:44px;color:#00ff88;font-weight:900;line-height:1}')
-    parts.append('.usd-small{font-size:11px;color:#5a7aa5;margin-top:4px}')
-    parts.append('.acum-mxn{font-size:48px;color:#00ff88;font-weight:900;text-align:center;line-height:1}')
-    parts.append('.acum-usd{font-size:13px;color:#5a7aa5;text-align:center}')
-    parts.append('.table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px}')
-    parts.append('.table th{background:#0f284a;color:#FFD700;padding:8px 4px;text-align:center;font-size:9px}')
-    parts.append('.table td{padding:7px 4px;border-bottom:1px solid #14365f;text-align:center}')
-    parts.append('.comp{background:#00ff88;color:#000;padding:12px;border-radius:12px;font-weight:900;text-align:center;margin:8px 0;font-size:18px}')
-    parts.append('.badge-mxn{color:#00ff88;font-weight:900;font-size:13px}.badge-usd{color:#5a7aa5;font-size:10px}.badge-com{color:#ff6b6b;font-size:10px}.badge-bruta{color:#ffd93d;font-weight:700}.scroll{overflow-x:auto}')
-    parts.append('</style></head><body>')
-    parts.append('<div class="titulo">MAQUINA DE HACER DINERO</div>')
-    parts.append('<div class="subtitulo">SISTEMA COMPUESTO 500 USD - MXN GRANDE</div>')
-    parts.append('<div class="circle-wrap"><svg width="270" height="270"><circle class="bg" cx="135" cy="135" r="110"></circle><circle id="pc" class="prog" cx="135" cy="135" r="110" stroke-dasharray="691" stroke-dashoffset="691"></circle></svg>')
-    parts.append('<div class="center"><div style="font-size:9px;color:#8aa;letter-spacing:2px">BASE 500 USD + ACUM</div><div id="baseMxn" class="mxn-big">$0 MXN</div><div id="baseUsd" class="usd-small">$0 USD</div><div id="rateTxt" style="font-size:9px;color:#FFD700;margin-top:6px"></div><div id="diaTxt" style="font-size:10px;color:#5a7aa5;margin-top:2px"></div></div></div>')
-    parts.append('<div class="card" style="border:2px solid #00ff88"><div style="text-align:center;color:#8aa;font-size:9px;letter-spacing:3px">ACUMULADO NETO REAL</div><div id="acumMxn" class="acum-mxn">$0 MXN</div><div id="acumUsd" class="acum-usd">$0 USD</div><div id="totalLine" style="text-align:center;color:#5a7aa5;font-size:10px;margin-top:6px"></div><div id="costoLine" class="comp"></div><div id="costoUsdLine" style="text-align:center;color:#5a7aa5;font-size:10px"></div><div style="text-align:center;color:#8aa;font-size:9px;margin-top:6px">FEE ENTRADA 0.10% + FEE SALIDA 0.10% = 0.20% TOTAL YA DESCONTADO</div></div>')
-    parts.append('<div class="card" style="border:1px solid #00ff88"><b style="color:#00ff88">TP 0,3% NETO REAL (0,5% BRUTO APROX)</b><br><br><button class="btn tp" onclick="apiTP(0.3)">0,3% NETO</button><button class="btn tp" onclick="apiTP(0.4)">0,4%</button><button class="btn tp" onclick="apiTP(0.5)">0,5%</button><button class="btn tp" onclick="apiTP(0.6)">0,6%</button></div>')
-    parts.append('<div class="card">AUTO <button id="autoBtn" class="btn on" onclick="api(&quot;auto&quot;)">ENCENDIDO</button> <span id="autoSt"></span> | ENTRADAS<br><button class="btn off" onclick="api(&quot;max?val=2&quot;)">2</button><button class="btn off" onclick="api(&quot;max?val=4&quot;)">4</button><button class="btn off" onclick="api(&quot;max?val=6&quot;)">6</button><button class="btn off" onclick="api(&quot;max?val=8&quot;)">8</button><button class="btn off" onclick="api(&quot;max?val=10&quot;)">10</button><div id="ejemploDiv" style="font-size:10px;color:#00ff88;margin-top:8px"></div></div>')
-    parts.append('<div class="card">MONEDAS ACTIVAS:<div id="mons"></div></div><div class="card"><b style="color:#00ff88">ABIERTAS - CON DESGLOSE</b><div id="bolas"></div></div>')
-    parts.append('<div class="card"><b style="color:#FFD700">RESUMEN POR MONEDA - NETA + COMISIONES</b><div class="scroll"><table class="table"><thead><tr><th>MON</th><th>ENT</th><th>GAN</th><th>BRUTA MXN</th><th>COMIS MXN</th><th>NETA MXN</th><th>USD ch</th><th>WIN</th></tr></thead><tbody id="tablaMon"></tbody></table></div></div>')
-    parts.append('<div class="card"><b style="color:#00ff88">HISTORIAL COMPLETO - DESGLOSE REAL BINANCE</b><br><span style="font-size:9px;color:#5a7aa5">Entrada | Salida | Com Entrada | Com Salida | Com Total | Bruta | Neta</span><div class="scroll"><table class="table"><thead><tr><th>FECHA</th><th>MON</th><th>ENT/SAL</th><th>COSTO</th><th>COM ENT</th><th>COM SAL</th><th>COM TOT</th><th>BRUTA</th><th>NETA MXN</th><th>USD ch</th><th>%</th></tr></thead><tbody id="hist"></tbody></table></div></div>')
-    parts.append('<script>')
-    parts.append('async function load(){let r=await fetch("/api/data");let d=await r.json();')
-    parts.append('document.getElementById("baseMxn").innerText="$"+d.total_mxn.toFixed(2)+" MXN";')
-    parts.append('document.getElementById("baseUsd").innerText="$"+d.total_usd.toFixed(2)+" USD";')
-    parts.append('document.getElementById("rateTxt").innerText="1 USDT = $"+d.rate.toFixed(2)+" MXN";')
-    parts.append('document.getElementById("diaTxt").innerText="DIA "+new Date().getDate()+"/30 TP "+d.config.TP_PCT+"% NETO";')
-    parts.append('document.getElementById("acumMxn").innerText="$"+d.config.ACUMULADO_MXN.toFixed(2)+" MXN";')
-    parts.append('document.getElementById("acumUsd").innerText="$"+d.config.ACUMULADO_USD.toFixed(2)+" USD";')
-    parts.append('document.getElementById("totalLine").innerText="BASE $"+d.config.BASE_MXN.toFixed(0)+" MXN | FLOT NETO $"+d.flot_mxn.toFixed(2)+" MXN";')
-    parts.append('document.getElementById("costoLine").innerText="ENTRADA ACTUAL: $"+d.costo_mxn.toFixed(0)+" MXN";')
-    parts.append('document.getElementById("costoUsdLine").innerText="$"+d.costo_usd.toFixed(2)+" USD ch | "+d.config.BOLAS_MAX+" entradas";')
-    parts.append('document.getElementById("ejemploDiv").innerText="Ej: $"+d.total_mxn.toFixed(2)+" / "+d.config.BOLAS_MAX+" = $"+d.costo_mxn.toFixed(0)+" MXN por bola";')
-    parts.append('document.getElementById("autoSt").innerText=d.config.AUTO?"TRABAJANDO":"PAUSADO";')
-    parts.append('document.getElementById("autoBtn").innerText=d.config.AUTO?"ENCENDIDO":"APAGADO";')
-    parts.append('let circ=691-(691*d.progreso/100);document.getElementById("pc").style.strokeDashoffset=circ;')
-    parts.append('let m="";for(let k in d.monedas){m+="<button class=\\"btn "+(d.monedas[k]?"on":"off")+"\\" onclick=\\"api(\\'moneda?m="+k+"\\')\\">"+k+"</button>"}document.getElementById("mons").innerHTML=m;')
-    parts.append('let b="";d.bolas.forEach(x=>{b+="<div style=\\"padding:10px 0;border-bottom:1px solid #14365f\\"><b>"+x.moneda+"</b> "+x.compra.toFixed(4)+" -> "+x.actual.toFixed(4)+"<br><span style=\\"font-size:10px;color:#5a7aa5\\">Costo $"+x.costo_mxn.toFixed(0)+" MXN ($"+x.costo_usd.toFixed(2)+")</span><br><span class=\\"badge-bruta\\">Bruta $"+(x.bruta_mxn||0).toFixed(2)+"</span> | <span class=\\"badge-com\\">Comis $"+(x.com_total_mxn||0).toFixed(2)+" (E $"+(x.com_entry_mxn||0).toFixed(2)+" + S $"+(x.com_exit_mxn||0).toFixed(2)+")</span><br><span class=\\"badge-mxn\\">Neta $"+(x.neta_mxn||0).toFixed(2)+" MXN</span> <span class=\\"badge-usd\\">$"+(x.neta_usd||0).toFixed(2)+" USD</span> | Neto "+(x.pct_neto||0).toFixed(2)+"% (Bruto "+(x.pct_bruto||0).toFixed(2)+"%) "+(x.pct_neto>=d.config.TP_PCT?"OK":"..")+"</div>"});document.getElementById("bolas").innerHTML=b||"Limpio - AUTO cazara solo";')
-    parts.append('let tm="";for(let mon in d.tabla){let s=d.tabla[mon];let win=s.entradas?((s.ganadas/s.entradas)*100).toFixed(0):0;tm+="<tr><td><b>"+mon+"</b></td><td>"+s.entradas+"</td><td style=\\"color:#00ff88\\">"+s.ganadas+"</td><td><span class=\\"badge-bruta\\">$"+s.bruta_mxn.toFixed(2)+"</span></td><td><span class=\\"badge-com\\">$"+s.com_mxn.toFixed(2)+"</span></td><td><span class=\\"badge-mxn\\">$"+s.total_mxn.toFixed(2)+"</span></td><td><span class=\\"badge-usd\\">$"+s.total_usd.toFixed(2)+"</span></td><td>"+win+"%</td></tr>";}document.getElementById("tablaMon").innerHTML=tm||"<tr><td colspan=8>Desde cero</td></tr>";')
-    parts.append('let h="";d.historial.forEach(x=>{h+="<tr><td>"+x.fecha+"</td><td><b>"+x.moneda+"</b></td><td style=\\"font-size:9px\\">"+x.entrada.toFixed(4)+"<br>-> "+x.salida.toFixed(4)+"</td><td><span style=\\"font-size:9px\\">$"+x.costo_mxn+"<br><span class=\\"badge-usd\\">$"+x.costo_usd+"</span></span></td><td><span class=\\"badge-com\\">$"+x.com_entry_mxn+"<br><span class=\\"badge-usd\\">$"+x.com_entry_usd+"</span></span></td><td><span class=\\"badge-com\\">$"+x.com_exit_mxn+"<br><span class=\\"badge-usd\\">$"+x.com_exit_usd+"</span></span></td><td><span class=\\"badge-com\\">$"+x.com_total_mxn+"<br><span class=\\"badge-usd\\">$"+x.com_total_usd+"</span></span></td><td><span class=\\"badge-bruta\\">$"+x.bruta_mxn+"<br><span class=\\"badge-usd\\">$"+x.bruta_usd+"</span></span></td><td><span class=\\"badge-mxn\\">$"+x.neta_mxn+"</span></td><td><span class=\\"badge-usd\\">$"+x.neta_usd+"</span></td><td>"+x.pct_neto+"%<br><span style=\\"font-size:8px;color:#5a7aa5\\">"+x.pct_bruto+"% br</span></td></tr>";});document.getElementById("hist").innerHTML=h||"<tr><td colspan=11>Desde cero $310 MXN - desglose real</td></tr>";}')
-    parts.append('async function api(u){await fetch("/api/"+u);load();}async function apiTP(v){await fetch("/api/tp?val="+v);load();}load();setInterval(load,5000);')
-    parts.append('</script></body></html>')
-    return "".join(parts)
+    return '''
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MAQUINA DE HACER DINERO</title>
+<style>
+body{background:#061126;color:#fff;font-family:Arial;padding:10px;margin:0}
+.titulo{font-size:26px;text-align:center;color:#FFD700;margin:12px 0 4px 0;font-weight:900}
+.subtitulo{font-size:10px;color:#8aa;text-align:center;letter-spacing:4px;margin-bottom:12px}
+.card{background:#0c1e3a;border-radius:16px;padding:14px;margin:12px 0;border:1px solid #14365f}
+.btn{padding:9px 14px;border-radius:10px;border:none;margin:4px;font-weight:bold;cursor:pointer}
+.on{background:#0ea5e9;color:#fff}.off{background:#0f284a;color:#5a7aa5}.tp{background:#00e5ff;color:#000;font-weight:900}
+.circle-wrap{position:relative;width:270px;height:270px;margin:18px auto}
+.bg{fill:none;stroke:#0f284a;stroke-width:14}.prog{fill:none;stroke:#FFD700;stroke-width:14;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}
+.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
+.mxn-big{font-size:44px;color:#00ff88;font-weight:900;line-height:1}
+.usd-small{font-size:11px;color:#5a7aa5;margin-top:4px}
+.acum-mxn{font-size:48px;color:#00ff88;font-weight:900;text-align:center;line-height:1}
+.acum-usd{font-size:13px;color:#5a7aa5;text-align:center}
+.table{width:100%;border-collapse:collapse;margin-top:10px;font-size:11px}
+.table th{background:#0f284a;color:#FFD700;padding:8px 4px;text-align:center;font-size:9px}
+.table td{padding:7px 4px;border-bottom:1px solid #14365f;text-align:center}
+.comp{background:#00ff88;color:#000;padding:12px;border-radius:12px;font-weight:900;text-align:center;margin:8px 0;font-size:18px}
+.badge-mxn{color:#00ff88;font-weight:900;font-size:13px}.badge-usd{color:#5a7aa5;font-size:10px}.badge-com{color:#ff6b6b;font-size:10px}.badge-bruta{color:#ffd93d;font-weight:700}.scroll{overflow-x:auto}
+</style>
+</head>
+<body>
+<div class="titulo">MAQUINA DE HACER DINERO</div>
+<div class="subtitulo">SISTEMA COMPUESTO 500 USD - MXN GRANDE</div>
+<div class="circle-wrap"><svg width="270" height="270"><circle class="bg" cx="135" cy="135" r="110"></circle><circle id="pc" class="prog" cx="135" cy="135" r="110" stroke-dasharray="691" stroke-dashoffset="691"></circle></svg>
+<div class="center"><div style="font-size:9px;color:#8aa;letter-spacing:2px">BASE 500 USD + ACUM</div><div id="baseMxn" class="mxn-big">$0 MXN</div><div id="baseUsd" class="usd-small">$0 USD</div><div id="rateTxt" style="font-size:9px;color:#FFD700;margin-top:6px"></div><div id="diaTxt" style="font-size:10px;color:#5a7aa5;margin-top:2px"></div></div></div>
+<div class="card" style="border:2px solid #00ff88"><div style="text-align:center;color:#8aa;font-size:9px;letter-spacing:3px">ACUMULADO NETO REAL</div><div id="acumMxn" class="acum-mxn">$0 MXN</div><div id="acumUsd" class="acum-usd">$0 USD</div><div id="totalLine" style="text-align:center;color:#5a7aa5;font-size:10px;margin-top:6px"></div><div id="costoLine" class="comp"></div><div id="costoUsdLine" style="text-align:center;color:#5a7aa5;font-size:10px"></div><div style="text-align:center;color:#8aa;font-size:9px;margin-top:6px">FEE ENTRADA 0.10% + FEE SALIDA 0.10% = 0.20% TOTAL YA DESCONTADO</div></div>
+<div class="card" style="border:1px solid #00ff88"><b style="color:#00ff88">TP 0,3% NETO REAL (0,5% BRUTO APROX)</b><br><br><button class="btn tp" onclick="doTP(0.3)">0,3% NETO</button><button class="btn tp" onclick="doTP(0.4)">0,4%</button><button class="btn tp" onclick="doTP(0.5)">0,5%</button><button class="btn tp" onclick="doTP(0.6)">0,6%</button></div>
+<div class="card">AUTO <button id="autoBtn" class="btn on" onclick="doApi('auto')">ENCENDIDO</button> <span id="autoSt"></span> | ENTRADAS<br><button class="btn off" onclick="doApi('max?val=2')">2</button><button class="btn off" onclick="doApi('max?val=4')">4</button><button class="btn off" onclick="doApi('max?val=6')">6</button><button class="btn off" onclick="doApi('max?val=8')">8</button><button class="btn off" onclick="doApi('max?val=10')">10</button><div id="ejemploDiv" style="font-size:10px;color:#00ff88;margin-top:8px"></div></div>
+<div class="card">MONEDAS ACTIVAS:<div id="mons"></div></div>
+<div class="card"><b style="color:#00ff88">ABIERTAS - CON DESGLOSE</b><div id="bolas"></div></div>
+<div class="card"><b style="color:#FFD700">RESUMEN POR MONEDA - NETA + COMISIONES</b><div class="scroll"><table class="table"><thead><tr><th>MON</th><th>ENT</th><th>GAN</th><th>BRUTA MXN</th><th>COMIS MXN</th><th>NETA MXN</th><th>USD ch</th><th>WIN</th></tr></thead><tbody id="tablaMon"></tbody></table></div></div>
+<div class="card"><b style="color:#00ff88">HISTORIAL COMPLETO - DESGLOSE REAL BINANCE</b><div class="scroll"><table class="table"><thead><tr><th>FECHA</th><th>MON</th><th>ENT/SAL</th><th>COSTO</th><th>COM ENT</th><th>COM SAL</th><th>COM TOT</th><th>BRUTA</th><th>NETA MXN</th><th>USD ch</th><th>%</th></tr></thead><tbody id="hist"></tbody></table></div></div>
+<script>
+async function load(){
+  let r=await fetch("/api/data");
+  let d=await r.json();
+  document.getElementById("baseMxn").innerText="$"+d.total_mxn.toFixed(2)+" MXN";
+  document.getElementById("baseUsd").innerText="$"+d.total_usd.toFixed(2)+" USD";
+  document.getElementById("rateTxt").innerText="1 USDT = $"+d.rate.toFixed(2)+" MXN";
+  document.getElementById("diaTxt").innerText="DIA "+new Date().getDate()+"/30 TP "+d.config.TP_PCT+"% NETO";
+  document.getElementById("acumMxn").innerText="$"+d.config.ACUMULADO_MXN.toFixed(2)+" MXN";
+  document.getElementById("acumUsd").innerText="$"+d.config.ACUMULADO_USD.toFixed(2)+" USD";
+  document.getElementById("totalLine").innerText="BASE $"+d.config.BASE_MXN.toFixed(0)+" MXN | FLOT NETO $"+d.flot_mxn.toFixed(2)+" MXN";
+  document.getElementById("costoLine").innerText="ENTRADA ACTUAL: $"+d.costo_mxn.toFixed(0)+" MXN";
+  document.getElementById("costoUsdLine").innerText="$"+d.costo_usd.toFixed(2)+" USD ch | "+d.config.BOLAS_MAX+" entradas";
+  document.getElementById("ejemploDiv").innerText="Ej: $"+d.total_mxn.toFixed(2)+" / "+d.config.BOLAS_MAX+" = $"+d.costo_mxn.toFixed(0)+" MXN por bola";
+  document.getElementById("autoSt").innerText=d.config.AUTO?"TRABAJANDO":"PAUSADO";
+  document.getElementById("autoBtn").innerText=d.config.AUTO?"ENCENDIDO":"APAGADO";
+  let circ=691-(691*d.progreso/100);
+  document.getElementById("pc").style.strokeDashoffset=circ;
+  let m="";
+  for(let k in d.monedas){
+    let cls=d.monedas[k]?"on":"off";
+    m+='<button class="btn '+cls+'" onclick="doMoneda(\''+k+'\')">'+k+'</button>';
+  }
+  document.getElementById("mons").innerHTML=m;
+  let b="";
+  d.bolas.forEach(function(x){
+    b+='<div style="padding:10px 0;border-bottom:1px solid #14365f"><b>'+x.moneda+'</b> '+x.compra.toFixed(4)+' -> '+x.actual.toFixed(4)+'<br>';
+    b+='<span style="font-size:10px;color:#5a7aa5">Costo $'+x.costo_mxn.toFixed(0)+' MXN ($'+x.costo_usd.toFixed(2)+')</span><br>';
+    b+='<span class="badge-bruta">Bruta $'+(x.bruta_mxn||0).toFixed(2)+'</span> | <span class="badge-com">Comis $'+(x.com_total_mxn||0).toFixed(2)+'</span><br>';
+    b+='<span class="badge-mxn">Neta $'+(x.neta_mxn||0).toFixed(2)+' MXN</span> <span class="badge-usd">$'+(x.neta_usd||0).toFixed(2)+' USD</span> | Neto '+(x.pct_neto||0).toFixed(2)+'%</div>';
+  });
+  document.getElementById("bolas").innerHTML=b||"Limpio - AUTO cazara solo";
+  let tm="";
+  for(let mon in d.tabla){
+    let s=d.tabla[mon];
+    let win=s.entradas?((s.ganadas/s.entradas)*100).toFixed(0):0;
+    tm+="<tr><td><b>"+mon+"</b></td><td>"+s.entradas+"</td><td style=color:#00ff88>"+s.ganadas+"</td><td><span class=badge-bruta>$"+s.bruta_mxn.toFixed(2)+"</span></td><td><span class=badge-com>$"+s.com_mxn.toFixed(2)+"</span></td><td><span class=badge-mxn>$"+s.total_mxn.toFixed(2)+"</span></td><td><span class=badge-usd>$"+s.total_usd.toFixed(2)+"</span></td><td>"+win+"%</td></tr>";
+  }
+  document.getElementById("tablaMon").innerHTML=tm||"<tr><td colspan=8>Desde cero</td></tr>";
+  let h="";
+  d.historial.forEach(function(x){
+    h+="<tr><td>"+x.fecha+"</td><td><b>"+x.moneda+"</b></td><td style=font-size:9px>"+x.entrada.toFixed(4)+"<br>-> "+x.salida.toFixed(4)+"</td><td><span style=font-size:9px>$"+x.costo_mxn+"<br><span class=badge-usd>$"+x.costo_usd+"</span></span></td><td><span class=badge-com>$"+x.com_entry_mxn+"<br><span class=badge-usd>$"+x.com_entry_usd+"</span></span></td><td><span class=badge-com>$"+x.com_exit_mxn+"<br><span class=badge-usd>$"+x.com_exit_usd+"</span></span></td><td><span class=badge-com>$"+x.com_total_mxn+"<br><span class=badge-usd>$"+x.com_total_usd+"</span></span></td><td><span class=badge-bruta>$"+x.bruta_mxn+"<br><span class=badge-usd>$"+x.bruta_usd+"</span></span></td><td><span class=badge-mxn>$"+x.neta_mxn+"</span></td><td><span class=badge-usd>$"+x.neta_usd+"</span></td><td>"+x.pct_neto+"%<br><span style=font-size:8px;color:#5a7aa5>"+x.pct_bruto+"% br</span></td></tr>";
+  });
+  document.getElementById("hist").innerHTML=h||"<tr><td colspan=11>Desde cero $310 MXN</td></tr>";
+}
+async function doApi(u){await fetch("/api/"+u);load();}
+async function doTP(v){await fetch("/api/tp?val="+v);load();}
+async function doMoneda(m){await fetch("/api/moneda?m="+m);load();}
+load();
+setInterval(load,5000);
+</script>
+</body>
+</html>
+'''
 
 @app.route('/api/data')
 def data():
