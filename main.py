@@ -6,18 +6,17 @@ FILE="bot_data.json"
 FEE_ENTRADA=0.001; FEE_SALIDA=0.001; FEE_TOTAL=0.002
 META_MES_USD=500.0
 
-# RESET DESDE CERO - NUEVA SIMULACION
 data={
     "base_inicial": 0.0,
-    "capital_actual": 500.0, # EMPEZAMOS CON 500 PARA SIMULAR
-    "gan_acum_total": 0.0, # DESDE CERO
-    "gan_mes": 0.0, # DESDE CERO
+    "capital_actual": 500.0,
+    "gan_acum_total": 0.0,
+    "gan_mes": 0.0,
     "gan_hoy": 0.0,
     "pos": [],
     "coins": ["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
     "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
-    "max_entradas": 10,
-    "tp_bruto": 0.3, # 0.1% NETO MINIMO CON GANANCIA
+    "max_entradas": 8,
+    "tp_bruto": 0.3,
     "auto": True,
     "alert_users": [],
     "entradas": 0, "salidas": 0, "ganadas": 0, "perdidas": 0,
@@ -25,17 +24,7 @@ data={
 }
 def load():
     if os.path.exists(FILE):
-        try:
-            loaded=json.load(open(FILE))
-            # FORZAMOS RESET SI PIDES DESDE CERO
-            if loaded.get("gan_acum_total",0) > 0:
-                # Si quieres mantener reset, comenta esta linea
-                pass
-            data.update(loaded)
-            # RESETEAMOS SI VIENES DE SIMULACION ANTERIOR
-            if os.getenv("RESET","false")=="true":
-                data["gan_acum_total"]=0.0; data["gan_mes"]=0.0; data["gan_hoy"]=0.0
-                data["entradas"]=0; data["salidas"]=0; data["ganadas"]=0; data["perdidas"]=0
+        try: data.update(json.load(open(FILE)))
         except: pass
 def save():
     try: json.dump(data, open(FILE,'w'))
@@ -90,7 +79,7 @@ def tg(uid, txt):
 @app.route('/', methods=['GET','HEAD','POST'])
 def root():
     if request.method=='POST': return webhook()
-    return "V1002.69 LIMPIO DESDE CERO LIVE",200
+    return "V1002.70 ON/OFF COINS LIVE",200
 
 @app.route('/api/prices')
 def prices():
@@ -128,12 +117,6 @@ def state():
         "gan_mes_mxn":data["gan_mes"]*usdmxn,"gan_acum_mxn":data["gan_acum_total"]*usdmxn
     })
 
-@app.route('/api/reset_cero', methods=['POST'])
-def reset_cero():
-    data["base_inicial"]=0.0; data["gan_acum_total"]=0.0; data["gan_mes"]=0.0; data["gan_hoy"]=0.0
-    data["capital_actual"]=500.0; data["pos"]=[]; data["entradas"]=0; data["salidas"]=0; data["ganadas"]=0; data["perdidas"]=0
-    save(); return jsonify({"ok":True,"msg":"Reset desde 00.00"})
-
 @app.route('/api/config', methods=['POST'])
 def config():
     j=request.json or {}
@@ -141,6 +124,7 @@ def config():
     if "max" in j: data["max_entradas"]=int(j["max"])
     if "toggle_coin" in j: data["coins_activas"][j["toggle_coin"]]=not data["coins_activas"].get(j["toggle_coin"],True)
     save(); return jsonify({"ok":True})
+
 @app.route('/api/buy/<sym>', methods=['POST'])
 def buy_api(sym):
     sym=sym.upper()
@@ -150,6 +134,7 @@ def buy_api(sym):
     ok,rsi,ema,mot=ANALIZA(sym)
     data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"rsi_entry":rsi,"motivo":mot})
     data["capital_actual"]-=bola; data["entradas"]+=1; save(); return jsonify({"ok":True})
+
 @app.route('/api/sell/<sym>', methods=['POST'])
 def sell_api(sym):
     sym=sym.upper()
@@ -165,9 +150,10 @@ def sell_api(sym):
             data["salidas"]+=1; data["ganadas"]+=1 if gan_neta_mxn>0 else 0; data["perdidas"]+=0 if gan_neta_mxn>0 else 1
             data["pos"].remove(p); save()
             if gan_neta_mxn>0:
-                for u in data["alert_users"]: tg(u,f"💰 {sym} +${gan_neta_mxn:.2f} MXN")
+                for u in data["alert_users"]: tg(u,f"💰 {sym} +${gan_neta_mxn:.2f}")
             return jsonify({"ok":True})
     return jsonify({"ok":False})
+
 @app.route('/api/toggle', methods=['POST'])
 def toggle():
     data["auto"]=not data["auto"]; save(); return jsonify({"auto":data["auto"]})
@@ -187,14 +173,24 @@ body{background:#0a0a0a;color:#fff;font-family:Arial;margin:0;padding:8px}
 .big-mxn{font-size:30px;font-weight:bold;color:#00ff88;line-height:1}
 .big-usd{font-size:14px;color:#ffcc00;font-weight:bold}
 .card{background:#151515;border:2px solid #333;border-radius:14px;padding:10px;position:relative}
-.card.signal-buy{border-color:#00ff88;box-shadow:0 0 10px #00ff88}.card.signal-sell{border-color:#ff4444;box-shadow:0 0 10px #ff4444}.card.off{opacity:0.4}
-.btn{padding:10px;border-radius:8px;border:none;font-weight:bold;margin:3px;font-size:12px;width:31%}
+.card.off{opacity:0.3;border-color:#ff4444}
+.card.signal-buy{border-color:#00ff88;box-shadow:0 0 10px #00ff88}
+.card.signal-sell{border-color:#ff4444;box-shadow:0 0 10px #ff4444}
+.btn{padding:10px;border-radius:8px;border:none;font-weight:bold;margin:3px;font-size:11px;width:31%}
 .btn:disabled{opacity:0.2;background:#333!important;color:#555!important}
 .btn-g{background:#00ff88;color:#000}.btn-r{background:#ff4444;color:#fff}.btn-y{background:#ffcc00;color:#000}
+.btn-on{background:#00ff88;color:#000;padding:5px 8px;font-size:10px;width:auto}
+.btn-off{background:#ff4444;color:#fff;padding:5px 8px;font-size:10px;width:auto}
 .badge{position:absolute;top:6px;right:6px;font-size:10px;padding:3px 6px;border-radius:6px;font-weight:bold}
 .badge-buy{background:#00ff88;color:#000}.badge-sell{background:#ff4444;color:#fff}.badge-wait{background:#333;color:#888}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-.config{background:#151515;padding:10px;border-radius:12px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between}
+.config{background:#151515;padding:10px;border-radius:12px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.switch{position:relative;display:inline-block;width:36px;height:20px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#333;transition:.4s;border-radius:20px}
+.slider:before{position:absolute;content:"";height:14px;width:14px;left:3px;bottom:3px;background:white;transition:.4s;border-radius:50%}
+input:checked +.slider{background:#00ff88}
+input:checked +.slider:before{transform:translateX(16px)}
 table{width:100%;border-collapse:collapse;background:#151515;border-radius:12px;margin-top:10px;font-size:11px}
 th,td{padding:6px;border-bottom:1px solid #333}
 .neto{color:#00ff88;font-weight:bold}
@@ -202,7 +198,6 @@ th,td{padding:6px;border-bottom:1px solid #333}
 <div class=header>
 <b style=font-size:20px;color:#ffcc00>💰 MÁQUINA BOLA DE NIEVE</b>
 <div class=circs>
-<!-- CIRCULO 1 LIMPIO - SOLO 500 USD + MXN -->
 <div class=circ-box>
 <svg width=175 height=175><circle class=circ-bg cx=87.5 cy=87.5 r=72></circle><circle id=progressMes class="circ-progress" cx=87.5 cy=87.5 r=72 stroke-dasharray="452" stroke-dashoffset="452"></circle></svg>
 <div class=circ-inner>
@@ -212,7 +207,6 @@ th,td{padding:6px;border-bottom:1px solid #333}
 <div class=small id=pctMesTxt style=color:#00ff88;margin-top:4px>0% - $0.00</div>
 </div>
 </div>
-<!-- CIRCULO 2 ACUMULADO DESDE CERO -->
 <div class=circ-box>
 <svg width=175 height=175><circle class=circ-bg cx=87.5 cy=87.5 r=72></circle><circle id=progressAcum class="circ-progress green" cx=87.5 cy=87.5 r=72 stroke-dasharray="452" stroke-dashoffset="452"></circle></svg>
 <div class=circ-inner>
@@ -228,16 +222,12 @@ th,td{padding:6px;border-bottom:1px solid #333}
 <span>USD/MXN $<span id=usdmxn>0</span></span><span id=cuantas>0/0</span><span>Win <span id=winrate>0%</span></span><span>NETO <span id=tpNeto>0.1%</span></span>
 </div>
 </div>
-<div class=config><div>💰 Cierre: <select id=tp onchange="setTP()">
-<option value=0.3>0.1% NETO (0.3% Bruto)</option>
-<option value=0.4>0.2% NETO (0.4% Bruto)</option>
-<option value=0.5>0.3% NETO (0.5% Bruto)</option>
-<option value=0.6>0.4% NETO</option>
-</select></div><div>🎯 Bolas: <select id=maxEnt onchange="setMax()"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div><div><button class=btn btn-g id=autoBtn onclick="toggleAuto()" style=width:auto>...</button></div><div><button class=btn btn-r onclick="resetCero()" style=width:auto;background:#333;color:#fff>🔄 RESET CERO</button></div></div>
+<div class=config><div>💰 Cierre: <select id=tp onchange="setTP()"><option value=0.3>0.1% NETO (0.3% Bruto)</option><option value=0.4>0.2% NETO</option><option value=0.5>0.3% NETO</option><option value=0.6>0.4% NETO</option></select></div><div>🎯 Bolas: <select id=maxEnt onchange="setMax()"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div><div><button class=btn btn-g id=autoBtn onclick="toggleAuto()" style=width:auto>...</button></div></div>
 <div id=grid class=grid></div>
 <table><thead><tr><th>Moneda</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr></thead><tbody id=tbody></tbody></table>
 <script>
 function setProgress(id, pct){let c=document.getElementById(id);let circ=2*Math.PI*72;let off=circ-(pct/100)*circ;c.style.strokeDashoffset=off;}
+async function toggleCoin(sym){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin:sym})});load();}
 async function load(){
  let r=await fetch('/api/prices'); let d=await r.json();
  let r2=await fetch('/api/state'); let s=await r2.json();
@@ -256,9 +246,9 @@ async function load(){
   let activa=s.coins_activas[sym]; let inPos=s.pos.find(p=>p.sym==sym); let hasBuy=d[sym].ok&&!inPos; let hasSell=inPos&&inPos.debe_vender;
   let cls='card'; if(!activa) cls+=' off'; else if(hasBuy) cls+=' signal-buy'; else if(hasSell) cls+=' signal-sell';
   let badge=hasBuy?'<span class=badge badge-buy>🔔 COMPRA</span>':hasSell?'<span class=badge badge-sell>💰 VENDE</span>':'<span class=badge badge-wait>ESPERA</span>';
-  h+=`<div class="${cls}">${badge}<b>${sym} $${d[sym].price.toFixed(2)}</b><br><small>RSI ${d[sym].rsi}</small><br><small style=font-size:9px>${d[sym].motivo}</small><br><div style=margin-top:6px>`;
-  if(s.auto){h+=`<div style=text-align:center;padding:6px;color:#00ff88>🤖 ROBOT</div><button class=btn btn-y onclick="location.href='/chart/${sym}'" style=width:95%>GRÁFICA</button>`;}
-  else{let bd=hasBuy&&activa?'':'disabled';let sd=hasSell&&activa?'':'disabled';h+=`<button class=btn btn-g onclick="buy('${sym}')" ${bd}>COMPRAR</button><button class=btn btn-r onclick="sell('${sym}')" ${sd}>VENDER</button><button class=btn btn-y onclick="location.href='/chart/${sym}'">GRÁFICA</button>`;}
+  h+=`<div class="${cls}">${badge}<div style=display:flex;justify-content:space-between;align-items:center><b>${sym} $${d[sym].price.toFixed(2)}</b><button class="${activa?'btn-on':'btn-off'}" onclick="toggleCoin('${sym}')">${activa?'ON 🟢':'OFF 🔴'}</button></div><small>RSI ${d[sym].rsi}</small><br><small style=font-size:9px>${d[sym].motivo}</small><br><div style=margin-top:6px>`;
+  if(s.auto){h+=`<div style=text-align:center;padding:6px;color:${activa?'#00ff88':'#ff4444'}>${activa?'🤖 ROBOT ON':'⛔ APAGADA'}</div><button class=btn btn-y onclick="location.href='/chart/${sym}'" style=width:95% ${!activa?'disabled':''}>GRÁFICA</button>`;}
+  else{let bd=hasBuy&&activa?'':'disabled';let sd=hasSell&&activa?'':'disabled';h+=`<button class=btn btn-g onclick="buy('${sym}')" ${bd}>COMPRAR</button><button class=btn btn-r onclick="sell('${sym}')" ${sd}>VENDER</button><button class=btn btn-y onclick="location.href='/chart/${sym}'" ${!activa?'disabled':''}>GRÁFICA</button>`;}
   h+=`</div></div>`;} document.getElementById('grid').innerHTML=h;
  let tb=''; for(let p of s.pos){tb+=`<tr><td>${p.sym}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td class=neto>${p.gan_neta_pct.toFixed(2)}% $${p.gan_neta_mxn.toFixed(2)}</td><td>${s.auto?'Robot':`<button class=btn btn-r onclick="sell('${p.sym}')">Cerrar</button>`}</td></tr>`;}
  document.getElementById('tbody').innerHTML=tb||'<tr><td colspan=5 style=text-align:center;color:#666>Sin posiciones - Desde 00.00</td></tr>';
@@ -268,7 +258,6 @@ async function sell(s){await fetch('/api/sell/'+s,{method:'POST'});load();}
 async function setTP(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tp:parseFloat(document.getElementById('tp').value)})});}
 async function setMax(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max:parseInt(document.getElementById('maxEnt').value)})});}
 async function toggleAuto(){await fetch('/api/toggle',{method:'POST'});load();}
-async function resetCero(){if(confirm('¿Borrar todo y empezar desde 00.00 USD/MXN?')){await fetch('/api/reset_cero',{method:'POST'});load();}}
 load(); setInterval(load,8000);
 </script></body></html>"""
 
