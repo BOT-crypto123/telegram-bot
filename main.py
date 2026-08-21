@@ -2,7 +2,7 @@ import os, requests, threading, time, traceback, random
 from flask import Flask, request, jsonify
 from datetime import datetime
 from collections import defaultdict, Counter
-print('V150 COPIAR TODO', flush=True)
+print('V151 20CHARS COPIAR', flush=True)
 TOKEN=os.environ.get('TELEGRAM_TOKEN')
 URL='https://telegram-bot-cijp.onrender.com'
 CONFIG={'BASE_USD':500.0,'BASE_MXN':9750.0,'ACUMULADO_MXN':310.0,'ACUMULADO_USD':15.90,'TP_PCT':0.30,'AUTO':True,'BOLAS_MAX':6,'RATE_MXN':19.50}
@@ -82,19 +82,17 @@ def loop_auto():
 threading.Thread(target=loop_auto,daemon=True).start()
 app=Flask(__name__)
 def b64d(s):
- chars='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
- tbl={c:i for i,c in enumerate(chars)}
- out=bytearray();i=0
+ c='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+ t={ch:i for i,ch in enumerate(c)}
+ o=bytearray();i=0
  while i<len(s):
-  c0=tbl.get(s[i],0);c1=tbl.get(s[i+1],0) if s[i+1]!='=' else 0;c2=tbl.get(s[i+2],0) if i+2<len(s) and s[i+2]!='=' else 0;c3=tbl.get(s[i+3],0) if i+3<len(s) and s[i+3]!='=' else 0
-  n=(c0<<18)|(c1<<12)|(c2<<6)|c3
-  out.append((n>>16)&255)
-  if s[i+2]!='=': out.append((n>>8)&255)
-  if s[i+3]!='=': out.append(n&255)
+  a=t.get(s[i],0);b=t.get(s[i+1],0) if s[i+1]!='=' else 0;d=t.get(s[i+2],0) if i+2<len(s) and s[i+2]!='=' else 0;e=t.get(s[i+3],0) if i+3<len(s) and s[i+3]!='=' else 0
+  n=(a<<18)|(b<<12)|(d<<6)|e;o.append((n>>16)&255)
+  if s[i+2]!='=': o.append((n>>8)&255)
+  if s[i+3]!='=': o.append(n&255)
   i+=4
- return bytes(out)
-B64=''
-B64+='PCFET0NUWVBFIGh0bWw+PGh0bWw+PGhlYWQ+PG1ldGEgbmFtZT12aWV3cG9y'
-B64+='dCBjb250ZW50PSd3aWR0aD1kZXZpY2Utd2lkdGgsIGluaXRpYWwtc2NhbGU9'
-B64+='MSc+PHRpdGxlPk1BUVVJTkEgNTAwPC90aXRsZT48c3R5bGU+Ym9keXtiYWNr'
-B64+='Z3JvdW5kOiMwNjExMjY7Y29sb3I6I2ZmZjtmb250
+ return bytes(o)
+B=''
+B+='PCFET0NUWVBFIGh0bWw+'
+B+='PGh0bWw+PGhlYWQ+PG1l'
+B64+='dGEgbmFtZT12aWV3cG9y'
