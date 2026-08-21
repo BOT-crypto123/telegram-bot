@@ -1,11 +1,10 @@
-import os, sys, requests, threading, time
-from flask import Flask, request
+import os, sys, requests, threading, time, random
+from flask import Flask, request, jsonify
 from datetime import datetime
 
 os.environ['PYTHONUNBUFFERED']='1'
 sys.stdout.reconfigure(line_buffering=True)
-
-print("INICIANDO V108.1 FIX", flush=True)
+print("INICIANDO V114 BINANCE TP MANUAL 0.3 BASE", flush=True)
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 URL = "https://telegram-bot-cijp.onrender.com"
@@ -14,157 +13,236 @@ CHAT_ID = None
 CONFIG = {
     "BASE": 10000.0,
     "ACUMULADO": 316.0,
-    "BOLAS_MAX": 10,
+    "FEES_PCT": 0.10, # BINANCE 0.05% compra + 0.05% venta = 0.10% total
+    "TP_PCT": 0.30, # BASE 0.30% COMO PEDISTE - DESDE AQUI YA HAY GANANCIA
+    "AUTO": True,
+    "BOLAS_MAX": 8,
     "COSTO_BOLA": 1031.63,
-    "FEES_PCT": 0.50,
-    "TP_PCT": 0.50,
-    "SL_PCT": -3.0,
-    "AUTO": False
+    "EXCHANGE": "BINANCE"
 }
 
+MONEDAS = {"BTC": True, "ETH": True, "XRP": True, "SOL": True, "DOGE": True, "ADA": True, "AVAX": True, "BNB": True}
+
 bolas = [
-    {"moneda":"XRP","compra":22.24,"costo":1031.63,"cantidad":46.38,"fecha":"2025-01-10"},
-    {"moneda":"ETH","compra":40049.34,"costo":1031.63,"cantidad":0.0257,"fecha":"2025-01-11"},
+    {"id":1,"moneda":"XRP","compra":2.85,"costo":1031.63,"actual":2.85},
+    {"id":2,"moneda":"ETH","compra":2450.50,"costo":1031.63,"actual":2450.50},
 ]
 
-PRECIOS_CACHE = {"BTC":1273222,"ETH":39926,"SOL":1531,"DOGE":1.42,"XRP":22.13,"ADA":3.54,"AVAX":125.33,"BNB":9870,"LTC":1450}
+historial = []
+PRECIOS = {}
 
-def get_precio_bitso(moneda):
-    return PRECIOS_CACHE.get(moneda, 0)
+def get_precio_binance(moneda):
+    try:
+        symbol = f"{moneda}USDT"
+        r = requests.get(f"https://api.binance.com/api/v3/ticker/price?symbol={symbol}", timeout=5).json()
+        price = float(r['price'])
+        PRECIOS[moneda] = price
+        return price
+    except:
+        return PRECIOS.get(moneda, 0)
 
-def calc_ganancia(entrada, actual, costo):
-    if not entrada or not actual or entrada < 0.001:
-        return 0, 0, 0
-    bruto = ((actual - entrada) / entrada) * 100
-    neto = bruto - CONFIG["FEES_PCT"]
-    usd = costo * (neto / 100)
+def calc(e,a,c):
+    if not e or a==0: return 0,0,0
+    bruto=((a-e)/e)*100
+    neto=bruto-CONFIG["FEES_PCT"]
+    usd=c*(neto/100)
     return bruto, neto, usd
 
-def dashboard_text():
-    total_flotante = 0
-    ganadoras = 0
-    msg = "MAQUINA V108.1 FINAL\n"
-    msg += f"BAL: ${CONFIG['BASE']+CONFIG['ACUMULADO']:.2f}\n"
-    msg += f"ACUM: +${CONFIG['ACUMULADO']:.2f} BASE: ${CONFIG['BASE']:.2f}\n"
-    msg += f"AUTO: {'ON' if CONFIG['AUTO'] else 'OFF'} | FEES: {CONFIG['FEES_PCT']}%\n"
-    msg += f"TP: >= {CONFIG['TP_PCT']}% NETO | SL: {CONFIG['SL_PCT']}%\n"
-    msg += "------------------------\n\n"
+def get_stats():
+    flot=0; vend=0
+    for b in bolas:
+        actual = get_precio_binance(b["moneda"])
+        if actual!=0: b["actual"]=actual
+        _, neto, usd = calc(b["compra"], b["actual"], b["costo"])
+        b["neto"]=neto; b["usd"]=usd; flot+=usd
+        if neto>=CONFIG["TP_PCT"]: vend+=1
+    bal=CONFIG["BASE"]+CONFIG["ACUMULADO"]
+    return bal, flot, bal+flot, (datetime.now().day/30)*100, vend
 
-    for i, b in enumerate(bolas, 1):
-        actual = get_precio_bitso(b['moneda'])
-        bruto, neto, usd = calc_ganancia(b['compra'], actual, b['costo'])
-        total_flotante += usd
-        if neto >= CONFIG["TP_PCT"]:
-            ganadoras += 1
+def comprar_bola(moneda):
+    if len(bolas) >= CONFIG["BOLAS_MAX"]: return None
+    if moneda in [x["moneda"] for x in bolas]: return None
+    p=get_precio_binance(moneda)
+    if p==0: return None
+    n={"id":int(time.time()),"moneda":moneda,"compra":p,"costo":CONFIG["COSTO_BOLA"],"actual":p,"neto":0,"usd":0}
+    bolas.append(n)
+    return n
 
-        if neto >= CONFIG["TP_PCT"]:
-            estado = "VERDE VENDIBLE"
-        elif neto >= 0:
-            estado = "AMARILLO EN VERDE pero no llega a 0.5 neto"
-        else:
-            estado = "ROJO"
+def vender_bola(id_bola):
+    for b in bolas[:]:
+        if b["id"]==id_bola:
+            CONFIG["ACUMULADO"]+=b["usd"]
+            historial.insert(0,{"fecha":datetime.now().strftime("%d/%m %H:%M"),"moneda":b["moneda"],"entrada":b["compra"],"salida":b["actual"],"neto":round(b["neto"],2),"usd":round(b["usd"],2),"estado":"CERRADA"})
+            bolas.remove(b)
+            return b
+    return None
 
-        msg += f"{estado} BOLA {i} {b['moneda']}\n"
-        msg += f" Compra: {b['compra']} -> Ahora: {actual}\n"
-        msg += f" Bruto: {bruto:.2f}% | NETO REAL: {neto:.2f}%\n"
-        msg += f" Ganancia: ${usd:.2f}\n\n"
-
-    msg += "------------------------\n"
-    msg += f"FLOTANTE TOTAL: ${total_flotante:.2f}\n"
-    msg += f"VENDIBLES mayor igual 0.5 pct: {ganadoras}/{len(bolas)}\n"
-    msg += f"BOLAS: {len(bolas)}/{CONFIG['BOLAS_MAX']}\n"
-    msg += f"{datetime.now().strftime('%d/%m %H:%M:%S')}\n"
-    return msg, total_flotante, ganadoras
-
-def enviar(cid, texto):
+def enviar(cid, txt, botones=True):
     try:
-        print(f"ENVIANDO A {cid}", flush=True)
-        r = requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={"chat_id":cid,"text":texto}, timeout=10)
-        print(f"TELEGRAM OK {r.status_code} {r.text}", flush=True)
-    except Exception as e:
-        print(f"ERROR ENVIO {e}", flush=True)
+        data={"chat_id":cid,"text":txt}
+        if botones:
+            data["reply_markup"]={"keyboard":[["DASHBOARD","BALANCE"],["AUTO ON","AUTO OFF"],["TP 0.3","TP 0.6"],["COMPRAR","WEB"]],"resize_keyboard":True,"is_persistent":True}
+        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json=data, timeout=10)
+    except: pass
 
-def vender_bola(index):
+HTML = """
+<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>V114 TP MANUAL 0.3 BASE</title>
+<style>
+body{background:#0a0e1a;color:#fff;font-family:Arial;padding:12px}
+.card{background:#121a2b;border-radius:14px;padding:12px;margin:10px 0;border:1px solid #f3ba2f}
+.btn{padding:10px 14px;border-radius:10px;border:none;margin:4px;font-weight:bold;cursor:pointer}
+.on{background:#f3ba2f;color:#000}.off{background:#1e2a44;color:#888}.tp{background:#00ff88;color:#000;border:2px solid #00ff88}.tp-active{background:#fff;color:#000;border:2px solid #00ff88;box-shadow:0 0 10px #00ff88}
+.input-tp{background:#000;color:#00ff88;border:2px solid #f3ba2f;border-radius:10px;padding:10px;width:100px;font-size:18px;font-weight:bold;text-align:center}
+.rojo{border-color:#ff3040}.verde{border-color:#00ff88}
+</style></head><body>
+<h2 style="text-align:center;color:#f3ba2f">V114 BINANCE TP MANUAL</h2>
+<div class="card" style="border-color:#00ff88">
+<b>FORMULA:</b> BASE + ACUM + FLOT = TOTAL<br>
+<span id="res"></span><br>
+<small>BINANCE FEES 0.10% | BASE TP 0.30% ya hay ganancia neta</small>
+</div>
+
+<div class="card" style="border:2px solid #00ff88">
+<h3 style="margin:0 0 10px 0;color:#00ff88">TP MANUAL - Base 0.30% ganancia</h3>
+<div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+<input type="number" id="tpInput" class="input-tp" step="0.05" min="0.10" max="2.0" value="0.30">
+<button class="btn tp" onclick="setTPManual()">APLICAR TP</button>
+<span id="tpActual" style="color:#f3ba2f;font-weight:bold"></span>
+</div>
+<div style="margin-top:10px">
+Botones rapidos base:<br>
+<button class="btn tp" id="b03" onclick="apiTP(0.3)">0.3% BASE</button>
+<button class="btn tp" id="b04" onclick="apiTP(0.4)">0.4%</button>
+<button class="btn tp" id="b05" onclick="apiTP(0.5)">0.5%</button>
+<button class="btn tp" id="b06" onclick="apiTP(0.6)">0.6% MAX</button>
+</div>
+<div style="margin-top:8px;font-size:12px;color:#8aa">
+0.3% = +0.20% neto real | 0.4% = +0.30% neto | 0.5% = +0.40% neto | 0.6% = +0.50% neto (descontando 0.10% Binance)
+</div>
+</div>
+
+<div class="card">AUTO: <button class="btn on" onclick="api('auto')">AUTO ON/OFF</button> BOLAS MAX: <button class="btn off" onclick="api('max?val=2')">2</button><button class="btn off" onclick="api('max?val=5')">5</button><button class="btn off" onclick="api('max?val=8')">8</button></div>
+<div class="card">MONEDAS 8:<div id="mons"></div></div>
+<div id="ab"></div>
+
+<script>
+let currentTP=0.30
+async function load(){let r=await fetch('/api/data');let d=await r.json();currentTP=d.config.TP_PCT;
+document.getElementById('res').innerHTML=`BAL $${d.balance.toFixed(2)} BASE $${d.config.BASE} + ACUM $${d.config.ACUMULADO.toFixed(2)} | FLOT $${d.flotante.toFixed(2)} | TOTAL $${d.total.toFixed(2)} | BOLAS ${d.bolas.length}/${d.config.BOLAS_MAX} VENDIBLES ${d.vendibles} AUTO ${d.config.AUTO?'ON':'OFF'}`;
+document.getElementById('tpActual').innerText=`TP ACTUAL: ${d.config.TP_PCT}%`;
+document.getElementById('tpInput').value=d.config.TP_PCT;
+document.querySelectorAll('[id^=b0]').forEach(b=>b.classList.remove('tp-active'));
+if(d.config.TP_PCT==0.3) document.getElementById('b03').classList.add('tp-active');
+if(d.config.TP_PCT==0.4) document.getElementById('b04').classList.add('tp-active');
+if(d.config.TP_PCT==0.5) document.getElementById('b05').classList.add('tp-active');
+if(d.config.TP_PCT==0.6) document.getElementById('b06').classList.add('tp-active');
+let m='';for(let k in d.monedas){m+=`<button class="btn ${d.monedas[k]?'on':'off'}" onclick="api('moneda?m=${k}')">${k}</button>`}document.getElementById('mons').innerHTML=m;
+let ab='';d.bolas.forEach(b=>{ab+=`<div class="card ${b.neto>=d.config.TP_PCT?'verde':'rojo'}"><b>${b.moneda}</b> ${b.compra} -> ${b.actual.toFixed(4)} Neto ${b.neto.toFixed(2)}% $${b.usd.toFixed(2)} ${b.neto>=d.config.TP_PCT?'✅ VENDIBLE':''} <button class="btn off" onclick="api('vender?id=${b.id}')">VENDER</button></div>`});document.getElementById('ab').innerHTML=ab;
+}
+async function api(u){await fetch('/api/'+u);load();}
+async function apiTP(v){await fetch('/api/tp?val='+v);load();}
+async function setTPManual(){let v=parseFloat(document.getElementById('tpInput').value);if(v<0.1||v>2){alert('Min 0.1% Max 2%');return;}await fetch('/api/tp?val='+v);load();}
+load();setInterval(load,5000);
+</script></body></html>
+"""
+
+app=Flask(__name__)
+@app.route('/', methods=['GET'])
+def home(): return HTML
+@app.route('/api/data')
+def data():
+    bal, flot, total, prog, vend = get_stats()
+    return jsonify({"balance":bal,"flotante":flot,"total":total,"progreso":prog,"vendibles":vend,"config":CONFIG,"bolas":bolas,"monedas":MONEDAS,"historial":historial})
+@app.route('/api/tp')
+def tp():
     try:
-        b = bolas[index]
-        actual = get_precio_bitso(b['moneda'])
-        _, neto, usd = calc_ganancia(b['compra'], actual, b['costo'])
-        CONFIG["ACUMULADO"] += usd
-        CONFIG["BASE"] += b['costo']
-        msg = f"VENDIDA {b['moneda']} Compra {b['compra']} Venta {actual} Neto {neto:.2f}% Gan ${usd:.2f} Nuevo BAL ${CONFIG['BASE']+CONFIG['ACUMULADO']:.2f}"
-        bolas.pop(index)
-        return msg
-    except Exception as e:
-        return f"Error vendiendo: {e}"
+        v=float(request.args.get('val',0.3))
+        if v<0.1: v=0.1
+        if v>2.0: v=2.0
+        CONFIG["TP_PCT"]=round(v,2)
+    except: pass
+    return "ok"
+@app.route('/api/max')
+def maxb(): CONFIG["BOLAS_MAX"]=int(request.args.get('val',2)); return "ok"
+@app.route('/api/auto')
+def auto(): CONFIG["AUTO"]=not CONFIG["AUTO"]; return "ok"
+@app.route('/api/moneda')
+def mon():
+    m=request.args.get('m')
+    if m in MONEDAS: MONEDAS[m]=not MONEDAS[m]
+    return "ok"
+@app.route('/api/vender')
+def vender():
+    try:
+        b=vender_bola(int(request.args.get('id')))
+        if b and CHAT_ID: enviar(CHAT_ID, f"VENDIDA {b['moneda']} TP {CONFIG['TP_PCT']}% Neto {b['neto']:.2f}% Ganancia ${b['usd']:.2f}", True)
+    except: pass
+    return "ok"
 
-def auto_trading_loop():
-    print("AUTO LOOP V108.1 INICIADO", flush=True)
+@app.route('/', methods=['POST'])
+def wh():
+    global CHAT_ID
+    try:
+        data=request.get_json(force=True, silent=True)
+        if not data: return "ok",200
+        msg=data.get("message",{})
+        txt=msg.get("text","").strip().upper()
+        cid=msg.get("chat",{}).get("id")
+        if cid: CHAT_ID=cid
+        bal, flot, total, prog, vend = get_stats()
+
+        if txt.startswith("TP "):
+            try:
+                v=float(txt.replace("TP","").strip())
+                CONFIG["TP_PCT"]=round(v,2)
+                enviar(cid, f"✅ TP CAMBIADO A {CONFIG['TP_PCT']}% MANUAL\nBase 0.3% = +0.20% neto real (Binance 0.10% fees)\nMAX 0.6% = +0.50% neto", True)
+            except:
+                enviar(cid, "Usa: TP 0.3, TP 0.4, TP 0.5, TP 0.6", True)
+        elif txt in ["DASHBOARD","/START","START","TP 0.3","TP 0.6"]:
+            if txt=="TP 0.3": CONFIG["TP_PCT"]=0.3
+            if txt=="TP 0.6": CONFIG["TP_PCT"]=0.6
+            t=f"V114 BINANCE TP MANUAL 0.3% BASE\nBAL ${bal:.2f} FLOT ${flot:.2f} TOTAL ${total:.2f}\nTP ACTUAL: {CONFIG['TP_PCT']}% (FEES Binance 0.10%)\nNeto real: {CONFIG['TP_PCT']-0.10:.2f}%\nBOLAS {len(bolas)}/{CONFIG['BOLAS_MAX']} VEND {vend}\n\nBOTONES:\nTP 0.3% = BASE ganancia\nTP 0.4% = +0.30% neto\nTP 0.5% = +0.40% neto\nTP 0.6% = MAX +0.50% neto\n\nEn Telegram escribe TP 0.35 para cualquier valor\nWEB: {URL}"
+            enviar(cid, t, True)
+        elif txt=="COMPRAR":
+            for mon, activa in MONEDAS.items():
+                if activa:
+                    n=comprar_bola(mon)
+                    if n:
+                        enviar(cid, f"COMPRADA {mon} a {n['compra']} TP {CONFIG['TP_PCT']}%", True)
+                        break
+            else:
+                enviar(cid, "Max alcanzado", True)
+        elif txt=="AUTO ON": CONFIG["AUTO"]=True; enviar(cid, f"AUTO ON TP {CONFIG['TP_PCT']}% BASE", True)
+        elif txt=="AUTO OFF": CONFIG["AUTO"]=False; enviar(cid, "AUTO OFF", True)
+        elif txt in ["WEB","BALANCE","DASHBOARD"]:
+            bal, flot, total, prog, vend = get_stats()
+            enviar(cid, f"BAL ${bal:.2f} TOTAL ${total:.2f} TP {CONFIG['TP_PCT']}%", True)
+    except Exception as e:
+        print(e, flush=True)
+    return "ok",200
+
+def auto_loop():
+    print("LOOP V114 TP MANUAL 0.3 BASE", flush=True)
     while True:
         try:
             if CONFIG["AUTO"] and CHAT_ID:
+                bal, flot, total, prog, vend = get_stats()
                 for b in bolas[:]:
-                    actual = get_precio_bitso(b['moneda'])
-                    _, neto, usd = calc_ganancia(b['compra'], actual, b['costo'])
-                    if neto >= CONFIG["TP_PCT"]:
-                        print(f"TP {b['moneda']} {neto:.2f}%", flush=True)
-                        texto = vender_bola(bolas.index(b))
-                        enviar(CHAT_ID, f"AUTO VENTA {texto}")
-                        time.sleep(2)
-            time.sleep(30)
-        except Exception as e:
-            print(f"ERROR AUTO {e}", flush=True)
-            time.sleep(10)
+                    if b["neto"] >= CONFIG["TP_PCT"]:
+                        vb=vender_bola(b["id"])
+                        if vb:
+                            enviar(CHAT_ID, f"🤖 VENTA TP {CONFIG['TP_PCT']}%\n{vb['moneda']} {vb['compra']} -> {vb['actual']:.4f}\nNeto {vb['neto']:.2f}% (Fees 0.10% Binance)\nGanancia ${vb['usd']:.2f}", True)
+                        time.sleep(1)
+                if len(bolas) < CONFIG["BOLAS_MAX"]:
+                    cand=[m for m,on in MONEDAS.items() if on and m not in [bb["moneda"] for bb in bolas]]
+                    if cand:
+                        n=comprar_bola(random.choice(cand))
+                        if n: enviar(CHAT_ID, f"🤖 COMPRA {n['moneda']} a {n['compra']} TP {CONFIG['TP_PCT']}%", True)
+            time.sleep(40)
+        except: time.sleep(10)
 
-threading.Thread(target=auto_trading_loop, daemon=True).start()
-
-app = Flask(__name__)
-
-@app.route('/', methods=['GET'])
-def home():
-    txt, _, _ = dashboard_text()
-    return f"<pre>{txt}</pre><h3>V108.1 FIX LIVE {datetime.now()}</h3>"
-
-@app.route('/', methods=['POST'])
-def webhook():
-    global CHAT_ID
-    print("POST WEBHOOK RECIBIDO", flush=True)
-    try:
-        data = request.get_json(force=True, silent=True)
-        if not data:
-            return "ok", 200
-        print(f"DATA {data}", flush=True)
-        message = data.get("message", {})
-        text = message.get("text","").strip()
-        text_upper = text.upper()
-        cid = message.get("chat",{}).get("id")
-        if cid:
-            CHAT_ID = cid
-        print(f"CMD {text_upper} FROM {cid}", flush=True)
-
-        if text_upper == "DASHBOARD" and cid:
-            txt, _, _ = dashboard_text()
-            enviar(cid, txt)
-        elif text_upper == "AUTO ON" and cid:
-            CONFIG["AUTO"] = True
-            enviar(cid, f"AUTO ON TP {CONFIG['TP_PCT']}% NETO REAL")
-        elif text_upper == "AUTO OFF" and cid:
-            CONFIG["AUTO"] = False
-            enviar(cid, "AUTO OFF")
-        elif text_upper == "BALANCE" and cid:
-            enviar(cid, f"BALANCE ${CONFIG['BASE']+CONFIG['ACUMULADO']:.2f} BASE ${CONFIG['BASE']} ACUM {CONFIG['ACUMULADO']}")
-        elif text_upper == "AYUDA" and cid:
-            enviar(cid, "COMANDOS:\nDASHBOARD\nAUTO ON/OFF\nBALANCE")
-    except Exception as e:
-        print(f"ERROR WEBHOOK {e}", flush=True)
-    return "ok", 200
+threading.Thread(target=auto_loop, daemon=True).start()
 
 if TOKEN:
     try:
-        requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true", timeout=10)
-        r = requests.get(f"https://api.telegram.org/bot{TOKEN}/setWebhook?url={URL}", timeout=10).json()
-        print(f"WEBHOOK SET {r}", flush=True)
-    except Exception as e:
-        print(f"ERROR SET WEBHOOK {e}", flush=True)
-
-print("V108.1 LISTO", flush=True)
-app.run(host='0.0.0.0', port=int(os.environ.get("PORT",10000)))
+        requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true", timeout
