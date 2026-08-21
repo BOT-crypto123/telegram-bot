@@ -5,24 +5,24 @@ from datetime import datetime
 app = Flask(__name__)
 FILE="bot_data.json"
 
-CAPITAL_REAL = 10060.05
-MONTO_BOLA = 1677.0
-FEE = 0.001
-TP_NETO = 0.3
-
 data={
-    "b": CAPITAL_REAL,
-    "pos": [],
-    "gan_total": 310.05,
+    "base_inicial": 10060.05,
+    "capital_actual": 10370.10, # base + lo acumulado que traes
+    "gan_acum_total": 310.05,
     "gan_hoy": 0.0,
-    "trades_hoy": 0,
-    "gan_acumulada_2d": 310.05,
-    "historial_2d": [],
-    "coins":["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
-    "alert_users":[],
-    "auto": True
+    "historial_diario": [ # aqui se va guardando diario diario
+        # {"fecha":"2026-08-20","gan": 150.5, "capital": 10210.0},
+        # {"fecha":"2026-08-21","gan": 159.55, "capital": 10370.10}
+    ],
+    "pos": [],
+    "coins": ["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
+    "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
+    "max_entradas": 5,
+    "tp_bruto": 0.4,
+    "auto": True,
+    "alert_users": [],
+    "entradas":0,"salidas":0,"ganadas":0,"perdidas":0
 }
-CACHE={"prices":{}, "ts":0, "btc_change":0}
 
 def load():
     if os.path.exists(FILE):
@@ -33,42 +33,28 @@ def save():
     except: pass
 load()
 
-def P(sym):
-    try:
-        r=requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={sym}USDT",timeout=3).json()
-        return float(r['price'])
+def P(s):
+    try: return float(requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={s}USDT",timeout=3).json()['price'])
     except: return 0
-def C(sym):
-    try:
-        r=requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=80",timeout=5).json()
-        return [float(x[4]) for x in r]
+def C(s):
+    try: return [float(x[4]) for x in requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={s}USDT&interval=1h&limit=80",timeout=5).json()]
     except: return []
-def RSI(closes,p=14):
-    if len(closes)<p+1: return 50
+def RSI(cl,p=14):
+    if len(cl)<p+1: return 50
     g=l=0
     for i in range(1,p+1):
-        d=closes[-i]-closes[-i-1]
+        d=cl[-i]-cl[-i-1]
         if d>0: g+=d
         else: l+=-d
     if l==0: return 100
-    rs=g/l if l!=0 else 0
-    return 100-(100/(1+rs))
-def EMA(closes,p=20):
-    if len(closes)<p: return closes[-1] if closes else 0
-    k=2/(p+1); ema=closes[0]
-    for c in closes[1:]: ema=c*k+ema*(1-k)
-    return ema
-def BTC_change_1h():
-    try:
-        r=requests.get(f"https://data-api.binance.vision/api/v3/ticker/24hr?symbol=BTCUSDT",timeout=3).json()
-        return float(r['priceChangePercent'])
-    except: return 0
-def AN(sym):
-    closes=C(sym)
-    if not closes: return 50, P(sym), 0, 0
-    rsi=RSI(closes); price=closes[-1]; ema=EMA(closes,20)
-    return rsi, price, ema, CACHE.get("btc_change",0)
-def tg(uid,txt):
+    return 100-(100/(1+g/l))
+def EMA(cl,p=20):
+    if len(cl)<p: return cl[-1]
+    k=2/(p+1); e=cl[0]
+    for c in cl[1:]: e=c*k+e*(1-k)
+    return e
+
+def tg(uid, txt):
     try:
         TOKEN=os.getenv("TELEGRAM_TOKEN","")
         base=os.getenv("RENDER_EXTERNAL_URL","") or "https://telegram-bot-cijp.onrender.com"
@@ -77,165 +63,198 @@ def tg(uid,txt):
 
 @app.route('/', methods=['GET','HEAD','POST'])
 def root():
-    if request.method=='POST':
-        return webhook()
-    return "V1002.33 LIVE SIN PYTZ", 200
+    if request.method=='POST': return webhook()
+    return "V1002.42 BOLA DE NIEVE LIVE",200
 
-@app.route('/api/prices')
-def api_prices():
-    if time.time()-CACHE["ts"]<15 and CACHE["prices"]: return jsonify(CACHE["prices"])
-    out={}; CACHE["btc_change"]=BTC_change_1h()
-    for sym in data["coins"]:
-        rsi,price,ema,btc_ch=AN(sym)
-        score=int(100-rsi) if rsi<50 else int(rsi)
-        bloqueado = (price < ema*0.995) or (CACHE["btc_change"] < -1.5)
-        action="COMPRAR" if rsi<32 and not bloqueado else "VENDER" if rsi>70 else "SOSTENER"
-        if bloqueado and rsi<32: action="BLOQUEADO"
-        out[sym]={"price":price,"rsi":round(rsi,1),"ema":round(ema,2),"score":score,"action":action,"btc_ch":round(CACHE["btc_change"],2)}
-    CACHE["prices"]=out; CACHE["ts"]=time.time()
-    return jsonify(out)
+@app.route('/api/state')
+def state():
+    # BOLA DE NIEVE: cada bola = capital_actual / max_entradas
+    bola = data["capital_actual"] / data["max_entradas"] if data["max_entradas"] else 0
+    total = data["capital_actual"] + data["gan_hoy"]
+    # promedio diario para proyeccion
+    avg_diario = sum([d["gan"] for d in data["historial_diario"][-7:]])/7 if len(data["historial_diario"])>=7 else data["gan_hoy"]
+    if avg_diario==0 and data["gan_acum_total"]: avg_diario = data["gan_acum_total"]/20 # estimado si es nuevo
+
+    for p in data["pos"]:
+        p["ahora"]=P(p["sym"])
+        p["gan_pct"]=((p["ahora"]-p["entry"])/p["entry"]*100) if p["entry"] else 0
+
+    return jsonify({
+        "base": data["base_inicial"],
+        "capital_actual": data["capital_actual"],
+        "gan_acum": data["gan_acum_total"],
+        "gan_hoy": data["gan_hoy"],
+        "bola_actual": bola,
+        "historial": data["historial_diario"][-30:], # ultimos 30 dias
+        "pos": data["pos"],
+        "max_entradas": data["max_entradas"],
+        "tp": data["tp_bruto"],
+        "auto": data["auto"],
+        "avg_diario": avg_diario,
+        "entradas": data["entradas"],"salidas": data["salidas"],"ganadas": data["ganadas"],"perdidas": data["perdidas"]
+    })
+
+@app.route('/api/proyeccion')
+def proyeccion():
+    # Proyeccion 30 meses bola de nieve
+    capital = data["capital_actual"]
+    avg_pct_diario = 0.015 # 1.5% diario estimado si ganas 0.4% por 3-4 trades
+    # si tienes historial real, lo calculamos
+    if data["historial_diario"]:
+        total_gan = sum([h["gan"] for h in data["historial_diario"]])
+        dias = len(data["historial_diario"])
+        if dias>0 and capital>0:
+            avg_pct_diario = (total_gan / capital) / dias
+            avg_pct_diario = max(0.005, min(avg_pct_diario, 0.05)) # entre 0.5% y 5% diario
+
+    proy=[]
+    cap=capital
+    for mes in range(1,31):
+        # 30 dias por mes
+        for _ in range(30):
+            cap = cap * (1 + avg_pct_diario)
+        proy.append({"mes":mes,"capital": round(cap,2), "ganancia": round(cap - capital,2)})
+    return jsonify({"capital_inicial": capital, "pct_diario": round(avg_pct_diario*100,2), "proyeccion": proy})
 
 @app.route('/dashboard')
 def dash():
     return """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1"><style>
 body{background:#080808;color:#fff;font-family:Arial;margin:0;padding:8px}
-.top{background:#111;padding:12px;border-radius:12px;border:1px solid #00ff88;display:flex;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:8px}
-.circle{border:2px solid #00ff88;border-radius:50%;width:70px;height:70px;display:flex;align-items:center;justify-content:center;flex-direction:column;color:#00ff88;font-weight:bold}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.card{background:#151515;border:2px solid #ffcc00;border-radius:16px;padding:12px;min-height:95px}
-.card.buy{border-color:#00ff88}.card.sell{border-color:#ff4444}.card.block{border-color:#555}
-.score{float:right;border:2px solid #ffcc00;border-radius:10px;padding:4px 10px;color:#ffcc00;font-weight:bold}
-table{width:100%;background:#151515;border-radius:12px;margin-top:10px;border-collapse:collapse}
-th,td{padding:8px;text-align:left;border-bottom:1px solid #333;font-size:13px}
-.btn{background:#00ff88;color:#000;border:none;padding:6px 12px;border-radius:8px;font-weight:bold}
-.btn-red{background:#ff4444;color:#fff;border:none;padding:6px 12px;border-radius:8px;font-weight:bold}
+.header{text-align:center;padding:12px;border:2px solid #ffcc00;border-radius:14px;background:#111;margin-bottom:8px}
+.big{font-size:26px;font-weight:bold;color:#00ff88}
+.circle{width:100px;height:100px;border-radius:50%;border:3px solid #00ff88;display:inline-flex;align-items:center;justify-content:center;flex-direction:column;margin:5px}
+.card{background:#151515;border:1px solid #333;border-radius:12px;padding:10px;margin-bottom:8px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:6px;border-bottom:1px solid #333;text-align:left}
+.btn{padding:6px 10px;border-radius:8px;border:none;font-weight:bold}
+.btn-g{background:#00ff88;color:#000}
 </style></head><body>
-<div class=top>
-<div><b style=color:#00ff88>V1002.33 MILLONARIO</b><br><small>BASE $10060.05</small></div>
-<div class=circle><span id=acum>$0.00</span><small>ACUM 2D</small></div>
-<div><small>Saldo: $<span id=saldo>0</span><br>Total: $<span id=total>0</span><br>Hoy: $<span id=hoy>0</span> (<span id=trades>0</span>)</small></div>
-<div><button class=btn onclick="toggleAuto()" id=autoBtn>AUTO ON</button></div>
+<div class=header>
+<b style=color:#ffcc00;font-size:20px>💰 MÁQUINA BOLA DE NIEVE 💰</b><br><br>
+<div style=display:flex;justify-content:space-around;flex-wrap:wrap>
+<div class=circle><small>BASE</small><b>$<span id=base>0</span></b></div>
+<div class=circle style=border-color:#ffcc00><small>CAPITAL AHORA</small><b>$<span id=cap>0</span></b></div>
+<div class=circle><small>HOY</small><b class=big>$<span id=hoy>0</span></b></div>
+<div class=circle style=border-color:#ffcc00><small>BOLA</small><b>$<span id=bola>0</span></b></div>
 </div>
-<div class=grid id=g></div>
-<table id=posTable><thead><tr><th>Moneda</th><th>Entry</th><th>Ahora</th><th>Gan%</th><th>Max</th><th>Acción</th></tr></thead><tbody></tbody></table>
+<div style=margin-top:8px>Acum Total: $<span id=acum>0</span> | Promedio diario: <span id=avg>0</span>% | TP: <span id=tp>0</span>%</div>
+</div>
+
+<div class=card>
+<b>📈 HISTORIAL DIARIO DIARIO (BOLA DE NIEVE)</b>
+<table><thead><tr><th>Fecha</th><th>Gan Día</th><th>Capital</th><th>Bola Siguiente</th></tr></thead><tbody id=hist></tbody></table>
+</div>
+
+<div class=card>
+<b>🚀 PROYECCIÓN 30 MESES COMPUESTO</b><br><small>Si sigue ganando <span id=pct>0</span>% diario promedio</small>
+<table><thead><tr><th>Mes</th><th>Capital</th><th>Ganancia</th></tr></thead><tbody id=proy></tbody></table>
+</div>
+
+<div class=card>
+<b>Posiciones Abiertas (no cuentan como pérdida)</b>
+<table><thead><tr><th>Moneda</th><th>Entry</th><th>Ahora</th><th>Gan%</th></tr></thead><tbody id=pos></tbody></table>
+</div>
+
 <script>
 async function load(){
- let r=await fetch('/api/prices'); let d=await r.json(); let h='';
- for(let s in d){
-  let cls=d[s].action=='COMPRAR'?'buy':d[s].action=='VENDER'?'sell':d[s].action=='BLOQUEADO'?'block':'';
-  h+=`<div class=card ${cls}><b>${s} $${d[s].price.toFixed(2)}</b><span class=score>${d[s].score}</span><br><small>RSI ${d[s].rsi} | EMA ${d[s].ema}</small><br><b style=color:${d[s].action=='COMPRAR'?'#00ff88':d[s].action=='BLOQUEADO'?'#888':'#ffcc00'}>${d[s].action}</b><br><small>BTC ${d[s].btc_ch}%</small><br><button class=btn onclick="buy('${s}')">COMPRAR $1677</button> <a href='/chart/${s}'><button class=btn>GRÁFICA</button></a></div>`;
+ let r=await fetch('/api/state'); let s=await r.json();
+ document.getElementById('base').innerText=s.base.toFixed(2);
+ document.getElementById('cap').innerText=s.capital_actual.toFixed(2);
+ document.getElementById('acum').innerText=s.gan_acum.toFixed(2);
+ document.getElementById('hoy').innerText=s.gan_hoy.toFixed(2);
+ document.getElementById('bola').innerText=s.bola_actual.toFixed(2);
+ document.getElementById('tp').innerText=s.tp;
+ document.getElementById('avg').innerText=(s.avg_diario / s.capital_actual *100).toFixed(2);
+
+ let h=''; for(let d of s.historial.reverse()){
+  h+=`<tr><td>${d.fecha}</td><td style=color:#00ff88>+$${d.gan.toFixed(2)}</td><td>$${d.capital.toFixed(2)}</td><td>$${(d.capital / s.max_entradas).toFixed(2)}</td></tr>`;
  }
- document.getElementById('g').innerHTML=h;
- let r2=await fetch('/api/state'); let s2=await r2.json();
- document.getElementById('saldo').innerText=s2.b.toFixed(2);
- document.getElementById('total').innerText=s2.total.toFixed(2);
- document.getElementById('hoy').innerText=s2.gan_hoy.toFixed(2);
- document.getElementById('trades').innerText=s2.trades_hoy;
- document.getElementById('acum').innerText='$'+s2.gan_acumulada_2d.toFixed(2);
- document.getElementById('autoBtn').innerText=s2.auto?'AUTO ON':'AUTO OFF';
- let tbody=''; for(let p of s2.pos){ tbody+=`<tr><td>${p.sym}</td><td>$${p.precio_entry.toFixed(2)}</td><td>$${p.precio_now.toFixed(2)}</td><td style=color:${p.gan>=0?'#00ff88':'#ff4444'}>${p.gan.toFixed(2)}%</td><td>${p.max_gan.toFixed(2)}%</td><td><button class=btn-red onclick="sell('${p.sym}')">VENDER</button></td></tr>`; }
- document.querySelector('#posTable tbody').innerHTML=tbody||'<tr><td colspan=6 style=text-align:center;color:#888>Sin posiciones - Esperando RSI<32</td></tr>';
+ document.getElementById('hist').innerHTML=h||'<tr><td colspan=4>Hoy es el primer día - se guarda a las 10pm</td></tr>';
+
+ let p=''; for(let pos of s.pos){
+  p+=`<tr><td>${pos.sym}</td><td>${pos.entry.toFixed(2)}</td><td>${pos.ahora.toFixed(2)}</td><td>${pos.gan_pct.toFixed(2)}% abierta</td></tr>`;
+ }
+ document.getElementById('pos').innerHTML=p||'<tr><td colspan=4>Sin posiciones - Esperando RSI<32</td></tr>';
+
+ let r2=await fetch('/api/proyeccion'); let pr=await r2.json();
+ document.getElementById('pct').innerText=pr.pct_diario;
+ let hp='';
+ for(let m of pr.proyeccion){
+  if(m.mes==1 || m.mes==6 || m.mes==12 || m.mes==24 || m.mes==30){
+   hp+=`<tr style=${m.mes==30?'background:#ffcc0022;font-weight:bold':''}><td>${m.mes} meses</td><td>$${m.capital.toLocaleString()}</td><td style=color:#00ff88>+$${m.ganancia.toLocaleString()}</td></tr>`;
+  }
+ }
+ document.getElementById('proy').innerHTML=hp;
 }
-async function buy(sym){ await fetch('/api/buy/'+sym,{method:'POST'}); load(); }
-async function sell(sym){ await fetch('/api/sell/'+sym,{method:'POST'}); load(); }
-async function toggleAuto(){ await fetch('/api/toggle_auto',{method:'POST'}); load(); }
-load(); setInterval(load,15000);
+load(); setInterval(load,10000);
 </script></body></html>"""
 
-@app.route('/api/state')
-def state():
-    total=data["b"]+sum([p["monto"] for p in data["pos"]])+data["gan_total"]
-    for p in data["pos"]:
-        rsi,price,ema,_=AN(p["sym"]); p["precio_now"]=price
-        gan=((price-p["precio_entry"])/p["precio_entry"]*100) if p["precio_entry"] else 0
-        p["gan"]=gan
-        if gan>p.get("max_gan",0): p["max_gan"]=gan
-    return jsonify({"b":data["b"],"total":total,"gan_total":data["gan_total"],"gan_hoy":data["gan_hoy"],"trades_hoy":data["trades_hoy"],"gan_acumulada_2d":data["gan_acumulada_2d"],"pos":data["pos"],"auto":data["auto"]})
-
-@app.route('/api/buy/<sym>', methods=['POST'])
-def api_buy(sym):
-    sym=sym.upper()
-    if len(data["pos"])>=5 or any(p['sym']==sym for p in data["pos"]): return {"ok":False}
-    rsi,price,ema,_=AN(sym)
-    data["pos"].append({"sym":sym,"monto":MONTO_BOLA,"precio_entry":price,"precio_now":price,"gan":0,"max_gan":0,"rsi_entry":rsi})
-    data["b"]-=MONTO_BOLA; save(); return {"ok":True}
-
-@app.route('/api/sell/<sym>', methods=['POST'])
-def api_sell(sym):
-    sym=sym.upper()
-    for p in data["pos"][:]:
-        if p["sym"]==sym:
-            rsi,price,ema,_=AN(sym); gan=((price-p["precio_entry"])/p["precio_entry"]*100); neto=gan-(FEE*2*100)
-            data["b"]+=p["monto"]*(1+gan/100); data["gan_total"]+=p["monto"]*gan/100; data["gan_hoy"]+=p["monto"]*gan/100; data["gan_acumulada_2d"]+=p["monto"]*gan/100; data["trades_hoy"]+=1
-            data["pos"].remove(p); save()
-            for u in data["alert_users"]: tg(u,f"💰 VENTA {sym} {gan:.2f}% Bruto | {neto:.2f}% Neto")
-    return {"ok":True}
-
-@app.route('/api/toggle_auto', methods=['POST'])
-def toggle_auto():
-    data["auto"]=not data["auto"]; save(); return {"auto":data["auto"]}
-
-@app.route('/chart/<sym>')
-def chart(sym):
-    sym=sym.upper()
-    return f"""<html><head><meta name=viewport content="width=device-width,initial-scale=1"><script src="https://unpkg.com/lightweight-charts@4.1.0/dist/lightweight-charts.standalone.production.js"></script></head><body style=background:#080808;color:#fff;margin:0><div style=padding:12px;background:#111;display:flex;justify-content:space-between><b>{sym}/USDT</b><a href="/dashboard"><button style=background:#00ff88;padding:8px 16px;border-radius:8px;border:none;font-weight:bold>Volver</button></a></div><div id=c style=width:100%;height:85vh></div><script>fetch("https://data-api.binance.vision/api/v3/klines?symbol={sym}USDT&interval=1h&limit=150").then(r=>r.json()).then(kl=>{{let data=kl.map(k=>({{time:k[0]/1000,open:+k[1],high:+k[2],low:+k[3],close:+k[4]}}));let ch=LightweightCharts.createChart(document.getElementById('c'),{{layout:{{background:{{color:'#080808'}},textColor:'#ddd'}},grid:{{vertLines:{{color:'#222'}},horzLines:{{color:'#222'}}}}}});let cs=ch.addCandlestickSeries();cs.setData(data);ch.timeScale().fitContent();}})</script></body></html>"""
-
 @app.route('/webhook', methods=['POST','GET'])
-@app.route('/telegram', methods=['POST','GET'])
 def webhook():
-    if request.method=='GET': return "webhook ok", 200
+    if request.method=='GET': return "ok",200
     d=request.json or {}
     if "message" in d:
         c=d["message"]["chat"]["id"]; t=d["message"].get("text","").upper().strip()
         if c not in data["alert_users"]: data["alert_users"].append(c)
-        if "DASHBOARD" in t or "/START" in t or t=="START":
-            total=data["b"]+data.get("gan_total",0)
+        if "DASHBOARD" in t:
             base=os.getenv("RENDER_EXTERNAL_URL","") or "https://telegram-bot-cijp.onrender.com"
-            tg(c, f"BASE 500 USD ${total:.2f} MXN\n{base}/dashboard")
-        elif t in data["coins"]:
-            if len(data["pos"])<5 and not any(p['sym']==t for p in data["pos"]):
-                rsi,price,ema,_=AN(t); data["pos"].append({"sym":t,"monto":MONTO_BOLA,"precio_entry":price,"precio_now":price,"gan":0,"max_gan":0,"rsi_entry":rsi}); data["b"]-=MONTO_BOLA; save(); tg(c,f"✅ {t} COMPRADO ${price:.2f} RSI {rsi:.1f}")
-        elif "/REPORTE" in t or t=="REPORTE":
-            total=data["b"]+sum([p["monto"] for p in data["pos"]])+data["gan_total"]
-            txt=f"MAQUINA DE HACER DINERO\nTotal: ${total:.2f} MXN\nEntrada: ${MONTO_BOLA} MXN\nAcum: ${data['gan_acumulada_2d']:.2f} MXN\nFee 0.10%+0.10% descontado\nhttps://telegram-bot-cijp.onrender.com/dashboard"
-            tg(c,txt)
+            bola=data["capital_actual"]/data["max_entradas"]
+            tg(c,f"BOLA DE NIEVE\nCapital: ${data['capital_actual']:.2f}\nHoy: ${data['gan_hoy']:.2f}\nBola ahora: ${bola:.2f}\n{base}/dashboard")
         save()
     return {"ok":True}
 
+@app.route('/api/buy/<sym>', methods=['POST'])
+def buy(sym):
+    sym=sym.upper()
+    bola=data["capital_actual"]/data["max_entradas"]
+    price=P(sym)
+    data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price})
+    data["capital_actual"]-=bola # lo tienes en posicion
+    data["entradas"]+=1; save(); return {"ok":True}
+
 def auto_loop():
-    time.sleep(10)
+    time.sleep(5)
     while True:
         try:
-            if not data["auto"]: time.sleep(10); continue
+            # BOLA DE NIEVE: la bola crece porque capital_actual crece
+            bola = data["capital_actual"] / data["max_entradas"] if data["max_entradas"] else 0
             for sym in data["coins"]:
-                rsi,price,ema,btc_ch=AN(sym)
-                if rsi<32 and price>ema*0.995 and CACHE["btc_change"]>-1.5 and len(data["pos"])<5 and not any(p['sym']==sym for p in data["pos"]):
-                    data["pos"].append({"sym":sym,"monto":MONTO_BOLA,"precio_entry":price,"precio_now":price,"gan":0,"max_gan":0,"rsi_entry":rsi}); data["b"]-=MONTO_BOLA; save()
-                    for u in data["alert_users"]: tg(u,f"🤖 AUTO {sym} RSI {rsi:.1f} ${price:.2f}")
+                if not data["coins_activas"].get(sym,True): continue
+                closes=C(sym)
+                if not closes: continue
+                rsi=RSI(closes); price=closes[-1]; ema=EMA(closes)
+                if rsi<32 and price>ema*0.995 and len(data["pos"])<data["max_entradas"] and not any(p['sym']==sym for p in data["pos"]) and data["auto"]:
+                    data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price}); data["entradas"]+=1; data["capital_actual"]-=bola; save()
                 for p in data["pos"][:]:
                     if p["sym"]==sym:
-                        gan=((price-p["precio_entry"])/p["precio_entry"]*100); neto=gan-(FEE*2*100); max_gan=p.get("max_gan",0)
-                        sell=False
-                        if neto>=TP_NETO: sell=True
-                        if gan>=2.5 and rsi<60: sell=True
-                        if gan>=3.5 and rsi>60: sell=True
-                        if gan<=-2: sell=True
-                        if rsi>=74: sell=True
-                        if max_gan>=4 and gan<=max_gan-1: sell=True
-                        if sell:
-                            data["b"]+=p["monto"]*(1+gan/100); data["gan_total"]+=p["monto"]*gan/100; data["gan_hoy"]+=p["monto"]*gan/100; data["gan_acumulada_2d"]+=p["monto"]*gan/100; data["trades_hoy"]+=1; data["pos"].remove(p); save()
-                            for u in data["alert_users"]: tg(u,f"💰 VENTA AUTO {sym} Bruto {gan:.2f}% Neto {neto:.2f}%")
-            # reporte 10pm sin pytz
-            now = datetime.now()
-            # 22 hora CDMX = 04 UTC aprox, usamos 22 local de Render si está en UTC, lo ajustamos a 4 UTC
-            if now.hour==4 and now.minute==0:
-                total=data["b"]+sum([p["monto"] for p in data["pos"]])+data["gan_total"]
-                for u in data["alert_users"]: tg(u,f"📊 REPORTE 10PM\nSaldo ${data['b']:.2f}\nTotal ${total:.2f}\nGan Hoy ${data['gan_hoy']:.2f}\nAcum 2D VERDE ${data['gan_acumulada_2d']:.2f}")
-                data["gan_hoy"]=0; data["trades_hoy"]=0; save(); time.sleep(60)
-            time.sleep(180)
+                        gan=(price-p["entry"])/p["entry"]*100
+                        if gan>=data["tp_bruto"]:
+                            ganancia_mxn = p["monto"]*gan/100
+                            # AQUI ESTA LA BOLA DE NIEVE - lo ganado se suma al capital
+                            data["capital_actual"] += p["monto"] + ganancia_mxn
+                            data["gan_acum_total"] += ganancia_mxn
+                            data["gan_hoy"] += ganancia_mxn
+                            data["salidas"]+=1; data["ganadas"]+=1
+                            data["pos"].remove(p); save()
+                            for u in data["alert_users"]:
+                                tg(u,f"💰 BOLA NIEVE {sym} +{gan:.2f}% = +${ganancia_mxn:.2f}\nCapital ahora: ${data['capital_actual']:.2f}\nBola siguiente: ${data['capital_actual']/data['max_entradas']:.2f}")
+            # CIERRE DIARIO 10PM - guarda historial
+            now=datetime.now()
+            if now.hour==4 and now.minute==0: # 10pm MX = 4am UTC
+                fecha=now.strftime("%Y-%m-%d")
+                # si no existe hoy en historial, lo agrega
+                if not any(h["fecha"]==fecha for h in data["historial_diario"]):
+                    data["historial_diario"].append({"fecha":fecha,"gan":data["gan_hoy"],"capital":data["capital_actual"]})
+                    if len(data["historial_diario"])>90: data["historial_diario"]=data["historial_diario"][-90:]
+                    total=data["capital_actual"]
+                    for u in data["alert_users"]:
+                        tg(u,f"📊 CIERRE DIARIO BOLA NIEVE {fecha}\nHoy: ${data['gan_hoy']:.2f}\nCapital: ${total:.2f}\nBola mañana: ${total/data['max_entradas']:.2f}\nAcum: ${data['gan_acum_total']:.2f}")
+                    data["gan_hoy"]=0; save()
+                time.sleep(60)
+            time.sleep(120)
         except Exception as e:
             print(e); time.sleep(10)
 
 threading.Thread(target=auto_loop,daemon=True).start()
 if __name__=="__main__":
-    app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)),threaded=True)
+    app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)))
