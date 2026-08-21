@@ -4,13 +4,13 @@ from datetime import datetime
 
 os.environ['PYTHONUNBUFFERED']='1'
 sys.stdout.reconfigure(line_buffering=True)
-print("INICIANDO V116 FIX HTML", flush=True)
+print("INICIANDO V117 SIN TRIPLES", flush=True)
 
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 URL = "https://telegram-bot-cijp.onrender.com"
 CHAT_ID = None
 
-CONFIG = {"BASE":10000.0,"ACUMULADO":316.0,"FEES_PCT":0.10,"TP_PCT":0.30,"AUTO":True,"BOLAS_MAX":8,"COSTO_BOLA":1031.63,"EXCHANGE":"BINANCE"}
+CONFIG = {"BASE":10000.0,"ACUMULADO":316.0,"FEES_PCT":0.10,"TP_PCT":0.30,"AUTO":True,"BOLAS_MAX":8,"COSTO_BOLA":1031.63}
 MONEDAS = {"BTC":True,"ETH":True,"XRP":True,"SOL":True,"DOGE":True,"ADA":True,"AVAX":True,"BNB":True}
 bolas = [{"id":1,"moneda":"XRP","compra":2.85,"costo":1031.63,"actual":2.85,"neto":0,"usd":0},{"id":2,"moneda":"ETH","compra":2450.5,"costo":1031.63,"actual":2450.5,"neto":0,"usd":0}]
 historial = []
@@ -27,29 +27,38 @@ def get_precio_binance(moneda):
         return PRECIOS.get(moneda,0)
 
 def calc(e,a,c):
-    if not e or a==0: return 0,0,0
+    if not e or a==0:
+        return 0,0,0
     bruto=((a-e)/e)*100
     neto=bruto-CONFIG["FEES_PCT"]
     usd=c*(neto/100)
     return bruto,neto,usd
 
 def get_stats():
-    flot=0;vend=0
+    flot=0
+    vend=0
     for b in bolas:
         actual=get_precio_binance(b["moneda"])
-        if actual!=0: b["actual"]=actual
+        if actual!=0:
+            b["actual"]=actual
         _,neto,usd=calc(b["compra"],b["actual"],b["costo"])
-        b["neto"]=neto;b["usd"]=usd;flot+=usd
-        if neto>=CONFIG["TP_PCT"]: vend+=1
+        b["neto"]=neto
+        b["usd"]=usd
+        flot+=usd
+        if neto>=CONFIG["TP_PCT"]:
+            vend+=1
     bal=CONFIG["BASE"]+CONFIG["ACUMULADO"]
     return bal,flot,bal+flot,(datetime.now().day/30)*100,vend
 
 def comprar_bola(moneda):
-    if len(bolas)>=CONFIG["BOLAS_MAX"]: return None
+    if len(bolas)>=CONFIG["BOLAS_MAX"]:
+        return None
     for x in bolas:
-        if x["moneda"]==moneda: return None
+        if x["moneda"]==moneda:
+            return None
     p=get_precio_binance(moneda)
-    if p==0: return None
+    if p==0:
+        return None
     n={"id":int(time.time()),"moneda":moneda,"compra":p,"costo":CONFIG["COSTO_BOLA"],"actual":p,"neto":0,"usd":0}
     bolas.append(n)
     return n
@@ -76,25 +85,5 @@ app = Flask(__name__)
 
 @app.route('/', methods=['GET'])
 def home():
-    return '''
-<!DOCTYPE html><html><head><meta name="viewport" content="width=device-width, initial-scale=1"><title>V116 FIX</title>
-<style>
-body{background:#0a0e1a;color:#fff;font-family:Arial;padding:12px}
-.card{background:#121a2b;border-radius:14px;padding:12px;margin:10px 0;border:1px solid #f3ba2f}
-.btn{padding:10px 14px;border-radius:10px;border:none;margin:4px;font-weight:bold}
-.on{background:#f3ba2f;color:#000}.off{background:#1e2a44;color:#888}.tp{background:#00ff88;color:#000}
-.input-tp{background:#000;color:#00ff88;border:2px solid #f3ba2f;border-radius:10px;padding:10px;width:90px;font-size:18px;text-align:center}
-.rojo{border-color:#ff3040}.verde{border-color:#00ff88}
-.circle-wrap{position:relative;width:220px;height:220px;margin:15px auto}
-.bg{fill:none;stroke:#1a2332;stroke-width:12}
-.prog{fill:none;stroke:#f3ba2f;stroke-width:12;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%;transition:1s}
-.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}
-</style></head><body>
-<h2 style="text-align:center;color:#f3ba2f">V116 BINANCE TP 0.3 BASE FIX</h2>
-<div class="circle-wrap"><svg width="220" height="220"><circle class="bg" cx="110" cy="110" r="95"></circle><circle id="p" class="prog" cx="110" cy="110" r="95" stroke-dasharray="596" stroke-dashoffset="596"></circle></svg>
-<div class="center"><div id="balBig" style="font-size:28px;font-weight:bold">$0</div><div id="progTxt" style="font-size:12px;color:#8aa"></div></div></div>
-<div class="card"><div id="res"></div><small>BINANCE FEES 0.10% | TP BASE 0.30% ganancia neta</small></div>
-<div class="card" style="border:2px solid #00ff88"><h3 style="margin:0 0 10px 0;color:#00ff88">TP MANUAL</h3>
-<input type="number" id="tpInput" class="input-tp" step="0.05" min="0.1" max="2.0" value="0.30">
-<button class="btn tp" onclick="setTPManual()">APLICAR</button>
-<span id="tpActual" style="color:#f3ba2f;font
+    html = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1'><title>V117 FIX</title>"
+    html += "<style>body{background:#0a0e1a;color:#fff;font-family:Arial;padding:12px}.card{background:#121a2b;border-radius:14px;padding:12px;margin:10px 0;border:1px solid #f3ba2f}.btn{padding:10px 14px;border-radius:10px;border:none;margin:4px;font-weight:bold}.on{background:#f3ba2f;color:#000}.off{background:#1e2a44;color:#888}.tp{background:#00ff88;color:#000}.verde{border-color:#00ff88}.rojo{border-color:#ff3040}.circle-wrap{position:relative;width:220px;height:220px;margin:15px auto}.bg{fill:none;stroke:#1a2332;stroke-width:12}.prog{fill:none;stroke:#f3ba2f;stroke-width:12;stroke-linecap:round;transform:rotate(-90deg);transform-origin:50% 50%}.center{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center}</style>"
