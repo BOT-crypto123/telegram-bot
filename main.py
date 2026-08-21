@@ -2,121 +2,60 @@ import os, time, threading, requests
 from flask import Flask, request
 from datetime import datetime
 
-print("INICIANDO MAQUINA V105.8 FIX...")
+print("INICIANDO V105.9 AUTO-FIX")
 
-CONFIG = {
-    "BASE": 10000.0,
-    "ACUMULADO": 316.0,
-    "BOLAS_MAX": 10,
-    "COSTO_BOLA": 1031.63,
-    "FEES_PCT": 0.35,
-    "MIN_RETAIL_PCT": 0.3,
-    "STOP_PCT": -7.0,
-    "TRAIL_PCT": 0.2,
-    "MONEDAS": ["BTC","ETH","SOL","DOGE","XRP","ADA","AVAX"],
-}
-
-bolas = [
-    {"moneda": "XRP", "compra": 22.24, "costo": 1031.63},
-    {"moneda": "ETH", "compra": 40049.34, "costo": 1031.63},
-]
-
+CONFIG = {"BASE":10000.0,"ACUMULADO":316.0,"BOLAS_MAX":10,"COSTO_BOLA":1031.63,"FEES_PCT":0.35}
+bolas = [{"moneda":"XRP","compra":22.24,"costo":1031.63},{"moneda":"ETH","compra":40049.34,"costo":1031.63}]
 TOKEN = os.environ.get("TELEGRAM_TOKEN")
 print(f"TOKEN existe? {'SI' if TOKEN else 'NO'}")
 
-def valido(p): 
-    return p and p != 0 and p > 0.001
-
-def calc(entra, actual, costo):
-    if not valido(entra) or not valido(actual): 
-        return 0,0,0
+if TOKEN:
     try:
-        bruto = ((actual-entra)/entra)*100
-        neto = bruto - CONFIG["FEES_PCT"]
-        usd = costo*(neto/100)
-        return bruto,neto,usd
-    except: 
-        return 0,0,0
-
-def precio(m):
-    d={"BTC":1273222.19,"ETH":39926.52,"SOL":1531.61,"DOGE":1.42,"XRP":22.13,"ADA":3.54,"AVAX":125.33}
-    return d.get(m,0)
-
-def responder_dashboard(cid):
-    tot=0
-    msg = f"MAQUINA V105.8 BAL ${CONFIG['BASE']+CONFIG['ACUMULADO']:.2f} ACUM +${CONFIG['ACUMULADO']}\n\n"
-    for b in bolas:
-        a=precio(b['moneda'])
-        _,n,us=calc(b['compra'],a,b['costo'])
-        tot+=us
-        emoji = "VERDE" if n>=0 else "ROJO"
-        msg += f"{emoji} {b['moneda']} E {b['compra']} -> {a} ({n:.2f}%) ${us:.2f} FLOTANTE\n"
-    msg += f"\nTOTAL FLOTANTE: ${tot:.2f}\n"
-    msg += "https://telegram-bot-cijp.onrender.com"
-    try:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json={"chat_id":cid,"text":msg})
+        r=requests.get(f"https://api.telegram.org/bot{TOKEN}/deleteWebhook?drop_pending_updates=true",timeout=10).json()
+        print(f"Webhook auto-borrado: {r}")
     except Exception as e:
-        print(f"Error enviando: {e}")
+        print(f"Error borrando webhook: {e}")
 
-app = Flask(__name__)
+def valido(p): return p and p>0.001
+def calc(e,a,c):
+    if not valido(e) or not valido(a): return 0,0,0
+    b=((a-e)/e)*100; n=b-CONFIG["FEES_PCT"]; u=c*(n/100); return b,n,u
+def precio(m): return {"BTC":1273222.19,"ETH":39926.52,"SOL":1531.61,"DOGE":1.42,"XRP":22.13,"ADA":3.54,"AVAX":125.33}.get(m,0)
 
-@app.route('/', methods=['GET'])
-def home():
-    total=0
-    html="<html><head><meta name='viewport' content='width=device-width'><style>body{background:#0e0e0e;color:#fff;font-family:monospace;padding:10px}.card{background:#1a1a1a;padding:12px;border-radius:12px;margin-bottom:10px}.rojo{color:#ff4444}.verde{color:#00ff88}.bola{border-left:4px solid #ff4444;padding:8px;margin:8px 0;background:#222}</style></head><body><h2>MAQUINA V105.8 FIX</h2>"
-    html+=f"<div class='card'>BAL ${CONFIG['BASE']+CONFIG['ACUMULADO']:.2f}<br>{datetime.now().strftime('%H:%M:%S')}</div><div class='card'><h3>BOLAS</h3>"
+def responder(cid):
+    tot=0; msg=f"MAQUINA V105.9 BAL ${CONFIG['BASE']+CONFIG['ACUMULADO']:.2f}\n\n"
     for b in bolas:
-        act=precio(b['moneda'])
-        _,neto,usd=calc(b['compra'],act,b['costo'])
-        total+=usd
-        col="verde" if neto>=0 else "rojo"
-        html+=f"<div class='bola'><b>{b['moneda']}</b> E {b['compra']} -> {act}<br><span class='{col}'>{neto:.2f}% ${usd:.2f}</span></div>"
-    html+=f"<hr><b class='rojo'>TOTAL: ${total:.2f}</b></div></body></html>"
-    return html
+        a=precio(b['moneda']); _,n,us=calc(b['compra'],a,b['costo']); tot+=us
+        msg+=f"{'VERDE' if n>=0 else 'ROJO'} {b['moneda']} {n:.2f}% ${us:.2f}\n"
+    msg+=f"\nTOTAL FLOTANTE: ${tot:.2f}\nhttps://telegram-bot-cijp.onrender.com"
+    requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json={"chat_id":cid,"text":msg})
 
-@app.route('/', methods=['POST'])
-def webhook():
-    try:
-        data = request.get_json(force=True, silent=True)
-        if not data: 
-            return "ok", 200
-        txt = data.get("message",{}).get("text","").strip().upper()
-        cid = data.get("message",{}).get("chat",{}).get("id")
-        print(f"Webhook: {txt}")
-        if txt == "DASHBOARD" and cid:
-            responder_dashboard(cid)
-        if txt == "AUTO ON" and cid:
-            requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json={"chat_id":cid,"text":"AUTO ON OK"})
-    except Exception as e:
-        print(f"Error webhook: {e}")
-    return "ok", 200
+app=Flask(__name__)
+@app.route('/',methods=['GET'])
+def home(): return f"<h1>V105.9 LIVE {datetime.now()}</h1>"
+@app.route('/',methods=['POST'])
+def wh(): return "ok",200
 
-def run_flask():
-    app.run(host='0.0.0.0',port=int(os.environ.get("PORT",10000)))
-
+def run_flask(): app.run(host='0.0.0.0',port=int(os.environ.get("PORT",10000)))
 threading.Thread(target=run_flask,daemon=True).start()
 
 def bot_polling():
-    offset=0
-    print("Polling iniciado...")
+    off=0; print("Polling iniciado V105.9...")
     while True:
         try:
-            if not TOKEN: 
-                time.sleep(10)
-                continue
-            r=requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={offset}&timeout=10",timeout=15).json()
+            if not TOKEN: time.sleep(10); continue
+            r=requests.get(f"https://api.telegram.org/bot{TOKEN}/getUpdates?offset={off}&timeout=15",timeout=20).json()
+            if not r.get("ok"): print(f"Error API: {r}"); time.sleep(5); continue
             for u in r.get("result",[]):
-                offset=u["update_id"]+1
+                off=u["update_id"]+1
                 txt=u.get("message",{}).get("text","").strip().upper()
                 cid=u.get("message",{}).get("chat",{}).get("id")
-                print(f"Polling: {txt}")
-                if txt=="DASHBOARD" and cid:
-                    responder_dashboard(cid)
+                print(f"Polling: {txt} de {cid}")
+                if txt=="DASHBOARD" and cid: responder(cid)
+                if txt=="AUTO ON" and cid: requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage",json={"chat_id":cid,"text":"AUTO ON OK V105.9"})
         except Exception as e:
-            print(f"Error polling: {e}")
-            time.sleep(5)
+            print(f"Error polling loop: {e}"); time.sleep(5)
 
 threading.Thread(target=bot_polling,daemon=True).start()
-print("V105.8 LISTO - SIN ERROR 404")
-while True: 
-    time.sleep(10)
+print("V105.9 LISTO")
+while True: time.sleep(10)
