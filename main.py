@@ -203,7 +203,7 @@ th,td{padding:6px;border-bottom:1px solid #333;text-align:center}
 <div class=big-usd>500 USD</div>
 <div class=big-mxn>$<span id=metaMxn>8480</span></div>
 <div class=small>MXN</div>
-<div class=small id=pctMesTxt style=color:#00ff88;margin-top:4px>0% - $0.00</div>
+<div class=small id=pctMesTxt style=color:#00ccff;margin-top:4px>0% - $0.00</div>
 </div>
 </div>
 <div class=circ-box>
