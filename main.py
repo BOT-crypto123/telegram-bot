@@ -1,13 +1,15 @@
 import os, json, requests, threading, time
 from flask import Flask, request, jsonify
+from datetime import datetime
 app = Flask(__name__)
 FILE="bot_data.json"
 FEE_ENTRADA=0.001; FEE_SALIDA=0.001; FEE_TOTAL=0.002
 META_MES_USD=500.0
 data={
     "base_inicial": 0.0,"capital_actual": 500.0,"gan_acum_total": 0.0,"gan_mes": 0.0,"gan_hoy": 0.0,
-    "pos": [],"coins": ["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
-    "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
+    "pos": [],"historial": [],"capital_history": [{"t": int(time.time()*1000), "cap": 500.0}],
+    "coins": ["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
+    "coins_activas": {"BTC":False,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
     "max_entradas": 6,"tp_bruto": 0.3,"auto": True,"alert_users": [],
     "entradas": 0, "salidas": 0, "ganadas": 0, "perdidas": 0,"last_alert": {}, "usd_mxn": 16.96
 }
@@ -67,7 +69,7 @@ def tg(uid, txt):
 @app.route('/', methods=['GET','HEAD','POST'])
 def root():
     if request.method=='POST': return webhook()
-    return "V1002.71 BOLA VISIBLE LIVE",200
+    return "V1002.72 GRAFICA + TABLA LIVE",200
 
 @app.route('/api/prices')
 def prices():
@@ -96,14 +98,14 @@ def state():
     pct_mes=min(100,(data["gan_mes"]/META_MES_USD*100)) if META_MES_USD else 0
     return jsonify({
         "base":data["base_inicial"],"capital":data["capital_actual"],"gan_acum":data["gan_acum_total"],
-        "gan_mes":data["gan_mes"],"gan_hoy":data["gan_hoy"],"bola":bola,
-        "bola_mxn":bola*usdmxn,
+        "gan_mes":data["gan_mes"],"gan_hoy":data["gan_hoy"],"bola":bola,"bola_mxn":bola*usdmxn,
         "pos":data["pos"],"max_entradas":data["max_entradas"],"tp":data["tp_bruto"],
         "auto":data["auto"],"coins_activas":data["coins_activas"],
         "entradas":data["entradas"],"salidas":data["salidas"],"ganadas":data["ganadas"],"perdidas":data["perdidas"],
         "winrate":winrate,"fee_total":FEE_TOTAL*100,
         "usd_mxn":usdmxn,"meta_usd":META_MES_USD,"meta_mxn":META_MES_USD*usdmxn,"pct_mes":pct_mes,
-        "gan_mes_mxn":data["gan_mes"]*usdmxn,"gan_acum_mxn":data["gan_acum_total"]*usdmxn
+        "gan_mes_mxn":data["gan_mes"]*usdmxn,"gan_acum_mxn":data["gan_acum_total"]*usdmxn,
+        "historial": data["historial"][-50:], "capital_history": data["capital_history"][-100:]
     })
 
 @app.route('/api/config', methods=['POST'])
@@ -120,7 +122,7 @@ def buy_api(sym):
     if any(p['sym']==sym for p in data["pos"]): return jsonify({"ok":False})
     bola=data["capital_actual"]/data["max_entradas"]; price=P(sym)
     ok,rsi,ema,mot=ANALIZA(sym)
-    data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"rsi_entry":rsi,"motivo":mot})
+    data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fecha":datetime.now().strftime("%d/%m %H:%M")})
     data["capital_actual"]-=bola; data["entradas"]+=1; save(); return jsonify({"ok":True})
 @app.route('/api/sell/<sym>', methods=['POST'])
 def sell_api(sym):
@@ -132,9 +134,18 @@ def sell_api(sym):
             gan_bruta_mxn=p["monto"]*gan_bruta_pct/100
             com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
             gan_neta_mxn=gan_bruta_mxn-com_e-com_s
+            gan_neta_pct=gan_bruta_pct-FEE_TOTAL*100
             data["capital_actual"]+=p["monto"]+gan_neta_mxn
             data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["gan_hoy"]+=gan_neta_mxn
             data["salidas"]+=1; data["ganadas"]+=1 if gan_neta_mxn>0 else 0; data["perdidas"]+=0 if gan_neta_mxn>0 else 1
+            # REGISTRO HISTORIAL
+            data["historial"].append({
+                "fecha": datetime.now().strftime("%d/%m %H:%M"), "sym": sym,
+                "entry": p["entry"], "exit": price, "monto": p["monto"],
+                "gan_neta_pct": gan_neta_pct, "gan_neta_mxn": gan_neta_mxn,
+                "capital_despues": data["capital_actual"], "bola_despues": data["capital_actual"]/data["max_entradas"]
+            })
+            data["capital_history"].append({"t": int(time.time()*1000), "cap": data["capital_actual"]})
             data["pos"].remove(p); save()
             return jsonify({"ok":True})
     return jsonify({"ok":False})
@@ -144,7 +155,9 @@ def toggle():
 
 @app.route('/dashboard')
 def dash():
-    return """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1"><style>
+    return """<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
 body{background:#0a0a0a;color:#fff;font-family:Arial;margin:0;padding:8px}
 .header{border:2px solid #ffcc00;border-radius:22px;padding:16px;background:#111;text-align:center}
 .circs{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin-top:14px}
@@ -168,9 +181,10 @@ body{background:#0a0a0a;color:#fff;font-family:Arial;margin:0;padding:8px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .config{background:#151515;padding:10px;border-radius:12px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
 .info-bola{background:#000;border:1px solid #00ff88;border-radius:10px;padding:8px;margin-top:10px;text-align:center;font-size:12px}
-table{width:100%;border-collapse:collapse;background:#151515;border-radius:12px;margin-top:10px;font-size:11px}
-th,td{padding:6px;border-bottom:1px solid #333}
-.neto{color:#00ff88;font-weight:bold}
+table{width:100%;border-collapse:collapse;background:#151515;border-radius:12px;margin-top:10px;font-size:10px}
+th,td{padding:6px;border-bottom:1px solid #333;text-align:center}
+.neto{color:#00ff88;font-weight:bold}.perdida{color:#ff4444}
+.chart-box{background:#151515;border-radius:12px;padding:10px;margin-top:12px}
 </style></head><body>
 <div class=header>
 <b style=font-size:20px;color:#ffcc00>💰 MÁQUINA BOLA DE NIEVE</b>
@@ -195,15 +209,28 @@ th,td{padding:6px;border-bottom:1px solid #333}
 </div>
 </div>
 </div>
-<div class=info-bola id=infoBola>🎯 BOLA: $0 USD / $0 MXN (0 bolas) = Capital/Entradas</div>
+<div class=info-bola id=infoBola>🎯 BOLA: $0 USD / $0 MXN (0 bolas)</div>
 <div style=margin-top:8px;font-size:11px;background:#000;border-radius:8px;padding:6px;display:flex;justify-content:space-between">
 <span>USD/MXN $<span id=usdmxn>0</span></span><span id=cuantas>0/0</span><span>Win <span id=winrate>0%</span></span><span>NETO <span id=tpNeto>0.1%</span></span>
 </div>
 </div>
 <div class=config><div>💰 Cierre: <select id=tp onchange="setTP()"><option value=0.3>0.1% NETO (0.3% Bruto)</option><option value=0.4>0.2% NETO</option><option value=0.5>0.3% NETO</option><option value=0.6>0.4% NETO</option></select></div><div>🎯 Bolas: <select id=maxEnt onchange="setMax()"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div><div><button class=btn btn-g id=autoBtn onclick="toggleAuto()" style=width:auto>...</button></div></div>
 <div id=grid class=grid></div>
+
+<div class=chart-box><b style=color:#ffcc00>📈 EVOLUCIÓN CAPITAL - BOLA DE NIEVE</b><canvas id=capitalChart height=180></canvas></div>
+
 <table><thead><tr><th>Moneda</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr></thead><tbody id=tbody></tbody></table>
+
+<div class=chart-box><b style=color:#00ff88>📋 REGISTRO COMPLETO - HISTORIAL DE TRADES</b>
+<table id=histTable><thead><tr><th>Fecha</th><th>Moneda</th><th>Monto</th><th>Entry->Exit</th><th>% Neta</th><th>Ganancia MXN</th><th>Capital Después</th><th>Bola Después</th></tr></thead><tbody id=histBody></tbody></table>
+</div>
+
 <script>
+let chart;
+function initChart(){
+ let ctx=document.getElementById('capitalChart').getContext('2d');
+ chart=new Chart(ctx,{type:'line',data:{labels:[],datasets:[{label:'Capital USD',data:[],borderColor:'#00ff88',backgroundColor:'rgba(0,255,136,0.1)',fill:true,tension:0.4,borderWidth:2},{label:'Bola USD',data:[],borderColor:'#ffcc00',borderDash:[5,5],fill:false,tension:0.4,borderWidth:1}]},options:{responsive:true,plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#888'}},y:{ticks:{color:'#888'}}}}});
+}
 function setProgress(id, pct){let c=document.getElementById(id);let circ=2*Math.PI*72;let off=circ-(pct/100)*circ;c.style.strokeDashoffset=off;}
 async function toggleCoin(sym){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin:sym})});load();}
 async function load(){
@@ -221,6 +248,14 @@ async function load(){
  document.getElementById('autoBtn').innerText=s.auto?'AUTO ON 🤖':'AUTO OFF 🔔';
  document.getElementById('infoBola').innerHTML='🎯 BOLA: $'+s.bola.toFixed(2)+' USD / $'+s.bola_mxn.toFixed(0)+' MXN ('+s.max_entradas+' bolas) = $'+s.capital.toFixed(2)+' / '+s.max_entradas;
  setProgress('progressMes', s.pct_mes); setProgress('progressAcum', Math.min(100, s.gan_acum/500*100));
+ // GRAFICA
+ if(chart){
+   let labels=s.capital_history.map(h=>new Date(h.t).toLocaleTimeString());
+   let caps=s.capital_history.map(h=>h.cap);
+   let bolas=caps.map(c=>c/s.max_entradas);
+   chart.data.labels=labels; chart.data.datasets[0].data=caps; chart.data.datasets[1].data=bolas; chart.update();
+ }
+ // GRID MONEDAS
  let h=''; for(let sym in d){
   let activa=s.coins_activas[sym]; let inPos=s.pos.find(p=>p.sym==sym); let hasBuy=d[sym].ok&&!inPos; let hasSell=inPos&&inPos.debe_vender;
   let cls='card'; if(!activa) cls+=' off'; else if(hasBuy) cls+=' signal-buy';
@@ -231,14 +266,17 @@ async function load(){
   else{let bd=hasBuy&&activa?'':'disabled';let sd=hasSell&&activa?'':'disabled';h+=`<button class=btn btn-g onclick="buy('${sym}')" ${bd}>COMPRAR</button><button class=btn btn-r onclick="sell('${sym}')" ${sd}>VENDER</button><button class=btn btn-y onclick="location.href='/chart/${sym}'" ${!activa?'disabled':''}>GRÁFICA</button>`;}
   h+=`</div></div>`;} document.getElementById('grid').innerHTML=h;
  let tb=''; for(let p of s.pos){tb+=`<tr><td>${p.sym}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td class=neto>${p.gan_neta_pct.toFixed(2)}% $${p.gan_neta_mxn.toFixed(2)}</td><td>${s.auto?'Robot':`<button class=btn btn-r onclick="sell('${p.sym}')">Cerrar</button>`}</td></tr>`;}
- document.getElementById('tbody').innerHTML=tb||'<tr><td colspan=5 style=text-align:center;color:#666>Sin posiciones - Desde 00.00</td></tr>';
+ document.getElementById('tbody').innerHTML=tb||'<tr><td colspan=5 style=text-align:center;color:#666>Sin posiciones</td></tr>';
+ // TABLA HISTORIAL
+ let hist=''; for(let i=s.historial.length-1;i>=0;i--){let tr=s.historial[i];let cls=tr.gan_neta_mxn>=0?'neto':'perdida';hist+=`<tr><td>${tr.fecha}</td><td>${tr.sym}</td><td>$${tr.monto.toFixed(2)}</td><td>${tr.entry.toFixed(2)}->${tr.exit.toFixed(2)}</td><td class=${cls}>${tr.gan_neta_pct.toFixed(2)}%</td><td class=${cls}>$${tr.gan_neta_mxn.toFixed(2)}</td><td>$${tr.capital_despues.toFixed(2)}</td><td>$${tr.bola_despues.toFixed(2)}</td></tr>`;}
+ document.getElementById('histBody').innerHTML=hist||'<tr><td colspan=8 style=text-align:center;color:#666">Sin trades aún - Desde 00.00</td></tr>';
 }
 async function buy(s){await fetch('/api/buy/'+s,{method:'POST'});load();}
 async function sell(s){await fetch('/api/sell/'+s,{method:'POST'});load();}
 async function setTP(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tp:parseFloat(document.getElementById('tp').value)})});}
 async function setMax(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max:parseInt(document.getElementById('maxEnt').value)})});}
 async function toggleAuto(){await fetch('/api/toggle',{method:'POST'});load();}
-load(); setInterval(load,8000);
+initChart();load(); setInterval(load,8000);
 </script></body></html>"""
 @app.route('/chart/<sym>')
 def chart(sym):
@@ -269,7 +307,7 @@ def auto_loop():
                 price=closes[-1]
                 if ok and len(data["pos"])<data["max_entradas"] and not any(p['sym']==sym for p in data["pos"]):
                     if data["auto"]:
-                        data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"motivo":mot}); data["capital_actual"]-=bola; data["entradas"]+=1; save()
+                        data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"motivo":mot,"fecha":datetime.now().strftime("%d/%m %H:%M")}); data["capital_actual"]-=bola; data["entradas"]+=1; save()
                 for p in data["pos"][:]:
                     if p["sym"]==sym:
                         gan_bruta=(price-p["entry"])/p["entry"]*100
@@ -277,9 +315,12 @@ def auto_loop():
                             gan_bruta_mxn=p["monto"]*gan_bruta/100
                             com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
                             gan_neta_mxn=gan_bruta_mxn-com_e-com_s
+                            gan_neta_pct=gan_bruta_pct-FEE_TOTAL*100 if (gan_bruta_pct:=gan_bruta) else 0
                             data["capital_actual"]+=p["monto"]+gan_neta_mxn
                             data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["gan_hoy"]+=gan_neta_mxn
                             data["salidas"]+=1; data["ganadas"]+=1 if gan_neta_mxn>0 else 0; data["perdidas"]+=0 if gan_neta_mxn>0 else 1
+                            data["historial"].append({"fecha": datetime.now().strftime("%d/%m %H:%M"),"sym": sym,"entry": p["entry"],"exit": price,"monto": p["monto"],"gan_neta_pct": gan_neta_pct,"gan_neta_mxn": gan_neta_mxn,"capital_despues": data["capital_actual"],"bola_despues": data["capital_actual"]/data["max_entradas"]})
+                            data["capital_history"].append({"t": int(time.time()*1000), "cap": data["capital_actual"]})
                             data["pos"].remove(p); save()
             time.sleep(60)
         except Exception as e:
