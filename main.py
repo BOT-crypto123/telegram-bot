@@ -347,9 +347,8 @@ def auto_loop():
                             if gan_neta_mxn>0:
                                 winrate=(data["ganadas"]/data["salidas"]*100) if data["salidas"] else 0
                                 bola_despues=data["capital_actual"]/data["max_entradas"]
-                                msg=(f"✅ TRADE GANADO {p["sym"]}\n\n🟢 ENTRADA: {p]
-    sym} ${p['entry']:.2f}\nBola: ${p['monto']:.2f} - RSI {p.get('rsi_entry',0):.1f}\n{p.get('fecha','')}\n\n💰 SALIDA: {sym} ${price:.2f}\n+${gan_neta_mxn:.2f} MXN ({gan_neta_pct:.2f}% NETO)\nCapital ahora: ${data['capital_actual']:.2f}\nBola ahora: ${bola_despues:.2f} USD\n\n📊 {data['ganadas']}/{data['salidas']} ganadas ({winrate:.0f}% winrate)\nAcum: ${data['gan_acum_total']:.2f} USD")
-                                for u in data["alert_users"]: tg(u, msg)
+                                                    s=p['sym']
+                    msg=f"✅ TRADE GANADO {s}\n\n🟢 ENTRADA: {s} ${p['entry']:.2f}\nBola: ${p['monto']:.2f} - RSI {p.get('rsi_entry',0):.1f}\n{p.get('fecha','')}\n🔴 SALIDA: {s} ${price_p:.2f}\nGan: ${gan_neta_mxn:.2f}" for u in data["alert_users"]: tg(u, msg)
                             data["pos"].remove(p); save()
             time.sleep(60)
         except Exception as e:
