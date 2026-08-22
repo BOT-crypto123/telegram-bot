@@ -1,135 +1,38 @@
-import os, json, requests, threading, time
-from flask import Flask, request, jsonify
-from datetime import datetime
-
-app = Flask(__name__)
-FILE="bot_data.json"
-TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or os.getenv("TELEGRAM_BOT_TOKEN") or ""
-
-data={
-    "capital_actual": 450.0,"gan_acum_total": 0.0,"gan_mes": 0.0,
-    "pos": [{"sym":"ETH","monto":50.0,"entry":2428.64,"ahora":2428.64,"rsi_entry":27.0,"motivo":"RECUPERADO","fecha":"22/05 12:08"}],
-    "historial": [],"coins": ["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
-    "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
-    "max_entradas": 10,"tp_bruto": 0.5,"auto": True,"alert_users": [],
-    "rsi_compra": 35.0,"rsi_por_moneda": {},"sl_pct": -2.0,"rsi_venta": 72.0,"filtro_ema": "OFF"
+<!DOCTYPE html>
+<html><head><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Máquina de Hacer Dinero</title>
+<style>
+body{background:#0a0a0a;color:#fff;font-family:Arial;margin:0;padding:8px}
+.header{border:2px solid #ffcc00;border-radius:22px;padding:16px;background:#111;text-align:center}
+.card{background:#151515;border:2px solid #333;border-radius:14px;padding:10px}
+.card.buy{border-color:#00ff88;box-shadow:0 0 8px #00ff88}
+.btn{padding:8px;border-radius:8px;border:none;font-weight:bold;margin:2px;font-size:10px;width:48%}
+.btn-g{background:#00ff88;color:#000}.btn-r{background:#ff4444;color:#fff}
+.config{background:#151515;padding:10px;border-radius:12px;margin:10px 0;display:flex;gap:8px;flex-wrap:wrap}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+</style></head><body>
+<div class=header><b style=color:#ffcc00;font-size:22px>Máquina de Hacer Dinero</b><div id=info style=margin-top:8px></div></div>
+<div class=config>
+TP <select id=tp onchange="cfg('tp',this.value)"><option value=0.3>0.1% NETO</option><option value=0.5 selected>0.3% NETO</option><option value=0.7>0.5% NETO</option></select>
+SL <select id=sl onchange="cfg('sl_pct',this.value)"><option value=-1>-1%</option><option value=-2 selected>-2%</option><option value=-3>-3%</option></select>
+Venta <select id=rsiV onchange="cfg('rsi_venta',this.value)"><option value=70>70</option><option value=72 selected>72</option><option value=75>75</option></select>
+EMA <select id=ema onchange="cfg('filtro_ema',this.value)"><option value=ON>ON</option><option value=OFF selected>OFF</option></select>
+Bolas <select id=max onchange="cfg('max',this.value)"><option>3</option><option>5</option><option>10</option></select>
+<button class=btn btn-g onclick="toggle()" style=width:auto>AUTO ON/OFF</button>
+</div>
+<div id=grid class=grid></div><div id=pos style=margin-top:10px></div>
+<script>
+async function load(){
+let s=await (await fetch('/api/state')).json();
+let p=await (await fetch('/api/prices')).json();
+document.getElementById('info').innerHTML='Capital $'+s.capital.toFixed(2)+' | Bola $'+s.bola.toFixed(2)+' | Pos '+s.pos.length;
+let h='';for(let k in p){let c=p[k];h+='<div class="card '+(c.ok?'buy':'')+'"><b>'+k+' $'+c.price.toFixed(2)+'</b><br>RSI '+c.rsi+' / '+c.limite+'<br>'+c.motivo+'<br><button class=btn btn-g onclick="buy(\''+k+'\')">COMPRA</button><button class=btn btn-r onclick="sell(\''+k+'\')">VENDE</button></div>'}
+document.getElementById('grid').innerHTML=h;
+document.getElementById('pos').innerHTML=s.pos.map(x=>'<div style=background:#111;padding:6px;margin:3px;border-radius:6px;border:1px solid #00ff88>'+x.sym+' Entry '+x.entry.toFixed(2)+' Ahora '+x.ahora.toFixed(2)+' '+x.gan_neta_pct.toFixed(2)+'%</div>').join('')||'Sin posiciones';
 }
-
-def load():
-    try:
-        if os.path.exists(FILE):
-            j=json.load(open(FILE))
-            # no sobreescribir pos si viene vacia
-            if len(j.get("pos",[]))>0:
-                data.update(j)
-    except: pass
-def save():
-    try: json.dump(data, open(FILE,'w'))
-    except: pass
-load()
-
-def send_tg(chat_id, text):
-    if not TOKEN: return
-    try:
-        requests.post(f"https://api.telegram.org/bot{TOKEN}/sendMessage", json={"chat_id":chat_id,"text":text,"parse_mode":"HTML"}, timeout=5)
-    except: pass
-
-def P(s):
-    for url in [f"https://data-api.binance.vision/api/v3/ticker/price?symbol={s}USDT"]:
-        try:
-            j=requests.get(url,timeout=4).json()
-            if 'price' in j: return float(j['price'])
-        except: continue
-    return 0
-
-def C(s):
-  try:
-    r=requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={s}USDT&interval=1h&limit=100", timeout=5).json()
-    if isinstance(r, list): return [float(x[4]) for x in r]
-  except: pass
-  return []
-
-def RSI(cl,p=14):
-    if len(cl)<p+1: return 50.0
-    g=l=0
-    for i in range(1,p+1):
-        d=cl[-i]-cl[-i-1]
-        if d>0: g+=d
-        else: l+=-d
-    if l==0: return 70.0
-    if g==0: return 30.0
-    return 100-(100/(1+g/l))
-
-def ANALIZA(sym):
-    closes=C(sym); price=closes[-1] if closes else P(sym)
-    if len(closes)<30: return False, 50, price, "Sin datos", 35
-    r=RSI(closes); r_prev=RSI(closes[:-1])
-    lim=data.get("rsi_por_moneda",{}).get(sym, data.get("rsi_compra",35.0))
-    ok=(r<lim) and (r>r_prev)
-    return ok, r, price, f"RSI {r:.1f}/{lim:.0f}", lim
-
-@app.route('/', methods=['GET','POST'])
-def root():
-    if request.method=='POST': return webhook()
-    return "OK",200
-
-@app.route('/webhook', methods=['POST','GET'])
-def webhook():
-    if request.method=='GET': return "ok",200
-    d=request.json or {}
-    if "message" in d and "text" in d["message"]:
-        chat=d["message"]["chat"]["id"]; txt=d["message"]["text"].upper()
-        if chat not in data["alert_users"]: data["alert_users"].append(chat); save()
-        if "DASHBOARD" in txt or "/START" in txt:
-            send_tg(chat, f"💰 <b>Máquina de Hacer Dinero</b>\nCapital: ${data['capital_actual']:.2f}\nPosiciones: {len(data['pos'])}\n\n<a href='https://telegram-bot-cijp.onrender.com/dashboard'>VER DASHBOARD</a>")
-    return jsonify({"ok":True})
-
-@app.route('/api/prices')
-def prices():
-    out={}
-    for sym in data["coins"]:
-        ok,rsi,price,mot,lim=ANALIZA(sym)
-        out[sym]={"price":price,"rsi":round(rsi,1),"ok":ok,"motivo":mot,"limite":lim}
-    return jsonify(out)
-
-@app.route('/api/state')
-def state():
-    for p in data["pos"]:
-        pr=P(p["sym"]); p["ahora"]=pr
-        p["gan_neta_pct"]=((pr-p["entry"])/p["entry"]*100) if p["entry"] else 0
-    bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
-    return jsonify({"capital":data["capital_actual"],"bola":bola,"pos":data["pos"],"max_entradas":data["max_entradas"],"tp":data["tp_bruto"],"sl_pct":data["sl_pct"],"rsi_venta":data["rsi_venta"],"filtro_ema":data["filtro_ema"],"rsi_compra":data["rsi_compra"]})
-
-@app.route('/api/config', methods=['POST'])
-def config():
-    j=request.json or {}
-    if "tp" in j: data["tp_bruto"]=float(j["tp"])
-    if "max" in j: data["max_entradas"]=int(j["max"])
-    if "sl_pct" in j: data["sl_pct"]=float(j["sl_pct"])
-    if "rsi_venta" in j: data["rsi_venta"]=float(j["rsi_venta"])
-    if "filtro_ema" in j: data["filtro_ema"]=j["filtro_ema"]
-    if "rsi_compra" in j: data["rsi_compra"]=float(j["rsi_compra"])
-    save(); return jsonify({"ok":True})
-
-@app.route('/api/buy/<sym>', methods=['POST'])
-def buy_api(sym):
-    sym=sym.upper(); bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0; price=P(sym)
-    data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"motivo":"MANUAL","fecha":datetime.now().strftime("%d/%m %H:%M")}); data["capital_actual"]-=bola; save(); return jsonify({"ok":True})
-
-@app.route('/api/sell/<sym>', methods=['POST'])
-def sell_api(sym):
-    sym=sym.upper()
-    for p in data["pos"][:]:
-        if p["sym"]==sym: data["capital_actual"]+=p["monto"]; data["pos"].remove(p); save(); return jsonify({"ok":True})
-    return jsonify({"ok":False})
-
-@app.route('/api/toggle', methods=['POST'])
-def toggle():
-    data["auto"]=not data["auto"]; save(); return jsonify({"auto":data["auto"]})
-
-@app.route('/dashboard')
-def dash():
-    return open("dashboard.html").read() if os.path.exists("dashboard.html") else "Falta dashboard.html"
-
-if __name__=="__main__":
-    app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)))
+async function cfg(k,v){let b={};b[k]=isNaN(v)?v:parseFloat(v);if(k=='max')b={max:parseInt(v)};await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(b)});load()}
+async function buy(s){await fetch('/api/buy/'+s,{method:'POST'});load()}
+async function sell(s){await fetch('/api/sell/'+s,{method:'POST'});load()}
+async function toggle(){await fetch('/api/toggle',{method:'POST'});load()}
+load();setInterval(load,8000);
+</script></body></html>
