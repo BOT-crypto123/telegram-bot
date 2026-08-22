@@ -314,46 +314,33 @@ def auto_loop():
     time.sleep(5)
     while True:
         try:
-        bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
-        for sym in data["coins"]:
-            if not data["coins_activas"].get(sym,True): continue
-            closes=C(sym)
-            if not closes: continue
-            ok,rsi,ema,mot=ANALIZA(sym)
-            price=closes[-1]
-            if ok and len(data["pos"])<data["max_entradas"] and not any(p['sym']==sym for p in data["pos"]):
-                if data["auto"]:
-                    data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fec":datetime.now().strftime("%d/%m %H:%M")})
-                    save()
-
-        for p in data["pos"][:]:
-            closes_p=C(p["sym"])
-            if not closes_p: continue
-            price_p=closes_p[-1]
-            gan_bruta=(price_p-p["entry"])/p["entry"]*100
-            if data["auto"] and (gan_bruta>=data["tp_bruto"] or gan_bruta<=-2):
-                            gan_bruta_mxn=p["monto"]*gan_bruta/100
-                            com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
-                            gan_neta_mxn=gan_bruta_mxn-com_e-com_s
-                            gan_neta_pct=gan_bruta-FEE_TOTAL*100
-                            data["capital_actual"]+=p["monto"]+gan_neta_mxn
-                            data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["gan_hoy"]+=gan_neta_mxn
-                            data["salidas"]+=1;
-                            if gan_neta_mxn>0: data["ganadas"]+=1
-                            else: data["perdidas"]+=1
-                            data["historial"].append({"fecha": datetime.now().strftime("%d/%m %H:%M"),"sym": p["sym"],"entry": p["entry"],"exit": price,"monto": p["monto"],"gan_neta_pct": gan_neta_pct,"gan_neta_mxn": gan_neta_mxn,"capital_despues": data["capital_actual"],"bola_despues": data["capital_actual"]/data["max_entradas"]})
-                            data["capital_history"].append({"t": int(time.time()*1000), "cap": data["capital_actual"]})
-                            # === NOTIFICACION SOLO SI GANA ===
-                            if gan_neta_mxn>0:
-                                winrate=(data["ganadas"]/data["salidas"]*100) if data["salidas"] else 0
-                                bola_despues=data["capital_actual"]/data["max_entradas"]
-                                s=p['sym']
-                                msg=f"✅ TRADE GANADO {s}\n\n🟢 ENTRADA: {s} ${p['entry']:.2f}\nBola: ${p['monto']:.2f} - RSI {p.get('rsi_entry',0):.1f}\n{p.get('fecha','')}\n🔴 SALIDA: {s} ${price_p:.2f}\nGan: ${gan_neta_mxn:.2f}"
-                                for u in data["alert_users"]: tg(u, msg)
-                            data["pos"].remove(p); save()
-            time.sleep(60)
+            bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
+            for p in list(data["pos"]):
+                try:
+                    price_p=float(client.get_symbol_ticker(symbol=p['sym'])['price'])
+                except: continue
+                gan_bruta=(price_p-p['entry'])/p['entry']*100
+                if data["auto"] and (gan_bruta>=data["take_profit"] or gan_bruta<=data["stop_loss"]):
+                    gan_bruta_mxn=p["monto"]*gan_bruta/100
+                    com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
+                    gan_neta_mxn=gan_bruta_mxn-com_e-com_s
+                    data["capital_actual"]+=gan_neta_mxn
+                    data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["gan_hoy"]+=gan_neta_mxn
+                    data["salidas"]+=1
+                    if gan_neta_mxn>0: data["ganadas"]+=1
+                    else: data["perdidas"]+=1
+                    data["historial"].append({"fecha": datetime.now().strftime("%d/%m %H:%M"),"sym": p["sym"],"entry": p["entry"],"exit": price_p,"gan": gan_neta_mxn})
+                    data["capital_history"].append({"t": int(time.time()*1000), "cap": data["capital_actual"]})
+                    if gan_neta_mxn>0:
+                        s=p['sym']
+                        msg=f"✅ TRADE GANADO {s}\n\n🟢 ENTRADA: {s} ${p['entry']:.2f}\nBola: ${p['monto']:.2f} - RSI {p.get('rsi_entry',0):.1f}\n{p.get('fecha','')}\n🔴 SALIDA: {s} ${price_p:.2f}\nGan: ${gan_neta_mxn:.2f}"
+                        for u in data["alert_users"]: tg(u, msg)
+                    data["pos"].remove(p); save()
+                time.sleep(60)
         except Exception as e:
             print(e); time.sleep(10)
+
 threading.Thread(target=auto_loop,daemon=True).start()
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)))
+                    
