@@ -314,20 +314,24 @@ def auto_loop():
     time.sleep(5)
     while True:
         try:
-            bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
-            for sym in data["coins"]:
-                if not data["coins_activas"].get(sym,True): continue
-                ok,rsi,ema,mot=ANALIZA(sym)
-                closes=C(sym)
-                if not closes: continue
-                price=closes[-1]
-                if ok and len(data["pos"])<data["max_entradas"] and not any(p['sym']==sym for p in data["pos"]):
-                    if data["auto"]:
-                        data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fecha":datetime.now().strftime("%d/%m %H:%M")}); data["capital_actual"]-=bola; data["entradas"]+=1; save()
-                for p in data["pos"][:]:
-                    if p["sym"]==sym:
-                        gan_bruta=(price-p["entry"])/p["entry"]*100
-                        if data["auto"] and (gan_bruta>=data["tp_bruto"] or rsi>=72 or gan_bruta<=-2):
+        bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
+        for sym in data["coins"]:
+            if not data["coins_activas"].get(sym,True): continue
+            closes=C(sym)
+            if not closes: continue
+            ok,rsi,ema,mot=ANALIZA(sym)
+            price=closes[-1]
+            if ok and len(data["pos"])<data["max_entradas"] and not any(p['sym']==sym for p in data["pos"]):
+                if data["auto"]:
+                    data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fec":datetime.now().strftime("%d/%m %H:%M")})
+                    save()
+
+        for p in data["pos"][:]:
+            closes_p=C(p["sym"])
+            if not closes_p: continue
+            price_p=closes_p[-1]
+            gan_bruta=(price_p-p["entry"])/p["entry"]*100
+            if data["auto"] and (gan_bruta>=data["tp_bruto"] or gan_bruta<=-2):
                             gan_bruta_mxn=p["monto"]*gan_bruta/100
                             com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
                             gan_neta_mxn=gan_bruta_mxn-com_e-com_s
@@ -337,13 +341,14 @@ def auto_loop():
                             data["salidas"]+=1;
                             if gan_neta_mxn>0: data["ganadas"]+=1
                             else: data["perdidas"]+=1
-                            data["historial"].append({"fecha": datetime.now().strftime("%d/%m %H:%M"),"sym": sym,"entry": p["entry"],"exit": price,"monto": p["monto"],"gan_neta_pct": gan_neta_pct,"gan_neta_mxn": gan_neta_mxn,"capital_despues": data["capital_actual"],"bola_despues": data["capital_actual"]/data["max_entradas"]})
+                            data["historial"].append({"fecha": datetime.now().strftime("%d/%m %H:%M"),"sym": p["sym"],"entry": p["entry"],"exit": price,"monto": p["monto"],"gan_neta_pct": gan_neta_pct,"gan_neta_mxn": gan_neta_mxn,"capital_despues": data["capital_actual"],"bola_despues": data["capital_actual"]/data["max_entradas"]})
                             data["capital_history"].append({"t": int(time.time()*1000), "cap": data["capital_actual"]})
                             # === NOTIFICACION SOLO SI GANA ===
                             if gan_neta_mxn>0:
                                 winrate=(data["ganadas"]/data["salidas"]*100) if data["salidas"] else 0
                                 bola_despues=data["capital_actual"]/data["max_entradas"]
-                                msg=(f"✅ TRADE GANADO {sym}\n\n🟢 ENTRADA: {sym} ${p['entry']:.2f}\nBola: ${p['monto']:.2f} - RSI {p.get('rsi_entry',0):.1f}\n{p.get('fecha','')}\n\n💰 SALIDA: {sym} ${price:.2f}\n+${gan_neta_mxn:.2f} MXN ({gan_neta_pct:.2f}% NETO)\nCapital ahora: ${data['capital_actual']:.2f}\nBola ahora: ${bola_despues:.2f} USD\n\n📊 {data['ganadas']}/{data['salidas']} ganadas ({winrate:.0f}% winrate)\nAcum: ${data['gan_acum_total']:.2f} USD")
+                                msg=(f"✅ TRADE GANADO {p["sym"]}\n\n🟢 ENTRADA: {p]
+    sym} ${p['entry']:.2f}\nBola: ${p['monto']:.2f} - RSI {p.get('rsi_entry',0):.1f}\n{p.get('fecha','')}\n\n💰 SALIDA: {sym} ${price:.2f}\n+${gan_neta_mxn:.2f} MXN ({gan_neta_pct:.2f}% NETO)\nCapital ahora: ${data['capital_actual']:.2f}\nBola ahora: ${bola_despues:.2f} USD\n\n📊 {data['ganadas']}/{data['salidas']} ganadas ({winrate:.0f}% winrate)\nAcum: ${data['gan_acum_total']:.2f} USD")
                                 for u in data["alert_users"]: tg(u, msg)
                             data["pos"].remove(p); save()
             time.sleep(60)
