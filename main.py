@@ -128,4 +128,63 @@ def sell_api(sym):
     sym=sym.upper()
     for p in data["pos"][:]:
         if p["sym"]==sym:
-            price=P(sym); gan_bruta_pct=(price-p["entry"])/p["entry"]*100; gan_bruta_mxn=p["monto"]*gan_bruta_pct/100; com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn
+            price=P(sym); gan_bruta_pct=(price-p["entry"])/p["entry"]*100; gan_bruta_mxn=p["monto"]*gan_bruta_pct/100; com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA; gan_neta_mxn=gan_bruta_mxn-com_e-com_s
+            data["capital_actual"]+=p["monto"]+gan_neta_mxn; data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["salidas"]+=1
+            if gan_neta_mxn>0: data["ganadas"]+=1
+            else: data["perdidas"]+=1
+            data["historial"].append({"fecha":datetime.now().strftime("%d/%m %H:%M"),"sym":sym,"entry":p["entry"],"exit":price,"monto":p["monto"],"gan_neta_pct":gan_bruta_pct-FEE_TOTAL*100,"gan_neta_mxn":gan_neta_mxn,"capital_despues":data["capital_actual"],"bola_despues":data["capital_actual"]/data["max_entradas"]})
+            data["capital_history"].append({"t":int(time.time()*1000),"cap":data["capital_actual"]}); data["pos"].remove(p); save(); return jsonify({"ok":True})
+    return jsonify({"ok":False})
+@app.route('/api/toggle', methods=['POST'])
+def toggle(): data["auto"]=not data["auto"]; save(); return jsonify({"auto":data["auto"]})
+@app.route('/dashboard')
+def dash():
+    try:
+        with open('dashboard.html','r',encoding='utf-8') as f:
+            return f.read()
+    except:
+        return "FALTA dashboard.html",500
+@app.route('/webhook', methods=['POST','GET'])
+def webhook():
+    if request.method=='GET': return "ok",200
+    d=request.json or {}
+    if "message" in d:
+        chat=d["message"]["chat"]["id"]
+        if chat not in data["alert_users"]: data["alert_users"].append(chat)
+        save()
+    return {"ok":True}
+def auto_loop():
+    time.sleep(5)
+    while True:
+        try:
+            for p in list(data["pos"]):
+                price_p=P(p['sym'])
+                if price_p==0: continue
+                gan_bruta=(price_p-p['entry'])/p['entry']*100
+                if data["auto"] and (gan_bruta>=data["tp_bruto"] or gan_bruta<=data["sl_pct"] or RSI(C(p['sym']))>=data["rsi_venta"]):
+                    gan_bruta_mxn=p["monto"]*gan_bruta/100; com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA; gan_neta_mxn=gan_bruta_mxn-com_e-com_s
+                    data["capital_actual"]+=p["monto"]+gan_neta_mxn; data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["salidas"]+=1
+                    if gan_neta_mxn>0: data["ganadas"]+=1
+                    else: data["perdidas"]+=1
+                    data["historial"].append({"fecha":datetime.now().strftime("%d/%m %H:%M"),"sym":p["sym"],"entry":p["entry"],"exit":price_p,"monto":p["monto"],"gan_neta_pct":gan_bruta-FEE_TOTAL*100,"gan_neta_mxn":gan_neta_mxn,"capital_despues":data["capital_actual"],"bola_despues":data["capital_actual"]/data["max_entradas"]})
+                    data["capital_history"].append({"t":int(time.time()*1000),"cap":data["capital_actual"]}); data["pos"].remove(p); save()
+            if data["auto"] and len(data["pos"])<data["max_entradas"]:
+                for sym in data["coins"]:
+                    if not data["coins_activas"].get(sym,True): continue
+                    if any(q['sym']==sym for q in data["pos"]): continue
+                    ok,rsi,ema,mot,lim,sug,cerebro=ANALIZA(sym)
+                    if ok:
+                        bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
+                        if bola<5: break
+                        price=P(sym)
+                        if price==0: continue
+                        entry_real=price*(1+SLIPPAGE)
+                        data["pos"].append({"sym":sym,"monto":bola,"entry":entry_real,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fecha":datetime.now().strftime("%d/%m %H:%M")})
+                        data["capital_actual"]-=bola; data["entradas"]+=1; save()
+                        if len(data["pos"])>=data["max_entradas"]: break
+            time.sleep(15)
+        except Exception as e:
+            print(f"ERROR {e}"); time.sleep(10)
+threading.Thread(target=auto_loop,daemon=True).start()
+if __name__=="__main__":
+    app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)))
