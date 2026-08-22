@@ -25,8 +25,12 @@ def P(s):
     try: return float(requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={s}USDT",timeout=3).json()['price'])
     except: return 0
 def C(s):
-    try: return [float(x[4]) for x in requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={s}USDT&interval=1h&limit=80",timeout=5).json()]
-    except: return []
+  try:
+    r = requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={s}USDT&interval=1h&limit=100",timeout=5).json()
+    return [float(x[4]) for x in r]
+  except Exception as e:
+    print(f"ERROR C({s}): {e}")
+    return []
 def RSI(cl,p=14):
     if len(cl)<p+1: return 50
     g=l=0
