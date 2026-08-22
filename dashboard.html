@@ -1,0 +1,57 @@
+<!DOCTYPE html><html><head><meta name=viewport content="width=device-width,initial-scale=1">
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+body{background:#0a0a0a;color:#fff;font-family:Arial;margin:0;padding:8px}
+.header{border:2px solid #ffcc00;border-radius:22px;padding:16px;background:#111;text-align:center}
+.card{background:#151515;border:2px solid #333;border-radius:14px;padding:10px}
+.card.signal-buy{border-color:#00ff88;box-shadow:0 0 10px #00ff88}
+.btn{padding:10px;border-radius:8px;border:none;font-weight:bold;margin:3px;font-size:11px;width:31%}
+.btn-g{background:#00ff88;color:#000}.btn-r{background:#ff4444;color:#fff}.btn-y{background:#ffcc00;color:#000}
+.badge{font-size:10px;padding:3px 6px;border-radius:6px;font-weight:bold;display:inline-block}
+.badge-buy{background:#00ff88;color:#000}.badge-sell{background:#ff4444;color:#fff}.badge-wait{background:#333;color:#888}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
+.config{background:#151515;padding:10px;border-radius:12px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
+.sug-box{background:#1a1a00;border:2px solid #00ff88;border-radius:12px;padding:10px;margin:10px 0;font-size:11px}
+</style></head><body>
+<div class=header><b style=font-size:20px;color:#ffcc00>MÁQUINA BOLA DE NIEVE - ETH $2428</b><div id=infoBola style=margin-top:8px></div></div>
+<div class=config>
+<div>TP: <select id=tp onchange="setTP()"><option value=0.3>0.1% NETO</option><option value=0.4>0.2% NETO</option><option value=0.5>0.3% NETO</option><option value=0.6>0.4% NETO</option></select></div>
+<div>SL: <select id=sl onchange="setSL()"><option value=-1.0>-1%</option><option value=-1.5>-1.5%</option><option value=-2.0>-2%</option><option value=-3.0>-3%</option></select></div>
+<div>RSI Venta: <select id=rsiV onchange="setRsiV()"><option value=68>68</option><option value=70>70</option><option value=72>72</option><option value=75>75</option></select></div>
+<div>P>EMA: <select id=emaF onchange="setEmaF()"><option value="ON">ON Seguro</option><option value="OFF">OFF Agresivo</option></select></div>
+<div>RSI Compra: <select id=rsiGlobal onchange="setRsiGlobal()"><option value=32>32</option><option value=35>35</option><option value=38>38</option><option value=40>40</option><option value=45>45</option><option value=50>50</option></select></div>
+<div>Bolas: <select id=maxEnt onchange="setMax()"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+<div><button class=btn btn-g id=autoBtn onclick="toggleAuto()" style=width:auto>...</button></div>
+</div>
+<div class=sug-box><b style=color:#00ff88>CEREBRO - QUE HACER HOY</b><div id=sugList>Cargando...</div></div>
+<div id=grid class=grid></div><div id=posList style=margin-top:10px></div>
+<script>
+async function load(){
+ let r=await fetch('/api/prices'); let d=await r.json();
+ let r2=await fetch('/api/state'); let s=await r2.json();
+ document.getElementById('infoBola').innerHTML='BOLA: $'+s.bola.toFixed(2)+' USD ('+s.max_entradas+' bolas) = Capital $'+s.capital.toFixed(2)+' | Pos: '+s.pos.length+' | ETH $2428.64';
+ document.getElementById('tp').value=s.tp; document.getElementById('maxEnt').value=s.max_entradas; document.getElementById('rsiGlobal').value=s.rsi_compra; document.getElementById('sl').value=s.sl_pct; document.getElementById('rsiV').value=s.rsi_venta; document.getElementById('emaF').value=s.filtro_ema;
+ document.getElementById('autoBtn').innerText=s.auto?'AUTO ON':'AUTO OFF';
+ let caidas=0; for(let k in d){ if(!d[k].p_ema_ok) caidas++; } let total=Object.keys(d).length; let cerebro='';
+ if(caidas>=6){ cerebro='CAIDA FUERTE '+caidas+'/'+total+' -> MEJOR: SL -2% o -3% | Venta 70 | EMA OFF'; }
+ else if(caidas>=3){ cerebro='LATERAL '+caidas+'/'+total+' -> MEJOR: SL -2% | Venta 72 | EMA ON'; }
+ else { cerebro='ALCISTA '+caidas+'/'+total+' -> MEJOR: SL -1.5% | Venta 75 | EMA ON'; }
+ document.getElementById('sugList').innerHTML=cerebro+'<hr>'+Object.keys(d).map(sym=>'<div><b>'+sym+'</b>: '+d[sym].sug+' RSI '+d[sym].rsi+'</div>').join('');
+ let h=''; for(let sym in d){
+  let hasBuy=d[sym].ok; let cls='card'; if(hasBuy) cls+=' signal-buy';
+  h+='<div class="'+cls+'"><b>'+sym+' $'+d[sym].price.toFixed(2)+'</b><br>RSI '+d[sym].rsi+' lim '+d[sym].limite+'<br>'+d[sym].motivo+'<br><small>'+d[sym].sug+'</small><br><button class=btn btn-g onclick="buy(\''+sym+'\')">COMPRA</button><button class=btn btn-r onclick="sell(\''+sym+'\')">VENDE</button></div>';
+ } document.getElementById('grid').innerHTML=h;
+ let phtml=''; for(let p of s.pos){ phtml+='<div style=background:#111;padding:8px;margin:4px;border-radius:8px;border:1px solid #00ff88'>'+p.sym+' Entry '+p.entry.toFixed(2)+' Ahora '+p.ahora.toFixed(2)+' P/L '+p.gan_neta_pct.toFixed(2)+'% $'+p.gan_neta_mxn.toFixed(2)+'</div>'; }
+ document.getElementById('posList').innerHTML=phtml||'Sin posiciones';
+}
+async function setTP(){ await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tp:parseFloat(document.getElementById('tp').value)})}); }
+async function setSL(){ await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sl_pct:parseFloat(document.getElementById('sl').value)})}); }
+async function setRsiV(){ await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rsi_venta:parseFloat(document.getElementById('rsiV').value)})}); }
+async function setEmaF(){ await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filtro_ema:document.getElementById('emaF').value})}); }
+async function setRsiGlobal(){ await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rsi_compra:parseFloat(document.getElementById('rsiGlobal').value)})}); }
+async function setMax(){ await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max:parseInt(document.getElementById('maxEnt').value)})}); }
+async function toggleAuto(){ await fetch('/api/toggle',{method:'POST'}); load(); }
+async function buy(s){ await fetch('/api/buy/'+s,{method:'POST'}); load(); }
+async function sell(s){ await fetch('/api/sell/'+s,{method:'POST'}); load(); }
+load(); setInterval(load,8000);
+</script></body></html>
