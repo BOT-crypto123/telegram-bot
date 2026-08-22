@@ -11,7 +11,9 @@ data={
     "coins": ["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
     "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
     "max_entradas": 10,"tp_bruto": 0.3,"auto": True,"alert_users": [],
-    "entradas": 0, "salidas": 0, "ganadas": 0, "perdidas": 0,"last_alert": {}, "usd_mxn": 16.96
+    "entradas": 0, "salidas": 0, "ganadas": 0, "perdidas": 0,"last_alert": {}, "usd_mxn": 16.96,
+    "rsi_compra": 35.0,
+    "rsi_por_moneda": {}
 }
 def load():
     if os.path.exists(FILE):
@@ -31,7 +33,6 @@ def P(s):
             if 'price' in j: return float(j['price'])
         except: continue
     return 0
-
 def C(s):
   for url in [
     f"https://data-api.binance.vision/api/v3/klines?symbol={s}USDT&interval=1h&limit=100",
@@ -44,7 +45,6 @@ def C(s):
         return [float(x[4]) for x in r]
     except: continue
   return []
-
 def RSI(cl,p=14):
     if len(cl)<p+1: return 50.0
     g=l=0
@@ -56,29 +56,37 @@ def RSI(cl,p=14):
     if g==0: return 30.0
     rs=g/l
     return 100-(100/(1+rs))
-
 def EMA(cl,p=20):
     if len(cl)<p: return cl[-1] if cl else 0
     k=2/(p+1); e=cl[0]
     for c in cl[1:]: e=c*k+e*(1-k)
     return e
-
 def RSI_HIST(cl):
     if len(cl)<30: return 50.0,50.0
-    # CORREGIDO: ahora si damos suficientes velas
     return RSI(cl[:-1]), RSI(cl)
+def SUGERIR_RSI(sym, closes):
+    if len(closes)<30: return 35, "Sin datos"
+    vols = sum(abs(closes[i]-closes[i-1])/closes[i-1] for i in range(-30,0))/30*100
+    rsi_now = RSI(closes)
+    if vols > 2.5:
+        return 45, f"🔥 Muy volátil {vols:.2f}% -> ponle 45. Ahora RSI {rsi_now:.0f}"
+    elif vols > 1.5:
+        return 40, f"⚡ Volátil {vols:.2f}% -> ponle 40. Ahora RSI {rsi_now:.0f}"
+    else:
+        return 33, f"🧊 Estable {vols:.2f}% -> ponle 32-35. Ahora RSI {rsi_now:.0f}"
 
 def ANALIZA(sym):
     closes=C(sym)
     if len(closes)<30:
-        # Intenta con precio real si no hay klines
         pr=P(sym)
-        return False, 50.0, pr, f"Sin datos ({len(closes)} velas)"
+        return False, 50.0, pr, f"Sin datos ({len(closes)})", 35, ""
     r_prev, r_now = RSI_HIST(closes)
     ema20 = EMA(closes,20); price=closes[-1]
-    ok = (r_now < 35) and (price > ema20*0.995) and (r_now > r_prev)
-    mot = f"RSI {r_now:.1f} {'✅' if r_now<35 else '❌'}<35, P>EMA {'✅' if price>ema20*0.995 else '❌'}, Mom {r_prev:.0f}->{r_now:.0f} {'✅' if r_now>r_prev else '❌'}"
-    return ok, r_now, ema20, mot
+    limite = data.get("rsi_por_moneda",{}).get(sym, data.get("rsi_compra",35.0))
+    ok = (r_now < limite) and (price > ema20*0.995) and (r_now > r_prev)
+    mot = f"RSI {r_now:.1f} {'✅' if r_now<limite else '❌'}<{limite:.0f}, P>EMA {'✅' if price>ema20*0.995 else '❌'}, Mom {r_prev:.0f}->{r_now:.0f} {'✅' if r_now>r_prev else '❌'}"
+    sug_val, sug_txt = SUGERIR_RSI(sym, closes)
+    return ok, r_now, ema20, mot, limite, sug_txt
 
 def get_usdmxn():
     try:
@@ -97,15 +105,15 @@ def tg(uid, txt):
 @app.route('/', methods=['GET','HEAD','POST'])
 def root():
     if request.method=='POST': return webhook()
-    return "V1002.73 NOTI COMBINADA",200
+    return "V1002.74 RSI SELECTOR",200
 
 @app.route('/api/prices')
 def prices():
     out={}
     for sym in data["coins"]:
-        ok,rsi,ema,mot = ANALIZA(sym)
+        ok,rsi,ema,mot,limite,sug = ANALIZA(sym)
         closes=C(sym); price=closes[-1] if closes else P(sym)
-        out[sym]={"price":price,"rsi":round(rsi,1),"ema":round(ema,2),"action":"COMPRAR" if ok else "VENDER" if rsi>72 else "SOSTENER","ok":ok,"motivo":mot,"activa":data["coins_activas"].get(sym,True)}
+        out[sym]={"price":price,"rsi":round(rsi,1),"ema":round(ema,2),"action":"COMPRAR" if ok else "VENDER" if rsi>72 else "SOSTENER","ok":ok,"motivo":mot,"activa":data["coins_activas"].get(sym,True),"limite":limite,"sug":sug}
     return jsonify(out)
 
 @app.route('/api/state')
@@ -133,7 +141,8 @@ def state():
         "winrate":winrate,"fee_total":FEE_TOTAL*100,
         "usd_mxn":usdmxn,"meta_usd":META_MES_USD,"meta_mxn":META_MES_USD*usdmxn,"pct_mes":pct_mes,
         "gan_mes_mxn":data["gan_mes"]*usdmxn,"gan_acum_mxn":data["gan_acum_total"]*usdmxn,
-        "historial": data["historial"][-50:], "capital_history": data["capital_history"][-100:]
+        "historial": data["historial"][-50:], "capital_history": data["capital_history"][-100:],
+        "rsi_compra": data.get("rsi_compra",35),"rsi_por_moneda": data.get("rsi_por_moneda",{})
     })
 
 @app.route('/api/config', methods=['POST'])
@@ -142,6 +151,12 @@ def config():
     if "tp" in j: data["tp_bruto"]=float(j["tp"])
     if "max" in j: data["max_entradas"]=int(j["max"])
     if "toggle_coin" in j: data["coins_activas"][j["toggle_coin"]]=not data["coins_activas"].get(j["toggle_coin"],True)
+    if "rsi_compra" in j: data["rsi_compra"]=float(j["rsi_compra"])
+    if "rsi_coin" in j:
+        sym=j["rsi_coin"]["sym"]; val=float(j["rsi_coin"]["val"])
+        data["rsi_por_moneda"][sym]=val
+    if "rsi_coin_reset" in j:
+        if j["rsi_coin_reset"] in data["rsi_por_moneda"]: del data["rsi_por_moneda"][j["rsi_coin_reset"]]
     save(); return jsonify({"ok":True})
 
 @app.route('/api/buy/<sym>', methods=['POST'])
@@ -150,7 +165,7 @@ def buy_api(sym):
     if len(data["pos"])>=data["max_entradas"]: return jsonify({"ok":False})
     if any(p['sym']==sym for p in data["pos"]): return jsonify({"ok":False})
     bola=data["capital_actual"]/data["max_entradas"]; price=P(sym)
-    ok,rsi,ema,mot=ANALIZA(sym)
+    ok,rsi,ema,mot,lim,sug=ANALIZA(sym)
     data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fecha":datetime.now().strftime("%d/%m %H:%M")})
     data["capital_actual"]-=bola; data["entradas"]+=1; save(); return jsonify({"ok":True})
 
@@ -216,6 +231,7 @@ body{background:#0a0a0a;color:#fff;font-family:Arial;margin:0;padding:8px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 .config{background:#151515;padding:10px;border-radius:12px;margin:10px 0;display:flex;gap:10px;flex-wrap:wrap;justify-content:space-between;align-items:center}
 .info-bola{background:#000;border:1px solid #00ff88;border-radius:10px;padding:8px;margin-top:10px;text-align:center;font-size:12px}
+.sug-box{background:#1a1a00;border:1px solid #ffcc00;border-radius:12px;padding:10px;margin:10px 0;font-size:11px}
 table{width:100%;border-collapse:collapse;background:#151515;border-radius:12px;margin-top:10px;font-size:10px}
 th,td{padding:6px;border-bottom:1px solid #333;text-align:center}
 .neto{color:#00ff88;font-weight:bold}.perdida{color:#ff4444}
@@ -249,7 +265,13 @@ th,td{padding:6px;border-bottom:1px solid #333;text-align:center}
 <span>USD/MXN $<span id=usdmxn>0</span></span><span id=cuantas>0/0</span><span>Win <span id=winrate>0%</span></span><span>NETO <span id=tpNeto>0.1%</span></span>
 </div>
 </div>
-<div class=config><div>💰 Cierre: <select id=tp onchange="setTP()"><option value=0.3>0.1% NETO (0.3% Bruto)</option><option value=0.4>0.2% NETO</option><option value=0.5>0.3% NETO</option><option value=0.6>0.4% NETO</option></select></div><div>🎯 Bolas: <select id=maxEnt onchange="setMax()"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div><div><button class=btn btn-g id=autoBtn onclick="toggleAuto()" style=width:auto>...</button></div></div>
+<div class=config>
+<div>💰 Cierre: <select id=tp onchange="setTP()"><option value=0.3>0.1% NETO (0.3% Bruto)</option><option value=0.4>0.2% NETO</option><option value=0.5>0.3% NETO</option><option value=0.6>0.4% NETO</option></select></div>
+<div>📉 RSI Compra Global: <select id=rsiGlobal onchange="setRsiGlobal()"><option value=32>32 Reservado</option><option value=35>35 Equilibrado</option><option value=38>38 Activo</option><option value=40>40 Medio</option><option value=45>45 Agresivo</option><option value=50>50 Muy Agresivo</option></select> <input id=rsiManual type=number step=0.5 style=width:55px;background:#000;color:#ffcc00;border:1px solid #ffcc00;border-radius:6px;padding:4px> <button onclick="setRsiManual()" class=btn btn-y style=width:auto;padding:5px 8px>SET</button></div>
+<div>🎯 Bolas: <select id=maxEnt onchange="setMax()"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
+<div><button class=btn btn-g id=autoBtn onclick="toggleAuto()" style=width:auto>...</button></div>
+</div>
+<div class=sug-box id=sugBox><b style=color:#ffcc00>🤖 SUGERENCIAS DEL ROBOT (según volatilidad)</b><div id=sugList>Cargando...</div></div>
 <div id=grid class=grid></div>
 <div class=chart-box><b style=color:#ffcc00>📈 EVOLUCIÓN CAPITAL</b><canvas id=capitalChart height=180></canvas></div>
 <table><thead><tr><th>Moneda</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr></thead><tbody id=tbody></tbody></table>
@@ -264,6 +286,10 @@ function initChart(){
 }
 function setProgress(id, pct){let c=document.getElementById(id);let circ=2*Math.PI*72;let off=circ-(pct/100)*circ;c.style.strokeDashoffset=off;}
 async function toggleCoin(sym){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin:sym})});load();}
+async function setRsiGlobal(){let v=parseFloat(document.getElementById('rsiGlobal').value);await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rsi_compra:v})});load();}
+async function setRsiManual(){let v=parseFloat(document.getElementById('rsiManual').value);if(v){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rsi_compra:v})});load();}}
+async function setRsiCoin(sym){let v=parseFloat(document.getElementById('rsi_'+sym).value);await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rsi_coin:{sym:sym,val:v}})});load();}
+async function resetRsiCoin(sym){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rsi_coin_reset:sym})});load();}
 async function load(){
  let r=await fetch('/api/prices'); let d=await r.json();
  let r2=await fetch('/api/state'); let s=await r2.json();
@@ -276,6 +302,7 @@ async function load(){
  document.getElementById('winrate').innerText=s.winrate.toFixed(0)+'%';
  document.getElementById('tpNeto').innerText=(s.tp - s.fee_total).toFixed(1)+'%';
  document.getElementById('tp').value=s.tp; document.getElementById('maxEnt').value=s.max_entradas;
+ document.getElementById('rsiGlobal').value=s.rsi_compra;
  document.getElementById('autoBtn').innerText=s.auto?'AUTO ON 🤖':'AUTO OFF 🔔';
  document.getElementById('infoBola').innerHTML='🎯 BOLA: $'+s.bola.toFixed(2)+' USD / $'+s.bola_mxn.toFixed(0)+' MXN ('+s.max_entradas+' bolas) = $'+s.capital.toFixed(2)+' / '+s.max_entradas;
  setProgress('progressMes', s.pct_mes); setProgress('progressAcum', Math.min(100, s.gan_acum/500*100));
@@ -285,12 +312,15 @@ async function load(){
    let bolas=caps.map(c=>c/s.max_entradas);
    chart.data.labels=labels; chart.data.datasets[0].data=caps; chart.data.datasets[1].data=bolas; chart.update();
  }
+ let sugHtml=''; for(let sym in d){sugHtml+=`<div style=margin:3px 0><b>${sym}</b>: ${d[sym].sug} | Límite actual: ${d[sym].limite} ${s.rsi_por_moneda[sym]?' (personalizado)':''}</div>`;}
+ document.getElementById('sugList').innerHTML=sugHtml;
  let h=''; for(let sym in d){
   let activa=s.coins_activas[sym]; let inPos=s.pos.find(p=>p.sym==sym); let hasBuy=d[sym].ok&&!inPos; let hasSell=inPos&&inPos.debe_vender;
   let cls='card'; if(!activa) cls+=' off'; else if(hasBuy) cls+=' signal-buy';
   let estadoBadge=hasBuy?'<span class=badge badge-buy>COMPRA</span>':hasSell?'<span class=badge badge-sell>VENDE</span>':'<span class=badge badge-wait>ESPERA</span>';
   let onBadge=activa?`<span class="badge badge-on" onclick="toggleCoin('${sym}')">ON 🟢</span>`:`<span class="badge badge-off" onclick="toggleCoin('${sym}')">OFF 🔴</span>`;
-  h+=`<div class="${cls}"><div style=display:flex;justify-content:space-between><div><b>${sym} $${d[sym].price.toFixed(2)}</b></div><div>${onBadge}</div></div><div style=margin:4px 0>${estadoBadge}</div><small>RSI ${d[sym].rsi}</small><br><small style=font-size:9px>${d[sym].motivo}</small><br><div style=margin-top:6px>`;
+  let rsiInput=`<div style=margin-top:4px><input id=rsi_${sym} type=number step=1 value=${d[sym].limite} style=width:45px;background:#000;color:#fff;border:1px solid #555;border-radius:4px><button onclick="setRsiCoin('${sym}')" style=font-size:9px;background:#ffcc00;border:none;border-radius:4px;padding:2px 4px>SET</button> <button onclick="resetRsiCoin('${sym}')" style=font-size:9px;background:#333;color:#fff;border:none;border-radius:4px;padding:2px 4px>RESET</button></div>`;
+  h+=`<div class="${cls}"><div style=display:flex;justify-content:space-between><div><b>${sym} $${d[sym].price.toFixed(2)}</b></div><div>${onBadge}</div></div><div style=margin:4px 0>${estadoBadge}</div><small>RSI ${d[sym].rsi} (lim ${d[sym].limite})</small><br><small style=font-size:9px>${d[sym].motivo}</small><br><small style=font-size:8px;color:#ffcc00>${d[sym].sug}</small>${rsiInput}<br><div style=margin-top:6px>`;
   if(s.auto){h+=`<div style=text-align:center;padding:6px;color:${activa?'#00ff88':'#ff4444'}>${activa?'🤖 ROBOT ON':'⛔ APAGADA'}</div><button class=btn btn-y onclick="location.href='/chart/${sym}'" style=width:95% ${!activa?'disabled':''}>GRÁFICA</button>`;}
   else{let bd=hasBuy&&activa?'':'disabled';let sd=hasSell&&activa?'':'disabled';h+=`<button class=btn btn-g onclick="buy('${sym}')" ${bd}>COMPRAR</button><button class=btn btn-r onclick="sell('${sym}')" ${sd}>VENDER</button><button class=btn btn-y onclick="location.href='/chart/${sym}'" ${!activa?'disabled':''}>GRÁFICA</button>`;}
   h+=`</div></div>`;} document.getElementById('grid').innerHTML=h;
@@ -329,12 +359,10 @@ def auto_loop():
     time.sleep(5)
     while True:
         try:
-            bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
             for p in list(data["pos"]):
                 price_p=P(p['sym'])
                 if price_p==0: continue
                 gan_bruta=(price_p-p['entry'])/p['entry']*100
-                # CORREGIDO: usa tp_bruto, no take_profit
                 if data["auto"] and (gan_bruta>=data["tp_bruto"] or gan_bruta<=-2 or RSI(C(p['sym']))>=72):
                     gan_bruta_mxn=p["monto"]*gan_bruta/100
                     com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
