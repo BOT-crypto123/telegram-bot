@@ -49,7 +49,7 @@ def ANALIZA(sym):
     if len(closes)<30: return False, 50, 0, "Sin datos"
     r_prev, r_now = RSI_HIST(closes)
     ema20 = EMA(closes,20); price=closes[-1]
-    ok = (r_now < 32) and (price > ema20*0.995) and (r_now > r_prev)
+    ok = (r_now < 35) and (price > ema20*0.995) and (r_now > r_prev)
     mot = f"RSI {r_now:.1f} {'✅' if r_now<32 else '❌'}<32, P>EMA {'✅' if price>ema20*0.995 else '❌'}, Mom {r_prev:.0f}->{r_now:.0f} {'✅' if r_now>r_prev else '❌'}"
     return ok, r_now, ema20, mot
 def get_usdmxn():
