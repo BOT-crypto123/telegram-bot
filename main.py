@@ -1,6 +1,5 @@
 import os, json, time, threading, requests
 from flask import Flask, request, jsonify, send_from_directory
-import ccxt
 
 app = Flask(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN","")
@@ -11,7 +10,7 @@ default_data = {
  "capital_actual": 500.0, "capital_inicial": 500.0, "usd_mxn": 16.96,
  "gan_acum_total": 0.0, "gan_acum_mxn": 0.0, "gan_mes": 0.0, "pct_mes": 0.0,
  "ganadas": 0, "salidas": 0, "tp": 0.5, "sl_pct": -1.5, "rsi_compra": 35, "rsi_venta": 70,
- "filtro_ema": "ON", "max_entradas": 3, "auto": True, "pos": [], "historial": [], "capital_history": [],
+ "filtro_ema": "OFF", "max_entradas": 3, "auto": True, "pos": [], "historial": [], "capital_history": [],
  "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"BNB":True,"XRP":True,"ADA":True,"AVAX":True,"DOGE":True},
  "rsi_por_moneda": {}, "alert_users": []
 }
@@ -34,12 +33,6 @@ def tg(chat_id, text):
         }, timeout=10)
     except: pass
 
-# === FIX BINANCE BLOQUEADO EN RENDER USA ===
-ex = ccxt.binance({
-    'enableRateLimit': True,
-    'urls': {'api': {'public': 'https://data-api.binance.vision'}}
-})
-
 SYMS = ["BTC/USDT","ETH/USDT","SOL/USDT","BNB/USDT","XRP/USDT","ADA/USDT","AVAX/USDT","DOGE/USDT"]
 
 def get_rsi(prices, p=14):
@@ -56,28 +49,43 @@ def get_rsi(prices, p=14):
 def get_prices_data():
     out={}
     for sym in SYMS:
+        coin = sym.replace("/USDT","")
+        bin_sym = sym.replace("/","")
         try:
-            ohlcv=ex.fetch_ohlcv(sym,'1h',limit=100)
-            closes=[c[4] for c in ohlcv]
-            price=closes[-1]
-            rsi=get_rsi(closes)
+            url = f"https://data-api.binance.vision/api/v3/klines?symbol={bin_sym}&interval=1h&limit=100"
+            r = requests.get(url, timeout=10)
+            klines = r.json()
+            if isinstance(klines, dict) and "msg" in klines: raise Exception(klines["msg"])
+            closes = [float(k[4]) for k in klines]
+            price = closes[-1]
+            rsi = get_rsi(closes)
             ema = sum(closes[-20:])/20
             p_ema_ok = price > ema if data["filtro_ema"]=="ON" else True
-            limite = data["rsi_por_moneda"].get(sym.replace("/USDT",""), data["rsi_compra"])
+            limite = data["rsi_por_moneda"].get(coin, data["rsi_compra"])
             ok = rsi <= limite and p_ema_ok
             if not p_ema_ok: sug="Espera EMA"; motivo=f"P {price:.2f} < EMA {ema:.2f}"
             elif ok: sug="COMPRA"; motivo=f"RSI {rsi:.1f} <= {limite}"
             else: sug="Espera RSI"; motivo=f"RSI {rsi:.1f} > {limite}"
-            out[sym.replace("/USDT","")] = {"price":price,"rsi":round(rsi,1),"limite":limite,"p_ema_ok":p_ema_ok,"ok":ok,"sug":sug,"motivo":motivo}
+            out[coin] = {"price":price,"rsi":round(rsi,1),"limite":limite,"p_ema_ok":p_ema_ok,"ok":ok,"sug":sug,"motivo":motivo}
         except Exception as e:
-            print(sym,e)
-            out[sym.replace("/USDT","")] = {"price":0,"rsi":50,"limite":35,"p_ema_ok":False,"ok":False,"sug":"Error","motivo":str(e)[:100]}
+            try:
+                url2 = f"https://www.okx.com/api/v5/market/candles?instId={coin}-USDT&bar=1H&limit=100"
+                r2 = requests.get(url2, timeout=10).json()
+                closes2 = [float(x[4]) for x in reversed(r2["data"])]
+                price = closes2[-1]; rsi=get_rsi(closes2); ema=sum(closes2[-20:])/20
+                p_ema_ok = price > ema if data["filtro_ema"]=="ON" else True
+                limite = data["rsi_por_moneda"].get(coin, data["rsi_compra"])
+                ok = rsi <= limite and p_ema_ok
+                out[coin] = {"price":price,"rsi":round(rsi,1),"limite":limite,"p_ema_ok":p_ema_ok,"ok":ok,"sug":"COMPRA" if ok else "ESPERA","motivo":f"OKX RSI {rsi:.1f}"}
+            except Exception as e2:
+                print(f"{coin} error {e} / {e2}")
+                out[coin] = {"price":0,"rsi":50,"limite":35,"p_ema_ok":False,"ok":False,"sug":"Error","motivo":str(e)[:90]}
     return out
 
 @app.route("/", methods=["GET","POST"])
 @app.route("/webhook", methods=["GET","POST"])
 def webhook():
-    if request.method=="GET": return "BOT LIVE - /dashboard",200
+    if request.method=="GET": return "BOT LIVE - /dashboard OK",200
     d=request.get_json(force=True,silent=True) or {}
     if "message" in d and "chat" in d["message"]:
         chat=d["message"]["chat"]["id"]
@@ -90,10 +98,10 @@ def webhook():
 @app.route("/dashboard")
 def dashboard():
     if os.path.exists("dashboard.html"): return send_from_directory(".","dashboard.html")
-    return "Sube dashboard.html a GitHub",404
+    return "No existe dashboard.html - súbelo a GitHub",404
 
 @app.route("/chart/<sym>")
-def chart_page(sym): return f"<h1>{sym}</h1><a href='/dashboard'>Volver</a>"
+def chart_page(sym): return f"<h1>{sym} - Proximamente</h1><a href='/dashboard'>Volver</a>"
 
 @app.route("/api/prices")
 def api_prices(): return jsonify(get_prices_data())
@@ -127,7 +135,7 @@ def api_config():
 def buy_sym(sym):
     if len(data["pos"])>=data["max_entradas"]: return jsonify(ok=False)
     prices=get_prices_data()
-    if sym not in prices: return jsonify(ok=False)
+    if sym not in prices or prices[sym]["price"]==0: return jsonify(ok=False)
     monto=data["capital_actual"]/data["max_entradas"]
     data["pos"].append({"sym":sym,"entry":prices[sym]["price"],"monto":monto,"ahora":prices[sym]["price"],"gan_neta_pct":0,"gan_neta_mxn":0,"debe_vender":False})
     save(); return jsonify(ok=True)
@@ -166,7 +174,7 @@ def auto_loop():
                         data["pos"].remove(p); save()
                 if len(data["pos"])<data["max_entradas"]:
                     for sym,info in prices.items():
-                        if info["ok"] and data["coins_activas"].get(sym,True) and not any(x["sym"]==sym for x in data["pos"]):
+                        if info["price"]>0 and info["ok"] and data["coins_activas"].get(sym,True) and not any(x["sym"]==sym for x in data["pos"]):
                             if len(data["pos"])>=data["max_entradas"]: break
                             monto=data["capital_actual"]/data["max_entradas"]; data["pos"].append({"sym":sym,"entry":info["price"],"monto":monto,"ahora":info["price"],"gan_neta_pct":0,"gan_neta_mxn":0,"debe_vender":False}); save()
                             for uid in data["alert_users"]: tg(uid, f"🔵 COMPRA {sym} ${info['price']:.2f} RSI {info['rsi']}")
