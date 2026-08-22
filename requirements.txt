@@ -1,2 +1,4 @@
 flask
 requests
+ccxt
+python-telegram-bot
