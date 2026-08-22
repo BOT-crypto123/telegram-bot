@@ -60,19 +60,19 @@ th,td{padding:6px;border-bottom:1px solid #333;text-align:center}
 </div>
 <div class=config>
 <div>💰 Cierre: <select id=tp onchange="setTP()"><option value=0.3>0.1% NETO (0.3% Bruto)</option><option value=0.4>0.2% NETO</option><option value=0.5>0.3% NETO</option><option value=0.6>0.4% NETO</option></select></div>
-<div>📉 SL: <select id=sl onchange="setSL()"><option value=-1>-1%</option><option value=-2>-2%</option><option value=-3>-3%</option><option value=-4>-4%</option></select></div>
-<div>📈 Venta: <select id=rsiV onchange="setRsiV()"><option value=70>70</option><option value=72>72</option><option value=75>75</option><option value=78>78</option></select></div>
-<div>🧠 EMA: <select id=ema onchange="setEMA()"><option value=ON>ON</option><option value=OFF>OFF</option></select></div>
-<div>📉 RSI Global: <select id=rsiGlobal onchange="setRsiGlobal()"><option value=32>32</option><option value=35>35</option><option value=38>38</option><option value=40>40</option><option value=45>45</option><option value=50>50</option></select> <input id=rsiManual type=number step=0.5 style=width:55px;background:#000;color:#ffcc00;border:1px solid #ffcc00;border-radius:6px;padding:4px> <button onclick="setRsiManual()" style=background:#ffcc00;border:none;border-radius:4px;padding:4px>SET</button></div>
+<div>🛑 SL: <select id=sl onchange="setSL()"><option value=-1.0>-1%</option><option value=-1.5>-1.5%</option><option value=-2.0>-2%</option><option value=-3.0>-3%</option></select></div>
+<div>📤 RSI Venta: <select id=rsiV onchange="setRsiV()"><option value=68>68</option><option value=70>70</option><option value=72>72</option><option value=75>75</option></select></div>
+<div>📈 P>EMA: <select id=emaF onchange="setEmaF()"><option value="ON">ON Seguro</option><option value="OFF">OFF Agresivo</option></select></div>
+<div>📉 RSI Compra Global: <select id=rsiGlobal onchange="setRsiGlobal()"><option value=32>32 Reservado</option><option value=35>35 Equilibrado</option><option value=38>38 Activo</option><option value=40>40 Medio</option><option value=45>45 Agresivo</option><option value=50>50 Muy Agresivo</option></select> <input id=rsiManual type=number step=0.5 style=width:55px;background:#000;color:#ffcc00;border:1px solid #ffcc00;border-radius:6px;padding:4px> <button onclick="setRsiManual()" class=btn btn-y style=width:auto;padding:5px 8px>SET</button></div>
 <div>🎯 Bolas: <select id=maxEnt onchange="setMax()"><option>3</option><option>4</option><option>5</option><option>6</option><option>7</option><option>8</option><option>9</option><option>10</option></select></div>
 <div><button class=btn btn-g id=autoBtn onclick="toggleAuto()" style=width:auto>...</button></div>
 </div>
-<div class=sug-box><b style=color:#ffcc00>🤖 CEREBRO - QUE HACER</b><div id=sugList>Cargando...</div></div>
+<div class=sug-box id=sugBox style="border:2px solid #00ff88"><b style=color:#00ff88>🤖 CEREBRO DEL ROBOT - QUÉ ES LO MEJOR HOY</b><div id=sugList style="margin-top:6px">Cargando...</div></div>
 <div id=grid class=grid></div>
 <div class=chart-box><b style=color:#ffcc00>📈 EVOLUCIÓN CAPITAL</b><canvas id=capitalChart height=180></canvas></div>
 <table><thead><tr><th>Moneda</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr></thead><tbody id=tbody></tbody></table>
 <div class=chart-box><b style=color:#00ff88>📋 REGISTRO COMPLETO</b>
-<table><thead><tr><th>Fecha</th><th>Moneda</th><th>Monto</th><th>Entry->Exit</th><th>% Neta</th><th>Gan MXN</th><th>Capital</th><th>Bola</th></tr></thead><tbody id=histBody></tbody></table>
+<table id=histTable><thead><tr><th>Fecha</th><th>Moneda</th><th>Monto</th><th>Entry->Exit</th><th>% Neta</th><th>Gan MXN</th><th>Capital</th><th>Bola</th></tr></thead><tbody id=histBody></tbody></table>
 </div>
 <script>
 let chart;
@@ -97,12 +97,11 @@ async function load(){
  document.getElementById('cuantas').innerText=s.ganadas+'/'+s.salidas;
  document.getElementById('winrate').innerText=s.winrate.toFixed(0)+'%';
  document.getElementById('tpNeto').innerText=(s.tp - s.fee_total).toFixed(1)+'%';
- document.getElementById('tp').value=s.tp;
+ document.getElementById('tp').value=s.tp; document.getElementById('maxEnt').value=s.max_entradas;
+ document.getElementById('rsiGlobal').value=s.rsi_compra;
  document.getElementById('sl').value=s.sl_pct;
  document.getElementById('rsiV').value=s.rsi_venta;
- document.getElementById('ema').value=s.filtro_ema;
- document.getElementById('maxEnt').value=s.max_entradas;
- document.getElementById('rsiGlobal').value=s.rsi_compra;
+ document.getElementById('emaF').value=s.filtro_ema;
  document.getElementById('autoBtn').innerText=s.auto?'AUTO ON 🤖':'AUTO OFF 🔔';
  document.getElementById('infoBola').innerHTML='🎯 BOLA: $'+s.bola.toFixed(2)+' USD / $'+s.bola_mxn.toFixed(0)+' MXN ('+s.max_entradas+' bolas) = $'+s.capital.toFixed(2)+' / '+s.max_entradas;
  setProgress('progressMes', s.pct_mes); setProgress('progressAcum', Math.min(100, s.gan_acum/500*100));
@@ -112,21 +111,30 @@ async function load(){
    let bolas=caps.map(c=>c/s.max_entradas);
    chart.data.labels=labels; chart.data.datasets[0].data=caps; chart.data.datasets[1].data=bolas; chart.update();
  }
- let sugHtml=''; for(let sym in d){sugHtml+='<div style=margin:4px 0;padding:4px;background:#000;border-radius:6px><b>'+sym+'</b>: '+d[sym].sug+' <br><span style=color:#00ff88>'+d[sym].cerebro+'</span> | Límite: '+d[sym].limite+'</div>';}
- document.getElementById('sugList').innerHTML=sugHtml;
+ let caidas = 0; for(let k in d){ if(!d[k].p_ema_ok) caidas++; }
+ let total = Object.keys(d).length;
+ let cerebro = '';
+ if(caidas >= 6){
+   cerebro = `<div style=color:#ff4444>📉 CAIDA FUERTE ${caidas}/${total} bajo EMA</div>👉 <b>LO MEJOR HOY:</b><br>• SL: <b>-2% o -3%</b><br>• RSI Venta: <b>70</b><br>• Filtro P>EMA: <b>OFF</b><br><small style=color:#aaa>Si lo dejas ON no va a comprar nada hoy.</small>`;
+ } else if(caidas >= 3){
+   cerebro = `<div style=color:#ffcc00>⚠️ MERCADO LATERAL BAJISTA ${caidas}/${total}</div>👉 <b>LO MEJOR:</b> SL -2% | RSI Venta 72 | EMA ON`;
+ } else {
+   cerebro = `<div style=color:#00ff88>📈 MERCADO ALCISTA ${caidas}/${total}</div>👉 <b>LO MEJOR:</b> SL -1.5% | RSI Venta 75 | EMA ON`;
+ }
+ document.getElementById('sugList').innerHTML = cerebro + '<hr style=margin:6px 0;border-color:#333><b>Por moneda:</b><br>' + Object.keys(d).map(sym=>`<div><b>${sym}</b>: ${d[sym].sug} | Límite: ${d[sym].limite}</div>`).join('');
  let h=''; for(let sym in d){
   let activa=s.coins_activas[sym]; let inPos=s.pos.find(p=>p.sym==sym); let hasBuy=d[sym].ok&&!inPos; let hasSell=inPos&&inPos.debe_vender;
   let cls='card'; if(!activa) cls+=' off'; else if(hasBuy) cls+=' signal-buy';
   let estadoBadge=hasBuy?'<span class=badge badge-buy>COMPRA</span>':hasSell?'<span class=badge badge-sell>VENDE</span>':'<span class=badge badge-wait>ESPERA</span>';
-  let onBadge=activa?'<span class="badge badge-on" onclick="toggleCoin(\''+sym+'\')">ON 🟢</span>':'<span class="badge badge-off" onclick="toggleCoin(\''+sym+'\')">OFF 🔴</span>';
-  let rsiInput='<div style=margin-top:4px><input id=rsi_'+sym+' type=number step=1 value='+d[sym].limite+' style=width:45px;background:#000;color:#fff;border:1px solid #555;border-radius:4px><button onclick="setRsiCoin(\''+sym+'\')" style=font-size:9px;background:#ffcc00;border:none;border-radius:4px;padding:2px 4px>SET</button> <button onclick="resetRsiCoin(\''+sym+'\')" style=font-size:9px;background:#333;color:#fff;border:none;border-radius:4px;padding:2px 4px>RESET</button></div>';
-  h+='<div class="'+cls+'"><div style=display:flex;justify-content:space-between><div><b>'+sym+' $'+d[sym].price.toFixed(2)+'</b></div><div>'+onBadge+'</div></div><div style=margin:4px 0>'+estadoBadge+'</div><small>RSI '+d[sym].rsi+' (lim '+d[sym].limite+')</small><br><small style=font-size:9px>'+d[sym].motivo+'</small><br><small style=font-size:8px;color:#ffcc00>'+d[sym].sug+'</small><br><small style=font-size:8px;color:#00ff88>'+d[sym].cerebro+'</small>'+rsiInput+'<br><div style=margin-top:6px>';
-  if(s.auto){h+='<div style=text-align:center;padding:6px;color:'+(activa?'#00ff88':'#ff4444')+'>'+(activa?'🤖 ROBOT ON':'⛔ APAGADA')+'</div><button class=btn btn-y onclick="location.href=\'/chart/'+sym+'\'" '+(activa?'':'disabled')+'>GRÁFICA</button>';}
-  else{let bd=hasBuy&&activa?'':'disabled';let sd=hasSell&&activa?'':'disabled';h+='<button class=btn btn-g onclick="buy(\''+sym+'\')" '+bd+'>COMPRAR</button><button class=btn btn-r onclick="sell(\''+sym+'\')" '+sd+'>VENDER</button><button class=btn btn-y onclick="location.href=\'/chart/'+sym+'\'" '+(activa?'':'disabled')+'>GRÁFICA</button>';}
-  h+='</div></div>';} document.getElementById('grid').innerHTML=h;
- let tb=''; for(let p of s.pos){tb+='<tr><td>'+p.sym+'</td><td>'+p.entry.toFixed(2)+'</td><td>'+p.ahora.toFixed(2)+'</td><td class=neto>'+p.gan_neta_pct.toFixed(2)+'% $'+p.gan_neta_mxn.toFixed(2)+'</td><td>'+(s.auto?'Robot':'<button class=btn btn-r onclick="sell(\''+p.sym+'\')">Cerrar</button>')+'</td></tr>';}
+  let onBadge=activa?`<span class="badge badge-on" onclick="toggleCoin('${sym}')">ON 🟢</span>`:`<span class="badge badge-off" onclick="toggleCoin('${sym}')">OFF 🔴</span>`;
+  let rsiInput=`<div style=margin-top:4px><input id=rsi_${sym} type=number step=1 value=${d[sym].limite} style=width:45px;background:#000;color:#fff;border:1px solid #555;border-radius:4px><button onclick="setRsiCoin('${sym}')" style=font-size:9px;background:#ffcc00;border:none;border-radius:4px;padding:2px 4px>SET</button> <button onclick="resetRsiCoin('${sym}')" style=font-size:9px;background:#333;color:#fff;border:none;border-radius:4px;padding:2px 4px>RESET</button></div>`;
+  h+=`<div class="${cls}"><div style=display:flex;justify-content:space-between><div><b>${sym} $${d[sym].price.toFixed(2)}</b></div><div>${onBadge}</div></div><div style=margin:4px 0>${estadoBadge}</div><small>RSI ${d[sym].rsi} (lim ${d[sym].limite})</small><br><small style=font-size:9px>${d[sym].motivo}</small><br><small style=font-size:8px;color:#ffcc00>${d[sym].sug}</small>${rsiInput}<br><div style=margin-top:6px>`;
+  if(s.auto){h+=`<div style=text-align:center;padding:6px;color:${activa?'#00ff88':'#ff4444'}>${activa?'🤖 ROBOT ON':'⛔ APAGADA'}</div><button class=btn btn-y onclick="location.href='/chart/${sym}'" style=width:95% ${!activa?'disabled':''}>GRÁFICA</button>`;}
+  else{let bd=hasBuy&&activa?'':'disabled';let sd=hasSell&&activa?'':'disabled';h+=`<button class=btn btn-g onclick="buy('${sym}')" ${bd}>COMPRAR</button><button class=btn btn-r onclick="sell('${sym}')" ${sd}>VENDER</button><button class=btn btn-y onclick="location.href='/chart/${sym}'" ${!activa?'disabled':''}>GRÁFICA</button>`;}
+  h+=`</div></div>`;} document.getElementById('grid').innerHTML=h;
+ let tb=''; for(let p of s.pos){tb+=`<tr><td>${p.sym}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td class=neto>${p.gan_neta_pct.toFixed(2)}% $${p.gan_neta_mxn.toFixed(2)}</td><td>${s.auto?'Robot':`<button class=btn btn-r onclick="sell('${p.sym}')">Cerrar</button>`}</td></tr>`;}
  document.getElementById('tbody').innerHTML=tb||'<tr><td colspan=5 style=text-align:center;color:#666>Sin posiciones</td></tr>';
- let hist=''; for(let i=s.historial.length-1;i>=0;i--){let tr=s.historial[i];let cls=tr.gan_neta_mxn>=0?'neto':'perdida';hist+='<tr><td>'+tr.fecha+'</td><td>'+tr.sym+'</td><td>$'+tr.monto.toFixed(2)+'</td><td>'+tr.entry.toFixed(2)+'->'+tr.exit.toFixed(2)+'</td><td class='+cls+'>'+tr.gan_neta_pct.toFixed(2)+'%</td><td class='+cls+'>$'+tr.gan_neta_mxn.toFixed(2)+'</td><td>$'+tr.capital_despues.toFixed(2)+'</td><td>$'+tr.bola_despues.toFixed(2)+'</td></tr>';}
+ let hist=''; for(let i=s.historial.length-1;i>=0;i--){let tr=s.historial[i];let cls=tr.gan_neta_mxn>=0?'neto':'perdida';hist+=`<tr><td>${tr.fecha}</td><td>${tr.sym}</td><td>$${tr.monto.toFixed(2)}</td><td>${tr.entry.toFixed(2)}->${tr.exit.toFixed(2)}</td><td class=${cls}>${tr.gan_neta_pct.toFixed(2)}%</td><td class=${cls}>$${tr.gan_neta_mxn.toFixed(2)}</td><td>$${tr.capital_despues.toFixed(2)}</td><td>$${tr.bola_despues.toFixed(2)}</td></tr>`;}
  document.getElementById('histBody').innerHTML=hist||'<tr><td colspan=8 style=text-align:center;color:#666">Sin trades aún</td></tr>';
 }
 async function buy(s){await fetch('/api/buy/'+s,{method:'POST'});load();}
@@ -134,7 +142,7 @@ async function sell(s){await fetch('/api/sell/'+s,{method:'POST'});load();}
 async function setTP(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tp:parseFloat(document.getElementById('tp').value)})});}
 async function setSL(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sl_pct:parseFloat(document.getElementById('sl').value)})});}
 async function setRsiV(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rsi_venta:parseFloat(document.getElementById('rsiV').value)})});}
-async function setEMA(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filtro_ema:document.getElementById('ema').value})});}
+async function setEmaF(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filtro_ema:document.getElementById('emaF').value})});}
 async function setMax(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max:parseInt(document.getElementById('maxEnt').value)})});}
 async function toggleAuto(){await fetch('/api/toggle',{method:'POST'});load();}
 initChart();load(); setInterval(load,8000);
