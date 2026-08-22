@@ -115,4 +115,35 @@ async function load(){
  let total = Object.keys(d).length;
  let cerebro = '';
  if(caidas >= 6){
-   cerebro = `<div style=color:#ff4444>📉 CAIDA FUERTE ${caidas}/${total} bajo EMA</div>👉 <b>LO MEJOR HOY:</b><br>• SL: <b>-2% o -3%</b><br>• RSI V
+   cerebro = `<div style=color:#ff4444>📉 CAIDA FUERTE ${caidas}/${total} bajo EMA</div>👉 <b>LO MEJOR HOY:</b><br>• SL: <b>-2% o -3%</b><br>• RSI Venta: <b>70 (deja correr)</b><br>• Filtro P>EMA: <b>OFF</b><br><small style=color:#aaa>Si lo dejas ON no va a comprar nada hoy.</small>`;
+ } else if(caidas >= 3){
+   cerebro = `<div style=color:#ffcc00>⚠️ MERCADO LATERAL BAJISTA ${caidas}/${total}</div>👉 <b>LO MEJOR:</b> SL -2% | RSI Venta 72 | EMA ON`;
+ } else {
+   cerebro = `<div style=color:#00ff88>📈 MERCADO ALCISTA ${caidas}/${total} bajo EMA (winrate 85%)</div>👉 <b>LO MEJOR:</b> SL -1.5% | RSI Venta 75 (deja correr) | EMA ON (seguro, winrate 85%)`;
+ }
+ document.getElementById('sugList').innerHTML = cerebro + '<hr style=margin:6px 0;border-color:#333><b>Por moneda:</b><br>' + Object.keys(d).map(sym=>`<div><b>${sym}</b>: ${d[sym].sug} | Límite: ${d[sym].limite}</div>`).join('');
+ let h=''; for(let sym in d){
+  let activa=s.coins_activas[sym]; let inPos=s.pos.find(p=>p.sym==sym); let hasBuy=d[sym].ok&&!inPos; let hasSell=inPos&&inPos.debe_vender;
+  let cls='card'; if(!activa) cls+=' off'; else if(hasBuy) cls+=' signal-buy';
+  let estadoBadge=hasBuy?'<span class=badge badge-buy>COMPRA</span>':hasSell?'<span class=badge badge-sell>VENDE</span>':'<span class=badge badge-wait>ESPERA</span>';
+  let onBadge=activa?`<span class="badge badge-on" onclick="toggleCoin('${sym}')">ON 🟢</span>`:`<span class="badge badge-off" onclick="toggleCoin('${sym}')">OFF 🔴</span>`;
+  let rsiInput=`<div style=margin-top:4px><input id=rsi_${sym} type=number step=1 value=${d[sym].limite} style=width:45px;background:#000;color:#fff;border:1px solid #555;border-radius:4px><button onclick="setRsiCoin('${sym}')" style=font-size:9px;background:#ffcc00;border:none;border-radius:4px;padding:2px 4px>SET</button> <button onclick="resetRsiCoin('${sym}')" style=font-size:9px;background:#333;color:#fff;border:none;border-radius:4px;padding:2px 4px>RESET</button></div>`;
+  h+=`<div class="${cls}"><div style=display:flex;justify-content:space-between><div><b>${sym} $${d[sym].price.toFixed(2)}</b></div><div>${onBadge}</div></div><div style=margin:4px 0>${estadoBadge}</div><small>RSI ${d[sym].rsi} (lim ${d[sym].limite})</small><br><small style=font-size:9px>${d[sym].motivo}</small><br><small style=font-size:8px;color:#ffcc00>${d[sym].sug}</small>${rsiInput}<br><div style=margin-top:6px>`;
+  if(s.auto){h+=`<div style=text-align:center;padding:6px;color:${activa?'#00ff88':'#ff4444'}>${activa?'🤖 ROBOT ON':'⛔ APAGADA'}</div><button class=btn btn-y onclick="location.href='/chart/${sym}'" style=width:95% ${!activa?'disabled':''}>GRÁFICA</button>`;}
+  else{let bd=hasBuy&&activa?'':'disabled';let sd=hasSell&&activa?'':'disabled';h+=`<button class=btn btn-g onclick="buy('${sym}')" ${bd}>COMPRAR</button><button class=btn btn-r onclick="sell('${sym}')" ${sd}>VENDER</button><button class=btn btn-y onclick="location.href='/chart/${sym}'" ${!activa?'disabled':''}>GRÁFICA</button>`;}
+  h+=`</div></div>`;} document.getElementById('grid').innerHTML=h;
+ let tb=''; for(let p of s.pos){tb+=`<tr><td>${p.sym}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td class=neto>${p.gan_neta_pct.toFixed(2)}% $${p.gan_neta_mxn.toFixed(2)}</td><td>${s.auto?'Robot':`<button class=btn btn-r onclick="sell('${p.sym}')">Cerrar</button>`}</td></tr>`;}
+ document.getElementById('tbody').innerHTML=tb||'<tr><td colspan=5 style=text-align:center;color:#666>Sin posiciones</td></tr>';
+ let hist=''; for(let i=s.historial.length-1;i>=0;i--){let tr=s.historial[i];let cls=tr.gan_neta_mxn>=0?'neto':'perdida';hist+=`<tr><td>${tr.fecha}</td><td>${tr.sym}</td><td>$${tr.monto.toFixed(2)}</td><td>${tr.entry.toFixed(2)}->${tr.exit.toFixed(2)}</td><td class=${cls}>${tr.gan_neta_pct.toFixed(2)}%</td><td class=${cls}>$${tr.gan_neta_mxn.toFixed(2)}</td><td>$${tr.capital_despues.toFixed(2)}</td><td>$${tr.bola_despues.toFixed(2)}</td></tr>`;}
+ document.getElementById('histBody').innerHTML=hist||'<tr><td colspan=8 style=text-align:center;color:#666">Sin trades aún</td></tr>';
+}
+async function buy(s){await fetch('/api/buy/'+s,{method:'POST'});load();}
+async function sell(s){await fetch('/api/sell/'+s,{method:'POST'});load();}
+async function setTP(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tp:parseFloat(document.getElementById('tp').value)})});}
+async function setSL(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({sl_pct:parseFloat(document.getElementById('sl').value)})});}
+async function setRsiV(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({rsi_venta:parseFloat(document.getElementById('rsiV').value)})});}
+async function setEmaF(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({filtro_ema:document.getElementById('emaF').value})});}
+async function setMax(){await fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max:parseInt(document.getElementById('maxEnt').value)})});}
+async function toggleAuto(){await fetch('/api/toggle',{method:'POST'});load();}
+initChart();load(); setInterval(load,8000);
+</script></body></html>
