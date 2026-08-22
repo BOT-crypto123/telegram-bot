@@ -4,7 +4,10 @@ from datetime import datetime
 app = Flask(__name__)
 FILE="bot_data.json"
 FEE_ENTRADA=0.001; FEE_SALIDA=0.001; FEE_TOTAL=0.002
+SLIPPAGE=0.0005 # 0.05% deslizamiento real
 META_MES_USD=500.0
+MODO_SIMULACION=True # <--- MODO REAL SIMULADO ON
+
 data={
     "base_inicial": 0.0,"capital_actual": 500.0,"gan_acum_total": 0.0,"gan_mes": 0.0,"gan_hoy": 0.0,
     "pos": [],"historial": [],"capital_history": [{"t": int(time.time()*1000), "cap": 500.0}],
@@ -105,7 +108,7 @@ def tg(uid, txt):
 @app.route('/', methods=['GET','HEAD','POST'])
 def root():
     if request.method=='POST': return webhook()
-    return "V1002.74 RSI SELECTOR",200
+    return "V1002.80 SIM REAL + AUTO BUY",200
 
 @app.route('/api/prices')
 def prices():
@@ -162,11 +165,16 @@ def config():
 @app.route('/api/buy/<sym>', methods=['POST'])
 def buy_api(sym):
     sym=sym.upper()
-    if len(data["pos"])>=data["max_entradas"]: return jsonify({"ok":False})
-    if any(p['sym']==sym for p in data["pos"]): return jsonify({"ok":False})
-    bola=data["capital_actual"]/data["max_entradas"]; price=P(sym)
+    if len(data["pos"])>=data["max_entradas"]: return jsonify({"ok":False, "msg":"max bolas"})
+    if any(p['sym']==sym for p in data["pos"]): return jsonify({"ok":False, "msg":"ya en pos"})
+    bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
+    if bola < 5: return jsonify({"ok":False})
+    price=P(sym)
+    if price==0: return jsonify({"ok":False})
     ok,rsi,ema,mot,lim,sug=ANALIZA(sym)
-    data["pos"].append({"sym":sym,"monto":bola,"entry":price,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fecha":datetime.now().strftime("%d/%m %H:%M")})
+    # Sangrado real: entry con slippage + comision descontada del capital
+    entry_real = price * (1 + SLIPPAGE)
+    data["pos"].append({"sym":sym,"monto":bola,"entry":entry_real,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fecha":datetime.now().strftime("%d/%m %H:%M")})
     data["capital_actual"]-=bola; data["entradas"]+=1; save(); return jsonify({"ok":True})
 
 @app.route('/api/sell/<sym>', methods=['POST'])
@@ -238,7 +246,7 @@ th,td{padding:6px;border-bottom:1px solid #333;text-align:center}
 .chart-box{background:#151515;border-radius:12px;padding:10px;margin-top:12px}
 </style></head><body>
 <div class=header>
-<b style=font-size:20px;color:#ffcc00>💰 MÁQUINA BOLA DE NIEVE</b>
+<b style=font-size:20px;color:#ffcc00>💰 MÁQUINA BOLA DE NIEVE - REAL FEES</b>
 <div class=circs>
 <div class=circ-box>
 <svg width=175 height=175><circle class=circ-bg cx=87.5 cy=87.5 r=72></circle><circle id=progressMes class="circ-progress" cx=87.5 cy=87.5 r=72 stroke-dasharray="452" stroke-dashoffset="452"></circle></svg>
@@ -359,6 +367,7 @@ def auto_loop():
     time.sleep(5)
     while True:
         try:
+            # --- VENTA ---
             for p in list(data["pos"]):
                 price_p=P(p['sym'])
                 if price_p==0: continue
@@ -376,10 +385,30 @@ def auto_loop():
                     data["capital_history"].append({"t": int(time.time()*1000), "cap": data["capital_actual"]})
                     if gan_neta_mxn>0:
                         s=p['sym']
-                        msg=f"✅ TRADE GANADO {s}\n\n🟢 ENTRADA: {s} ${p['entry']:.2f}\nBola: ${p['monto']:.2f} - RSI {p.get('rsi_entry',0):.1f}\n{p.get('fecha','')}\n🔴 SALIDA: {s} ${price_p:.2f}\nGan: ${gan_neta_mxn:.2f}"
+                        msg=f"✅ TRADE GANADO {s}\n🟢 ENTRADA: {s} ${p['entry']:.2f}\nBola: ${p['monto']:.2f}\n🔴 SALIDA: {s} ${price_p:.2f}\nGan: ${gan_neta_mxn:.2f} ({gan_bruta-FEE_TOTAL*100:.2f}% neto)"
                         for u in data["alert_users"]: tg(u, msg)
                     data["pos"].remove(p); save()
-            time.sleep(60)
+
+            # --- COMPRA AUTOMATICA (ESTO TE FALTABA) ---
+            if data["auto"]:
+                if len(data["pos"]) < data["max_entradas"]:
+                    for sym in data["coins"]:
+                        if not data["coins_activas"].get(sym,True): continue
+                        if any(p['sym']==sym for p in data["pos"]): continue
+                        ok, rsi, ema, mot, lim, sug = ANALIZA(sym)
+                        if ok:
+                            bola = data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
+                            if bola < 5: break
+                            price = P(sym)
+                            if price==0: continue
+                            entry_real = price * (1 + SLIPPAGE) # entra 0.05% arriba por slippage real
+                            data["pos"].append({"sym":sym,"monto":bola,"entry":entry_real,"ahora":price,"rsi_entry":rsi,"motivo":mot,"fecha":datetime.now().strftime("%d/%m %H:%M")})
+                            data["capital_actual"]-=bola
+                            data["entradas"]+=1
+                            print(f"COMPRA SIMULADA REAL {sym} a {entry_real:.2f} | Bola ${bola:.2f} | Comisión entrada ${bola*FEE_ENTRADA:.4f}")
+                            save()
+                            if len(data["pos"]) >= data["max_entradas"]: break
+            time.sleep(15)
         except Exception as e:
             print(f"AUTO_LOOP ERROR: {e}"); time.sleep(10)
 
