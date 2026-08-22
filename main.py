@@ -9,7 +9,7 @@ data={
     "base_inicial": 0.0,"capital_actual": 500.0,"gan_acum_total": 0.0,"gan_mes": 0.0,"gan_hoy": 0.0,
     "pos": [],"historial": [],"capital_history": [{"t": int(time.time()*1000), "cap": 500.0}],
     "coins": ["BTC","ETH","SOL","XRP","DOGE","AVAX","LINK","ADA"],
-    "coins_activas": {"BTC":False,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
+    "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"XRP":True,"DOGE":True,"AVAX":True,"LINK":True,"ADA":True},
     "max_entradas": 10,"tp_bruto": 0.3,"auto": True,"alert_users": [],
     "entradas": 0, "salidas": 0, "ganadas": 0, "perdidas": 0,"last_alert": {}, "usd_mxn": 16.96
 }
@@ -22,8 +22,16 @@ def save():
     except: pass
 load()
 def P(s):
-    try: return float(requests.get(f"https://data-api.binance.vision/api/v3/ticker/price?symbol={s}USDT",timeout=3).json()['price'])
-    except: return 0
+    for url in [
+        f"https://data-api.binance.vision/api/v3/ticker/price?symbol={s}USDT",
+        f"https://api.binance.com/api/v3/ticker/price?symbol={s}USDT"
+    ]:
+        try:
+            j=requests.get(url,timeout=4).json()
+            if 'price' in j: return float(j['price'])
+        except: continue
+    return 0
+
 def C(s):
   for url in [
     f"https://data-api.binance.vision/api/v3/klines?symbol={s}USDT&interval=1h&limit=100",
@@ -32,38 +40,46 @@ def C(s):
   ]:
     try:
       r = requests.get(url, timeout=5).json()
-      if isinstance(r, list) and len(r)>10:
+      if isinstance(r, list) and len(r)>20:
         return [float(x[4]) for x in r]
-    except Exception as e:
-      print(f"FALLO {url} {s}: {e}")
-      continue
-  print(f"ERROR C({s}): vacio")
+    except: continue
   return []
+
 def RSI(cl,p=14):
-    if len(cl)<p+1: return 50
+    if len(cl)<p+1: return 50.0
     g=l=0
     for i in range(1,p+1):
         d=cl[-i]-cl[-i-1]
         if d>0: g+=d
         else: l+=-d
-    if l==0: return 100
-    return 100-(100/(1+g/l if l else 1))
+    if l==0: return 70.0
+    if g==0: return 30.0
+    rs=g/l
+    return 100-(100/(1+rs))
+
 def EMA(cl,p=20):
-    if len(cl)<p: return cl[-1]
+    if len(cl)<p: return cl[-1] if cl else 0
     k=2/(p+1); e=cl[0]
     for c in cl[1:]: e=c*k+e*(1-k)
     return e
+
 def RSI_HIST(cl):
-    if len(cl)<16: return 50,50
-    return RSI(cl[-15:-1]), RSI(cl[-14:])
+    if len(cl)<30: return 50.0,50.0
+    # CORREGIDO: ahora si damos suficientes velas
+    return RSI(cl[:-1]), RSI(cl)
+
 def ANALIZA(sym):
     closes=C(sym)
-    if len(closes)<30: return False, 50, 0, "Sin datos"
+    if len(closes)<30:
+        # Intenta con precio real si no hay klines
+        pr=P(sym)
+        return False, 50.0, pr, f"Sin datos ({len(closes)} velas)"
     r_prev, r_now = RSI_HIST(closes)
     ema20 = EMA(closes,20); price=closes[-1]
     ok = (r_now < 35) and (price > ema20*0.995) and (r_now > r_prev)
-    mot = f"RSI {r_now:.1f} {'✅' if r_now<32 else '❌'}<35, P>EMA {'✅' if price>ema20*0.995 else '❌'}, Mom {r_prev:.0f}->{r_now:.0f} {'✅' if r_now>r_prev else '❌'}"
+    mot = f"RSI {r_now:.1f} {'✅' if r_now<35 else '❌'}<35, P>EMA {'✅' if price>ema20*0.995 else '❌'}, Mom {r_prev:.0f}->{r_now:.0f} {'✅' if r_now>r_prev else '❌'}"
     return ok, r_now, ema20, mot
+
 def get_usdmxn():
     try:
         r=requests.get("https://api.exchangerate-api.com/v4/latest/USD",timeout=4).json()
@@ -159,7 +175,6 @@ def sell_api(sym):
                 "capital_despues": data["capital_actual"], "bola_despues": data["capital_actual"]/data["max_entradas"]
             })
             data["capital_history"].append({"t": int(time.time()*1000), "cap": data["capital_actual"]})
-            # === NOTIFICACION SOLO SI GANA ===
             if gan_neta_mxn>0:
                 winrate=(data["ganadas"]/data["salidas"]*100) if data["salidas"] else 0
                 bola_despues=data["capital_actual"]/data["max_entradas"]
@@ -316,31 +331,30 @@ def auto_loop():
         try:
             bola=data["capital_actual"]/data["max_entradas"] if data["max_entradas"] else 0
             for p in list(data["pos"]):
-                try:
-                    price_p=float(client.get_symbol_ticker(symbol=p['sym'])['price'])
-                except: continue
+                price_p=P(p['sym'])
+                if price_p==0: continue
                 gan_bruta=(price_p-p['entry'])/p['entry']*100
-                if data["auto"] and (gan_bruta>=data["take_profit"] or gan_bruta<=data["stop_loss"]):
+                # CORREGIDO: usa tp_bruto, no take_profit
+                if data["auto"] and (gan_bruta>=data["tp_bruto"] or gan_bruta<=-2 or RSI(C(p['sym']))>=72):
                     gan_bruta_mxn=p["monto"]*gan_bruta/100
                     com_e=p["monto"]*FEE_ENTRADA; com_s=(p["monto"]+gan_bruta_mxn)*FEE_SALIDA
                     gan_neta_mxn=gan_bruta_mxn-com_e-com_s
-                    data["capital_actual"]+=gan_neta_mxn
+                    data["capital_actual"]+=p["monto"]+gan_neta_mxn
                     data["gan_acum_total"]+=gan_neta_mxn; data["gan_mes"]+=gan_neta_mxn; data["gan_hoy"]+=gan_neta_mxn
                     data["salidas"]+=1
                     if gan_neta_mxn>0: data["ganadas"]+=1
                     else: data["perdidas"]+=1
-                    data["historial"].append({"fecha": datetime.now().strftime("%d/%m %H:%M"),"sym": p["sym"],"entry": p["entry"],"exit": price_p,"gan": gan_neta_mxn})
+                    data["historial"].append({"fecha": datetime.now().strftime("%d/%m %H:%M"),"sym": p["sym"],"entry": p["entry"],"exit": price_p,"monto": p["monto"],"gan_neta_pct": gan_bruta-FEE_TOTAL*100,"gan_neta_mxn": gan_neta_mxn,"capital_despues": data["capital_actual"],"bola_despues": data["capital_actual"]/data["max_entradas"]})
                     data["capital_history"].append({"t": int(time.time()*1000), "cap": data["capital_actual"]})
                     if gan_neta_mxn>0:
                         s=p['sym']
                         msg=f"✅ TRADE GANADO {s}\n\n🟢 ENTRADA: {s} ${p['entry']:.2f}\nBola: ${p['monto']:.2f} - RSI {p.get('rsi_entry',0):.1f}\n{p.get('fecha','')}\n🔴 SALIDA: {s} ${price_p:.2f}\nGan: ${gan_neta_mxn:.2f}"
                         for u in data["alert_users"]: tg(u, msg)
                     data["pos"].remove(p); save()
-                time.sleep(60)
+            time.sleep(60)
         except Exception as e:
-            print(e); time.sleep(10)
+            print(f"AUTO_LOOP ERROR: {e}"); time.sleep(10)
 
 threading.Thread(target=auto_loop,daemon=True).start()
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=int(os.getenv("PORT",10000)))
-                    
