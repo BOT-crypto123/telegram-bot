@@ -10,7 +10,8 @@ default_data = {
  "capital_actual": 500.0, "capital_inicial": 500.0, "usd_mxn": 16.96,
  "gan_acum_total": 0.0, "gan_acum_mxn": 0.0, "gan_mes": 0.0, "pct_mes": 0.0,
  "ganadas": 0, "salidas": 0, "tp": 0.5, "sl_pct": -1.5, "rsi_compra": 35, "rsi_venta": 70,
- "filtro_ema": "OFF", "max_entradas": 3, "auto": True, "pos": [], "historial": [], "capital_history": [],
+ "filtro_ema": "OFF", "max_entradas": 3, "auto": True, "auto_tune": True,
+ "pos": [], "historial": [], "capital_history": [],
  "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"BNB":True,"XRP":True,"ADA":True,"AVAX":True,"DOGE":True},
  "rsi_por_moneda": {}, "alert_users": []
 }
@@ -66,7 +67,7 @@ def get_prices_data():
             if not p_ema_ok: sug="Espera EMA"; motivo=f"P {price:.2f} < EMA {ema:.2f}"
             elif ok: sug="COMPRA"; motivo=f"RSI {rsi:.1f} <= {limite}"
             else: sug="Espera RSI"; motivo=f"RSI {rsi:.1f} > {limite}"
-            out[coin] = {"price":price,"rsi":round(rsi,1),"limite":limite,"p_ema_ok":p_ema_ok,"ok":ok,"sug":sug,"motivo":motivo}
+            out[coin] = {"price":price,"rsi":round(rsi,1),"limite":limite,"p_ema_ok":p_ema_ok,"ok":ok,"sug":sug,"motivo":motivo,"ema":ema}
         except Exception as e:
             try:
                 url2 = f"https://www.okx.com/api/v5/market/candles?instId={coin}-USDT&bar=1H&limit=100"
@@ -76,11 +77,23 @@ def get_prices_data():
                 p_ema_ok = price > ema if data["filtro_ema"]=="ON" else True
                 limite = data["rsi_por_moneda"].get(coin, data["rsi_compra"])
                 ok = rsi <= limite and p_ema_ok
-                out[coin] = {"price":price,"rsi":round(rsi,1),"limite":limite,"p_ema_ok":p_ema_ok,"ok":ok,"sug":"COMPRA" if ok else "ESPERA","motivo":f"OKX RSI {rsi:.1f}"}
+                out[coin] = {"price":price,"rsi":round(rsi,1),"limite":limite,"p_ema_ok":p_ema_ok,"ok":ok,"ema":ema,"sug":"COMPRA" if ok else "ESPERA","motivo":f"OKX RSI {rsi:.1f}"}
             except Exception as e2:
                 print(f"{coin} error {e} / {e2}")
-                out[coin] = {"price":0,"rsi":50,"limite":35,"p_ema_ok":False,"ok":False,"sug":"Error","motivo":str(e)[:90]}
+                out[coin] = {"price":0,"rsi":50,"limite":35,"p_ema_ok":False,"ok":False,"sug":"Error","motivo":str(e)[:90],"ema":0}
     return out
+
+# === AUTO-TUNE ===
+def auto_tune_logic(prices):
+    if not data.get("auto_tune", True): return
+    debajo = sum(1 for v in prices.values() if v["price"]>0 and v["price"] < v["ema"])
+    if debajo >= 6: # CAIDA FUERTE 8/8 como tu foto
+        data["filtro_ema"]="OFF"; data["sl_pct"]=-2.5; data["tp"]=0.5; data["rsi_venta"]=70; data["rsi_compra"]=40
+    elif debajo <= 2: # SUBIDA FUERTE
+        data["filtro_ema"]="ON"; data["sl_pct"]=-1.0; data["tp"]=0.8; data["rsi_venta"]=75; data["rsi_compra"]=30
+    else: # LATERAL
+        data["filtro_ema"]="OFF"; data["sl_pct"]=-1.5; data["tp"]=0.5; data["rsi_venta"]=70; data["rsi_compra"]=35
+    save()
 
 @app.route("/", methods=["GET","POST"])
 @app.route("/webhook", methods=["GET","POST"])
@@ -100,8 +113,34 @@ def dashboard():
     if os.path.exists("dashboard.html"): return send_from_directory(".","dashboard.html")
     return "No existe dashboard.html - súbelo a GitHub",404
 
+# === GRAFICA TIEMPO REAL ===
 @app.route("/chart/<sym>")
-def chart_page(sym): return f"<h1>{sym} - Proximamente</h1><a href='/dashboard'>Volver</a>"
+def chart_page(sym):
+    sym = sym.upper()
+    # Pagina con TradingView widget real
+    return f"""
+    <!DOCTYPE html><html><head><meta name="viewport" content="width=device-width,initial-scale=1"><title>{sym} CHART</title>
+    <style>body{{margin:0;background:#0f172a}}.top{{padding:10px;color:#fff;font-family:sans-serif;display:flex;justify-content:space-between}} a{{color:#38bdf8;text-decoration:none}}</style>
+    </head><body>
+    <div class="top"><a href="/dashboard">← Volver</a><b>{sym}/USDT - 1H</b><span id="price"></span></div>
+    <div id="tradingview" style="height:90vh"></div>
+    <script src="https://s3.tradingview.com/tv.js"></script>
+    <script>
+    new TradingView.widget({{"autosize":true,"symbol":"BINANCE:{sym}USDT","interval":"60","timezone":"America/Mexico_City","theme":"dark","style":"1","locale":"es","enable_publishing":false,"allow_symbol_change":true,"container_id":"tradingview"}});
+    async function upd(){{ try{{ let r=await fetch('/api/prices'); let j=await r.json(); let p=j['{sym}']; if(p) document.getElementById('price').innerText='$'+p.price.toFixed(2)+' RSI:'+p.rsi; }}catch(e){{}} }} setInterval(upd,3000); upd();
+    </script></body></html>
+    """
+
+@app.route("/api/candles/<sym>")
+def api_candles(sym):
+    try:
+        bin_sym = sym.upper()+"USDT"
+        url = f"https://data-api.binance.vision/api/v3/klines?symbol={bin_sym}&interval=1h&limit=150"
+        r = requests.get(url, timeout=10).json()
+        out = [{"t":k[0],"o":float(k[1]),"h":float(k[2]),"l":float(k[3]),"c":float(k[4])} for k in r]
+        return jsonify(out)
+    except Exception as e:
+        return jsonify([])
 
 @app.route("/api/prices")
 def api_prices(): return jsonify(get_prices_data())
@@ -115,20 +154,23 @@ def api_state():
         pr = prices.get(p["sym"],{}).get("price",p["entry"])
         p["ahora"]=pr; gan_b=(pr-p["entry"])/p["entry"]*100; gan_n=gan_b - (FEE*2*100)
         p["gan_neta_pct"]=gan_n; p["gan_neta_mxn"]=p["monto"]*gan_n/100*data["usd_mxn"]; p["debe_vender"]=gan_n >= (data["tp"]-FEE*2*100) or gan_n <= data["sl_pct"]
-    return jsonify({"meta_mxn": data["usd_mxn"]*500, "gan_acum": data["gan_acum_total"], "gan_acum_mxn": data["gan_acum_mxn"], "usd_mxn": data["usd_mxn"], "pct_mes": data["pct_mes"], "gan_mes": data["gan_mes"], "ganadas": data["ganadas"], "salidas": data["salidas"], "winrate": winrate, "tp": data["tp"], "fee_total": FEE*2*100, "max_entradas": data["max_entradas"], "rsi_compra": data["rsi_compra"], "sl_pct": data["sl_pct"], "rsi_venta": data["rsi_venta"], "filtro_ema": data["filtro_ema"], "auto": data["auto"], "coins_activas": data["coins_activas"], "bola": bola, "bola_mxn": bola*data["usd_mxn"], "capital": data["capital_actual"], "pos": data["pos"], "historial": data["historial"][-50:], "capital_history": data["capital_history"][-100:]})
+    return jsonify({"meta_mxn": data["usd_mxn"]*500, "gan_acum": data["gan_acum_total"], "gan_acum_mxn": data["gan_acum_mxn"], "usd_mxn": data["usd_mxn"], "pct_mes": data["pct_mes"], "gan_mes": data["gan_mes"], "ganadas": data["ganadas"], "salidas": data["salidas"], "winrate": winrate, "tp": data["tp"], "fee_total": FEE*2*100, "max_entradas": data["max_entradas"], "rsi_compra": data["rsi_compra"], "sl_pct": data["sl_pct"], "rsi_venta": data["rsi_venta"], "filtro_ema": data["filtro_ema"], "auto": data["auto"], "auto_tune": data.get("auto_tune",True), "coins_activas": data["coins_activas"], "bola": bola, "bola_mxn": bola*data["usd_mxn"], "capital": data["capital_actual"], "pos": data["pos"], "historial": data["historial"][-50:], "capital_history": data["capital_history"][-100:]})
 
 @app.route("/api/config", methods=["POST"])
 def api_config():
     j=request.json
     if "toggle_coin" in j: data["coins_activas"][j["toggle_coin"]]=not data["coins_activas"].get(j["toggle_coin"],True)
-    if "rsi_compra" in j: data["rsi_compra"]=float(j["rsi_compra"])
-    if "rsi_coin" in j: data["rsi_por_moneda"][j["rsi_coin"]["sym"]]=float(j["rsi_coin"]["val"])
-    if "rsi_coin_reset" in j: data["rsi_por_moneda"].pop(j["rsi_coin_reset"],None)
-    if "tp" in j: data["tp"]=float(j["tp"])
-    if "sl_pct" in j: data["sl_pct"]=float(j["sl_pct"])
-    if "rsi_venta" in j: data["rsi_venta"]=float(j["rsi_venta"])
-    if "filtro_ema" in j: data["filtro_ema"]=j["filtro_ema"]
     if "max" in j: data["max_entradas"]=int(j["max"])
+    if "auto_tune" in j: data["auto_tune"] = (j["auto_tune"]=="ON" or j["auto_tune"]==True)
+    # Si AUTO-TUNE ON, ignora manual - el lo controla
+    if not data.get("auto_tune", True):
+        if "rsi_compra" in j: data["rsi_compra"]=float(j["rsi_compra"])
+        if "rsi_coin" in j: data["rsi_por_moneda"][j["rsi_coin"]["sym"]]=float(j["rsi_coin"]["val"])
+        if "rsi_coin_reset" in j: data["rsi_por_moneda"].pop(j["rsi_coin_reset"],None)
+        if "tp" in j: data["tp"]=float(j["tp"])
+        if "sl_pct" in j: data["sl_pct"]=float(j["sl_pct"])
+        if "rsi_venta" in j: data["rsi_venta"]=float(j["rsi_venta"])
+        if "filtro_ema" in j: data["filtro_ema"]=j["filtro_ema"]
     save(); return jsonify(ok=True)
 
 @app.route("/api/buy/<sym>", methods=["POST"])
@@ -150,7 +192,11 @@ def sell_sym(sym):
             if gan_n>0: data["ganadas"]+=1
             data["historial"].append({"fecha":time.strftime("%m-%d %H:%M"),"sym":sym,"monto":p["monto"],"entry":p["entry"],"exit":pr,"gan_neta_pct":gan_n,"gan_neta_mxn":gan_mxn,"capital_despues":data["capital_actual"],"bola_despues":data["capital_actual"]/data["max_entradas"]})
             data["capital_history"].append({"t":int(time.time()*1000),"cap":data["capital_actual"]})
-            for uid in data["alert_users"]: tg(uid, f"{'🟢 GANANCIA' if gan_mxn>0 else '🔴 PERDIDA'} {sym} {gan_n:.2f}% = ${gan_mxn:.2f} MXN\nCapital: ${data['capital_actual']:.2f}")
+            # SOLO AVISA SI ES GANANCIA
+            if gan_n > 0:
+                wr = (data["ganadas"]/data["salidas"]*100) if data["salidas"]>0 else 0
+                for uid in data["alert_users"]:
+                    tg(uid, f"🟢 GANANCIA {sym} {gan_n:+.2f}% = ${gan_mxn:+.2f} MXN\nCapital: ${data['capital_actual']:.2f} | {data['ganadas']}/{data['salidas']} ({wr:.0f}% win)\nAcum: ${data['gan_acum_mxn']:.0f} MXN")
             data["pos"].remove(p); save(); break
     return jsonify(ok=True)
 
@@ -158,10 +204,13 @@ def sell_sym(sym):
 def toggle(): data["auto"]=not data["auto"]; save(); return jsonify(ok=True)
 
 def auto_loop():
+    last_tune=0
     while True:
         try:
             if data["auto"]:
                 prices=get_prices_data()
+                if time.time() - last_tune > 900: # cada 15 min
+                    auto_tune_logic(prices); last_tune=time.time()
                 for p in list(data["pos"]):
                     pr=prices.get(p["sym"],{}).get("price",p["entry"]); gan_b=(pr-p["entry"])/p["entry"]*100; gan_n=gan_b - FEE*2*100; rsi_v = prices.get(p["sym"],{}).get("rsi",100)
                     debe = gan_n >= (data["tp"]-FEE*2*100) or gan_n <= data["sl_pct"] or rsi_v >= data["rsi_venta"]
@@ -170,15 +219,16 @@ def auto_loop():
                         if gan_n>0: data["ganadas"]+=1
                         data["historial"].append({"fecha":time.strftime("%m-%d %H:%M"),"sym":p["sym"],"monto":p["monto"],"entry":p["entry"],"exit":pr,"gan_neta_pct":gan_n,"gan_neta_mxn":gan_mxn,"capital_despues":data["capital_actual"],"bola_despues":data["capital_actual"]/data["max_entradas"]})
                         data["capital_history"].append({"t":int(time.time()*1000),"cap":data["capital_actual"]})
-                        for uid in data["alert_users"]: tg(uid, f"{'🟢 GANANCIA' if gan_mxn>0 else '🔴 PERDIDA'} {p['sym']} {gan_n:.2f}% = ${gan_mxn:.2f} MXN\nCapital: ${data['capital_actual']:.2f}")
+                        if gan_n > 0: # SOLO AVISA GANANCIA
+                            wr = (data["ganadas"]/data["salidas"]*100) if data["salidas"]>0 else 0
+                            for uid in data["alert_users"]: tg(uid, f"🟢 GANANCIA {p['sym']} {gan_n:+.2f}% = ${gan_mxn:+.2f} MXN\nCapital: ${data['capital_actual']:.2f} | {data['ganadas']}/{data['salidas']} ({wr:.0f}% win)\nAcum: ${data['gan_acum_mxn']:.0f} MXN")
                         data["pos"].remove(p); save()
                 if len(data["pos"])<data["max_entradas"]:
                     for sym,info in prices.items():
                         if info["price"]>0 and info["ok"] and data["coins_activas"].get(sym,True) and not any(x["sym"]==sym for x in data["pos"]):
                             if len(data["pos"])>=data["max_entradas"]: break
                             monto=data["capital_actual"]/data["max_entradas"]; data["pos"].append({"sym":sym,"entry":info["price"],"monto":monto,"ahora":info["price"],"gan_neta_pct":0,"gan_neta_mxn":0,"debe_vender":False}); save()
-                            for uid in data["alert_users"]: tg(uid, f"🔵 COMPRA {sym} ${info['price']:.2f} RSI {info['rsi']}")
-                            break
+                            break # SIN AVISO DE COMPRA
         except Exception as e: print("AUTO ERROR",e)
         time.sleep(60)
 
