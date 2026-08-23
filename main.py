@@ -1,29 +1,50 @@
 import os, json, time, threading, requests
 from flask import Flask, request, jsonify, send_from_directory
+from pathlib import Path
 
 app = Flask(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN","")
 DATA_FILE = "bot_data.json"
 FEE = 0.001
 
+# RUTAS DE RESPALDO - Para que no se borre en Render gratis
+POSIBLES_RUTAS = ["/data/bot_data.json", "bot_data.json"]
+
 default_data = {
  "capital_actual": 500.0, "capital_inicial": 500.0, "usd_mxn": 16.96,
  "gan_acum_total": 0.0, "gan_acum_mxn": 0.0, "gan_mes": 0.0, "pct_mes": 0.0,
  "ganadas": 0, "salidas": 0, "tp": 0.3, "sl_pct": -1.5, "rsi_compra": 35, "rsi_venta": 70,
  "filtro_ema": "OFF", "max_entradas": 8, "auto": True, "auto_tune": True,
- "modo": "AMBOS", # LONG, SHORT, AMBOS
+ "modo": "AMBOS",
  "pos": [], "pos_short": [], "historial": [], "capital_history": [],
  "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"BNB":True,"XRP":True,"ADA":True,"AVAX":True,"DOGE":True},
  "rsi_por_moneda": {}, "alert_users": []
 }
 try:
-    with open(DATA_FILE) as f: data=json.load(f)
+    # Intenta cargar de /data primero (disco) luego local
+    loaded = False
+    for p in POSIBLES_RUTAS:
+        if os.path.exists(p):
+            with open(p) as f: data=json.load(f)
+            loaded=True
+            break
+    if not loaded:
+        raise FileNotFoundError
     for k,v in default_data.items():
         if k not in data: data[k]=v
 except: data=default_data.copy()
 
 def save():
-    with open(DATA_FILE,"w") as f: json.dump(data,f)
+    # Guarda en todas las rutas posibles para que nunca se pierda
+    for p in POSIBLES_RUTAS:
+        try:
+            Path(p).parent.mkdir(parents=True, exist_ok=True)
+            with open(p,"w") as f: json.dump(data,f)
+        except: pass
+    # también guarda local
+    try:
+        with open(DATA_FILE,"w") as f: json.dump(data,f)
+    except: pass
 
 def tg(chat_id, text):
     if not BOT_TOKEN: return
@@ -65,7 +86,7 @@ def get_prices_data():
             p_ema_ok = price > ema if data["filtro_ema"]=="ON" else True
             limite = data["rsi_por_moneda"].get(coin, data["rsi_compra"])
             ok_long = rsi <= limite and p_ema_ok
-            ok_short = rsi >= data["rsi_venta"] and (price < ema) # espejo para short
+            ok_short = rsi >= data["rsi_venta"] and (price < ema)
             if not p_ema_ok: sug="Espera EMA"; motivo=f"P {price:.2f} < EMA {ema:.2f}"
             elif ok_long: sug="COMPRA LONG"; motivo=f"RSI {rsi:.1f} <= {limite}"
             elif ok_short: sug="VENTA SHORT"; motivo=f"RSI {rsi:.1f} >= {data['rsi_venta']} + P<EMA"
@@ -134,17 +155,37 @@ def api_state():
     bola = data["capital_actual"]/data["max_entradas"]
     winrate = (data["ganadas"]/data["salidas"]*100) if data["salidas"]>0 else 0
     prices = get_prices_data()
-    # LONG
     for p in data["pos"]:
         pr = prices.get(p["sym"],{}).get("price",p["entry"])
         p["ahora"]=pr; gan_b=(pr-p["entry"])/p["entry"]*100; gan_n=gan_b - (FEE*2*100)
         p["gan_neta_pct"]=gan_n; p["tipo"]="LONG"
-    # SHORT - ganancia al revés
     for p in data.get("pos_short",[]):
         pr = prices.get(p["sym"],{}).get("price",p["entry"])
         p["ahora"]=pr; gan_b=(p["entry"]-pr)/p["entry"]*100; gan_n=gan_b - (FEE*2*100)
         p["gan_neta_pct"]=gan_n; p["tipo"]="SHORT"
-    return jsonify({"meta_mxn": data["usd_mxn"]*500, "gan_acum": data["gan_acum_total"], "gan_acum_mxn": data["gan_acum_mxn"], "usd_mxn": data["usd_mxn"], "pct_mes": data["pct_mes"], "gan_mes": data["gan_mes"], "ganadas": data["ganadas"], "salidas": data["salidas"], "winrate": winrate, "tp": data["tp"], "fee_total": FEE*2*100, "max_entradas": data["max_entradas"], "rsi_compra": data["rsi_compra"], "sl_pct": data["sl_pct"], "rsi_venta": data["rsi_venta"], "filtro_ema": data["filtro_ema"], "auto": data["auto"], "auto_tune": data.get("auto_tune",True), "modo": data.get("modo","AMBOS"), "coins_activas": data["coins_activas"], "bola": bola, "bola_mxn": bola*data["usd_mxn"], "capital": data["capital_actual"], "pos": data["pos"]+data.get("pos_short",[]), "pos_long": data["pos"], "pos_short": data.get("pos_short",[]), "historial": data["historial"][-50:], "capital_history": data["capital_history"][-100:]})
+
+    # --- PIRAMIDE 3 CIRCULOS ---
+    bloqueado = sum([x.get("monto", bola) for x in data["pos"]]) + sum([x.get("monto", bola) for x in data.get("pos_short",[])])
+    disponible = data["capital_actual"] - bloqueado
+    disponible_mxn = disponible * data["usd_mxn"]
+
+    return jsonify({
+        "meta_mxn": data["usd_mxn"]*500, "gan_acum": data["gan_acum_total"], "gan_acum_mxn": data["gan_acum_mxn"],
+        "usd_mxn": data["usd_mxn"], "pct_mes": data["pct_mes"], "gan_mes": data["gan_mes"],
+        "ganadas": data["ganadas"], "salidas": data["salidas"], "winrate": winrate,
+        "tp": data["tp"], "fee_total": FEE*2*100, "max_entradas": data["max_entradas"],
+        "rsi_compra": data["rsi_compra"], "sl_pct": data["sl_pct"], "rsi_venta": data["rsi_venta"],
+        "filtro_ema": data["filtro_ema"], "auto": data["auto"], "auto_tune": data.get("auto_tune",True),
+        "modo": data.get("modo","AMBOS"), "coins_activas": data["coins_activas"],
+        "bola": bola, "bola_mxn": bola*data["usd_mxn"],
+        "capital": data["capital_actual"],
+        "disponible_usd": disponible, "disponible_mxn": disponible_mxn, "bloqueado_usd": bloqueado,
+        "circulo_arriba_usd": disponible, "circulo_arriba_mxn": disponible_mxn,
+        "circulo_medio_usd": data["gan_acum_total"], "circulo_medio_mxn": data["gan_acum_mxn"],
+        "circulo_abajo_usd": data["capital_actual"], "circulo_abajo_mxn": data["capital_actual"]*data["usd_mxn"],
+        "pos": data["pos"]+data.get("pos_short",[]), "pos_long": data["pos"], "pos_short": data.get("pos_short",[]),
+        "historial": data["historial"][-50:], "capital_history": data["capital_history"][-100:]
+    })
 
 @app.route("/api/config", methods=["POST"])
 def api_config():
@@ -166,7 +207,6 @@ def api_config():
 @app.route("/api/sell/<sym>", methods=["POST"])
 def sell_sym(sym):
     prices=get_prices_data()
-    # busca en LONG
     for p in list(data["pos"]):
         if p["sym"]==sym:
             pr=prices.get(sym,{}).get("price",p["entry"]); gan_b=(pr-p["entry"])/p["entry"]*100; gan_n=gan_b - FEE*2*100; gan_mxn=p["monto"]*gan_n/100*data["usd_mxn"]
@@ -177,7 +217,6 @@ def sell_sym(sym):
             if gan_n>0:
                 for uid in data["alert_users"]: tg(uid, f"🟢 LONG {sym} {gan_n:+.2f}% = ${gan_mxn:+.2f} MXN")
             data["pos"].remove(p); save(); return jsonify(ok=True)
-    # busca en SHORT
     for p in list(data.get("pos_short",[])):
         if p["sym"]==sym:
             pr=prices.get(sym,{}).get("price",p["entry"]); gan_b=(p["entry"]-pr)/p["entry"]*100; gan_n=gan_b - FEE*2*100; gan_mxn=p["monto"]*gan_n/100*data["usd_mxn"]
@@ -193,6 +232,22 @@ def sell_sym(sym):
 @app.route("/api/toggle", methods=["POST"])
 def toggle(): data["auto"]=not data["auto"]; save(); return jsonify(ok=True)
 
+# --- NUEVAS RUTAS DE RESPALDO PARA PLAN GRATIS ---
+@app.route("/api/backup")
+def api_backup():
+    return jsonify(data)
+
+@app.route("/api/restore", methods=["POST"])
+def api_restore():
+    try:
+        nuevo = request.get_json(force=True)
+        global data
+        data = nuevo
+        save()
+        return jsonify(ok=True, msg="Restaurado con exito")
+    except Exception as e:
+        return jsonify(ok=False, error=str(e))
+
 def auto_loop():
     last_tune=0
     while True:
@@ -201,7 +256,6 @@ def auto_loop():
                 prices=get_prices_data()
                 if time.time() - last_tune > 900:
                     auto_tune_logic(prices); last_tune=time.time()
-                # === CIERRE LONG ===
                 for p in list(data["pos"]):
                     pr=prices.get(p["sym"],{}).get("price",p["entry"]); gan_b=(pr-p["entry"])/p["entry"]*100; gan_n=gan_b - FEE*2*100; rsi_v = prices.get(p["sym"],{}).get("rsi",100)
                     debe = gan_n >= (data["tp"]-FEE*2*100) or gan_n <= data["sl_pct"] or rsi_v >= data["rsi_venta"]
@@ -213,7 +267,6 @@ def auto_loop():
                         if gan_n>0:
                             for uid in data["alert_users"]: tg(uid, f"🟢 LONG {p['sym']} {gan_n:+.2f}%")
                         data["pos"].remove(p); save()
-                # === CIERRE SHORT ===
                 for p in list(data.get("pos_short",[])):
                     pr=prices.get(p["sym"],{}).get("price",p["entry"]); gan_b=(p["entry"]-pr)/p["entry"]*100; gan_n=gan_b - FEE*2*100; rsi_v = prices.get(p["sym"],{}).get("rsi",0)
                     debe = gan_n >= (data["tp"]-FEE*2*100) or gan_n <= data["sl_pct"] or rsi_v <= data["rsi_compra"]
@@ -225,10 +278,8 @@ def auto_loop():
                         if gan_n>0:
                             for uid in data["alert_users"]: tg(uid, f"🔴 SHORT {p['sym']} {gan_n:+.2f}%")
                         data["pos_short"].remove(p); save()
-
-                # === APERTURA ===
                 total_max = data["max_entradas"]
-                max_long = (total_max+1)//2 # 8 bolas = 4 y 4
+                max_long = (total_max+1)//2
                 max_short = total_max//2
                 if data.get("modo","AMBOS") in ["LONG","AMBOS"]:
                     if len(data["pos"]) < max_long:
