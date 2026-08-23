@@ -4,11 +4,14 @@
 <style>
 body{background:#0a0a0a;color:#fff;font-family:system-ui;margin:0;padding:8px}
 .top-box{border:2px solid #facc15;border-radius:20px;padding:15px;background:#111}
-.circle-wrap{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin:15px 0}
-.circle{width:200px;height:200px;border:8px solid #222;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative}
-.dot{position:absolute;top:12px;width:14px;height:14px;border-radius:50%;left:50%;transform:translateX(-50%)}
-.yellow.dot{background:#facc15}.green.dot{background:#22c55e}
-.big-green{color:#22c55e;font-size:38px;font-weight:900}.small{color:#888;font-size:12px}.blue{color:#38bdf8}
+.circle-wrap{display:flex;justify-content:center;gap:15px;flex-wrap:wrap;margin:15px 0;align-items:center}
+.circle{border:8px solid #222;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;text-align:center}
+.circle.c1{width:140px;height:140px;border-color:#facc15;background:#1a1600}
+.circle.c2{width:180px;height:180px;border-color:#22c55e;background:#0f1a0f}
+.circle.c3{width:230px;height:230px;border-color:#38bdf8;background:#0a1620}
+.dot{position:absolute;top:10px;width:12px;height:12px;border-radius:50%;left:50%;transform:translateX(-50%)}
+.yellow.dot{background:#facc15}.green.dot{background:#22c55e}.blue.dot{background:#38bdf8}
+.big{font-size:28px;font-weight:900}.small{color:#888;font-size:11px}.blue{color:#38bdf8}
 .bola-line{border:1px solid #22c55e;border-radius:12px;padding:8px;margin:8px 0;font-size:13px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;background:#111;padding:10px;border-radius:12px}
 .controls select,.controls input{background:#000;color:#fff;border:1px solid #333;border-radius:6px;padding:4px}
@@ -28,6 +31,7 @@ body{background:#0a0a0a;color:#fff;font-family:system-ui;margin:0;padding:8px}
 .evol{border:1px solid #222;border-radius:12px;padding:10px;margin:12px 0;background:#111}
 table{width:100%;font-size:12px;border-collapse:collapse} th{color:#aaa;font-size:11px;padding:6px} td{padding:6px;text-align:center;border-top:1px solid #222}
 .btn-auto{position:fixed;bottom:15px;right:15px;background:#fff;color:#000;border:0;border-radius:12px;padding:12px 18px;font-weight:900;z-index:99}
+.backup-box{border:2px dashed #facc15;border-radius:15px;padding:15px;margin:20px 0;background:#1a1a00;text-align:center}
 </style>
 </head><body>
 
@@ -35,8 +39,10 @@ table{width:100%;font-size:12px;border-collapse:collapse} th{color:#aaa;font-siz
 <div style="text-align:center;color:#facc15;font-weight:900;font-size:20px">💰 MÁQUINA BOLA DE NIEVE - REAL FEES</div>
 
 <div class="circle-wrap">
-<div class="circle yellow" style="border-color:#facc15"><div class="dot yellow"></div><span class="small" style="color:#facc15;font-weight:900">500 USD</span><span class="big-green" id="mxn_top">$8480</span><span class="small">MXN</span><span class="small blue" id="pct_top">0% - $0.00 USD</span></div>
-<div class="circle green" style="border-color:#22c55e"><div class="dot green"></div><span class="small">ACUMULADO</span><span class="blue" style="font-size:22px;font-weight:900" id="acum_usd">$0.59</span><span class="small">USD</span><span class="big-green" style="font-size:28px" id="acum_mxn">$10</span><span class="small">MXN desde 00.00</span></div>
+<!-- PIRAMIDE 3 CIRCULOS - SI DESCUENTA -->
+<div class="circle c1"><div class="dot yellow"></div><span class="small" style="color:#facc15;font-weight:900">DISPONIBLE<br>Arriba Chico</span><span class="big" id="disp_usd" style="color:#facc15">$375</span><span class="small" id="disp_mxn">$0 MXN</span><span class="small blue" id="bloq_info">Bloq: $0</span></div>
+<div class="circle c2"><div class="dot green"></div><span class="small">GANANCIA<br>Medio</span><span class="blue" style="font-size:20px;font-weight:900" id="acum_usd">$0.59</span><span class="small">USD</span><span class="big" style="font-size:22px;color:#22c55e" id="acum_mxn">$10</span><span class="small">MXN</span></div>
+<div class="circle c3"><div class="dot blue" style="background:#38bdf8"></div><span class="small" style="color:#38bdf8;font-weight:900">TOTAL REAL<br>Abajo Grande</span><span class="big" id="total_usd" style="color:#38bdf8">$500</span><span class="small" id="total_mxn">$8480 MXN</span><span class="small blue" id="pct_top">0% - $0.00 USD</span></div>
 </div>
 
 <div class="bola-line">🎯 BOLA: <b id="bola_line">$62.57 USD / $1061 MXN (8 bolas) = $500.59 / 8</b> <span id="bola_split" style="color:#facc15;font-size:11px;margin-left:8px"></span></div>
@@ -75,6 +81,17 @@ table{width:100%;font-size:12px;border-collapse:collapse} th{color:#aaa;font-siz
 <table><thead><tr><th>Fecha</th><th>Moneda</th><th>Monto</th><th>Entry->Exit</th><th>% Neta</th><th>Gan MXN</th><th>Capital</th><th>Bola</th></tr></thead><tbody id="hist_table"></tbody></table>
 </div>
 
+<!-- BOTONES DE RESPALDO HASTA ABAJO -->
+<div class="backup-box">
+<b style="color:#facc15">💾 RESPALDO PARA PLAN GRATIS DE RENDER</b><br>
+<span style="font-size:11px;color:#aaa">En gratis se borra al hacer deploy. Usa esto:</span><br><br>
+<button onclick="backup()" style="background:#facc15;color:#000;border:0;border-radius:10px;padding:10px 15px;font-weight:900;margin:5px">💾 DESCARGAR RESPALDO</button>
+<br><br>
+<input type="file" id="file_restore" style="display:none" accept=".json" onchange="restoreFile(this)">
+<button onclick="document.getElementById('file_restore').click()" style="background:#22c55e;color:#000;border:0;border-radius:10px;padding:10px 15px;font-weight:900;margin:5px">📤 RESTAURAR RESPALDO</button>
+<div id="restore_msg" style="margin-top:8px;font-size:12px;color:#22c55e"></div>
+</div>
+
 <button class="btn-auto" id="btn_auto" onclick="toggleAuto()">AUTO ON 🤖</button>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -82,7 +99,12 @@ table{width:100%;font-size:12px;border-collapse:collapse} th{color:#aaa;font-siz
 let ch;
 async function load(){
  let [st,pr] = await Promise.all([fetch('/api/state').then(r=>r.json()), fetch('/api/prices').then(r=>r.json())]);
- document.getElementById('mxn_top').innerText='$'+(st.capital*st.usd_mxn).toFixed(0);
+ // PIRAMIDE
+ document.getElementById('disp_usd').innerText='$'+st.disponible_usd.toFixed(2);
+ document.getElementById('disp_mxn').innerText='$'+st.disponible_mxn.toFixed(0)+' MXN';
+ document.getElementById('bloq_info').innerText='Bloq: $'+st.bloqueado_usd.toFixed(2)+' en '+(st.pos_long.length+st.pos_short.length);
+ document.getElementById('total_usd').innerText='$'+st.capital.toFixed(2);
+ document.getElementById('total_mxn').innerText='$'+(st.capital*st.usd_mxn).toFixed(0)+' MXN';
  document.getElementById('pct_top').innerText=st.pct_mes.toFixed(1)+'% - $'+st.gan_mes.toFixed(2)+' USD';
  document.getElementById('acum_usd').innerText='$'+st.gan_acum.toFixed(2);
  document.getElementById('acum_mxn').innerText='$'+st.gan_acum_mxn.toFixed(0);
@@ -125,7 +147,7 @@ async function load(){
 
  let labels=st.capital_history.map(x=>new Date(x.t).toLocaleTimeString()); let caps=st.capital_history.map(x=>x.cap); let bolas=st.capital_history.map(x=>x.cap/st.max_entradas);
  if(ch) ch.destroy();
- ch=new Chart(document.getElementById('chart'),{type:'line',data:{labels:labels,datasets:[{label:'Capital USD',data:caps,borderColor:'#22c55e',backgroundColor:'#22c55e22',fill:true},{label:'Bola USD',data:bolas,borderColor:'#facc15',borderDash:[5,5]}]},options:{plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#666'}},y:{ticks:{color:'#666'}}}}});
+ ch=new Chart(document.getElementById('chart'),{type:'line',data:{labels:labels,datasets:[{label:'Capital USD',data:caps,borderColor:'#22c55e',backgroundColor:'#22c55e22',fill:true},{label:'Bola USD',data:bolas,borderColor:'#facc15',borderDash:[5][5]}]},options:{plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#666'}},y:{ticks:{color:'#666'}}}}});
 }
 function setMax(v){ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max:parseInt(v)})}).then(()=>setTimeout(load,300)); }
 function setModo(v){ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({modo:v})}).then(()=>load()); }
@@ -137,6 +159,26 @@ function resetRsi(c){ fetch('/api/config',{method:'POST',headers:{'Content-Type'
 function toggleAuto(){ fetch('/api/toggle',{method:'POST'}).then(()=>load()); }
 function toggleTune(){ let on=document.getElementById('autotune').checked; fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auto_tune:on?'ON':'OFF'})}).then(()=>load()); }
 function sell(s){ fetch('/api/sell/'+s,{method:'POST'}).then(()=>load()); }
+
+async function backup(){
+ let r=await fetch('/api/backup'); let data=await r.json();
+ let blob=new Blob([JSON.stringify(data,null,2)],{type:'application/json'});
+ let a=document.createElement('a'); a.href=URL.createObjectURL(blob);
+ a.download='bot_data_'+new Date().toISOString().slice(0,10)+'.json'; a.click();
+ document.getElementById('restore_msg').innerText='✅ Respaldo descargado con '+data.pos.length+' LONG + '+data.pos_short.length+' SHORT';
+}
+async function restoreFile(input){
+ let file=input.files[0]; if(!file) return;
+ let txt=await file.text();
+ try{
+   let json=JSON.parse(txt);
+   let r=await fetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(json)});
+   let res=await r.json();
+   if(res.ok){ document.getElementById('restore_msg').innerText='✅ Restaurado! Recargando...'; setTimeout(load,1000); }
+   else document.getElementById('restore_msg').innerText='❌ Error: '+res.error;
+ }catch(e){ document.getElementById('restore_msg').innerText='❌ Archivo inválido'; }
+}
+
 setInterval(load,3000); load();
 </script>
 </body></html>
