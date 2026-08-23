@@ -55,13 +55,43 @@ def keep_alive_render():
         time.sleep(600)
 threading.Thread(target=keep_alive_render, daemon=True).start()
 
-def get_usd_mxn_live():
+# === USD/MXN EN VIVO CADA 5 MIN CON CACHE ===
+USD_CACHE = {"price": 18.5, "t": 0, "last_ok": 18.5}
+
+def get_usd_mxn_live(force=False):
+    now = time.time()
+    if not force and now - USD_CACHE["t"] < 300:
+        return USD_CACHE["price"]
     try:
-        r = requests.get("https://open.er-api.com/v6/latest/USD", timeout=10).json()
+        r = requests.get("https://open.er-api.com/v6/latest/USD", timeout=8).json()
         mxn = float(r["rates"]["MXN"])
-        if 10 < mxn < 30: return mxn
-    except: pass
-    return data.get("usd_mxn", 18.5)
+        if 10 < mxn < 30:
+            USD_CACHE["price"] = mxn
+            USD_CACHE["t"] = now
+            USD_CACHE["last_ok"] = mxn
+            data["usd_mxn"] = mxn
+            save()
+            print(f"USD/MXN actualizado VIVO: {mxn}")
+            return mxn
+    except Exception as e:
+        print(f"ER-API fallo: {e}")
+    try:
+        r2 = requests.get("https://api.frankfurter.app/latest?from=USD&to=MXN", timeout=8).json()
+        mxn2 = float(r2["rates"]["MXN"])
+        if 10 < mxn2 < 30:
+            USD_CACHE["price"] = mxn2
+            USD_CACHE["t"] = now
+            USD_CACHE["last_ok"] = mxn2
+            data["usd_mxn"] = mxn2
+            save()
+            print(f"USD/MXN actualizado Frankfurter: {mxn2}")
+            return mxn2
+    except Exception as e2:
+        print(f"Frankfurter fallo: {e2}")
+    return USD_CACHE.get("last_ok", data.get("usd_mxn", 18.5))
+
+USD_CACHE["price"] = data.get("usd_mxn", 18.5)
+USD_CACHE["last_ok"] = data.get("usd_mxn", 18.5)
 
 SYMS = ["BTC/USDT","ETH/USDT","SOL/USDT","BNB/USDT","XRP/USDT","ADA/USDT","AVAX/USDT","DOGE/USDT"]
 
@@ -137,7 +167,7 @@ def api_state():
     disponible=data["capital_actual"]-bloqueado; disponible_mxn=disponible*data["usd_mxn"]
     return jsonify({
         "meta_mxn": data["usd_mxn"]*500, "gan_acum": data["gan_acum_total"], "gan_acum_mxn": data["gan_acum_mxn"],
-        "usd_mxn": round(data["usd_mxn"],3), "pct_mes": data["pct_mes"], "gan_mes": data["gan_mes"],
+        "usd_mxn": round(data["usd_mxn"],4), "pct_mes": data["pct_mes"], "gan_mes": data["gan_mes"],
         "ganadas": data["ganadas"], "salidas": data["salidas"], "winrate": winrate,
         "tp": data["tp"], "fee_total": FEE*2*100, "max_entradas": data["max_entradas"],
         "rsi_compra": data["rsi_compra"], "sl_pct": data["sl_pct"], "rsi_venta": data["rsi_venta"],
@@ -178,6 +208,14 @@ def sell_sym(sym):
             data["historial"].append({"fecha":time.strftime("%m-%d %H:%M"),"sym":sym+" LONG","monto":p["monto"],"entry":p["entry"],"exit":pr,"gan_neta_pct":gan_n,"gan_neta_mxn":gan_mxn,"capital_despues":data["capital_actual"],"bola_despues":data["capital_actual"]/data["max_entradas"]})
             data["capital_history"].append({"t":int(time.time()*1000),"cap":data["capital_actual"]})
             data["pos"].remove(p); save(); return jsonify(ok=True)
+    for p in list(data.get("pos_short",[])):
+        if p["sym"]==sym:
+            pr=prices.get(sym,{}).get("price",p["entry"]); gan_b=(p["entry"]-pr)/p["entry"]*100; gan_n=gan_b - FEE*2*100; gan_mxn=p["monto"]*gan_n/100*data["usd_mxn"]
+            data["capital_actual"]+=p["monto"]*gan_n/100; data["gan_acum_total"]+=p["monto"]*gan_n/100; data["gan_acum_mxn"]+=gan_mxn; data["salidas"]+=1
+            if gan_n>0: data["ganadas"]+=1
+            data["historial"].append({"fecha":time.strftime("%m-%d %H:%M"),"sym":sym+" SHORT","monto":p["monto"],"entry":p["entry"],"exit":pr,"gan_neta_pct":gan_n,"gan_neta_mxn":gan_mxn,"capital_despues":data["capital_actual"],"bola_despues":data["capital_actual"]/data["max_entradas"]})
+            data["capital_history"].append({"t":int(time.time()*1000),"cap":data["capital_actual"]})
+            data["pos_short"].remove(p); save(); return jsonify(ok=True)
     return jsonify(ok=True)
 
 @app.route("/api/toggle", methods=["POST"])
@@ -191,6 +229,11 @@ def api_restore():
     try:
         nuevo=request.get_json(force=True); global data; data=nuevo; save(); return jsonify(ok=True)
     except Exception as e: return jsonify(ok=False, error=str(e))
+
+@app.route("/api/usdmxn")
+def api_usdmxn():
+    vivo = get_usd_mxn_live(force=True)
+    return jsonify({"usd_mxn": vivo, "t": time.time()})
 
 @app.route("/recuperar")
 def recuperar():
@@ -210,8 +253,8 @@ def auto_loop():
     last_tune=0; last_usd=0
     while True:
         try:
-            if time.time()-last_usd>900:
-                try: data["usd_mxn"]=get_usd_mxn_live(); save()
+            if time.time()-last_usd>300:
+                try: get_usd_mxn_live(force=True)
                 except: pass
                 last_usd=time.time()
             if data["auto"]:
