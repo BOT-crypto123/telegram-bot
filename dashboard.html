@@ -45,8 +45,8 @@ table{width:100%;font-size:12px;border-collapse:collapse} th{color:#aaa;font-siz
 </div>
 
 <div class="controls">
-<div>💰 Cierre: <select id="tp" onchange="saveGlobal()"><option value="0.3">0.3% NETO</option><option value="0.5">0.5% NETO</option><option value="0.8">0.8% NETO</option></select></div>
-<div>🛑 SL: <select id="sl" onchange="saveGlobal()"><option value="-1">-1%</option><option value="-1.5">-1.5%</option><option value="-2.5">-2.5%</option><option value="-3">-3%</option></select></div>
+<div>💰 Cierre: <select id="tp" onchange="saveGlobal()"><option value="0.1">0.1% NETO (0.3% bruto)</option><option value="0.2">0.2% NETO (0.4% bruto)</option><option value="0.4">0.4% NETO</option><option value="0.5">0.5% NETO</option><option value="0.6">0.6% NETO</option></select></div>
+ <div>🛑 SL: <select id="sl" onchange="saveGlobal()"><option value="-1">-1%</option><option value="-1.5">-1.5%</option><option value="-2.5">-2.5%</option><option value="-3">-3%</option></select></div>
 <div>📤 RSI Venta: <select id="rsi_v" onchange="saveGlobal()"><option>70</option><option>75</option></select></div>
 <div>📈 P>EMA: <select id="ema" onchange="saveGlobal()"><option value="ON">ON Seguro</option><option value="OFF">OFF Caida</option></select></div>
 <div style="grid-column:1/3">📉 RSI Compra Global: <select id="rsi_c"><option value="30">30 Agresivo</option><option value="35">35 Equilibrado</option><option value="40">40 Caida</option></select> <button class="set" onclick="saveGlobal()">SET</button> <span id="autotune_status" style="margin-left:10px;color:#22c55e;font-weight:900"></span></div>
