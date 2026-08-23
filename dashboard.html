@@ -6,14 +6,13 @@ body{background:#0a0a0a;color:#fff;font-family:system-ui;margin:0;padding:8px}
 .top-box{border:2px solid #facc15;border-radius:20px;padding:15px;background:#111}
 .circle-wrap{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;margin:15px 0}
 .circle{width:200px;height:200px;border:8px solid #222;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative}
-.circle.dot{position:absolute;top:-8px;width:14px;height:14px;border-radius:50%}
+.dot{position:absolute;top:12px;width:14px;height:14px;border-radius:50%;left:50%;transform:translateX(-50%)}
 .yellow.dot{background:#facc15}.green.dot{background:#22c55e}
 .big-green{color:#22c55e;font-size:38px;font-weight:900}.small{color:#888;font-size:12px}.blue{color:#38bdf8}
-.bola-line{border:1px solid #22c55e;border-radius:12px;padding:8px;margin:8px 0;font-size:13px;display:flex;gap:6px;align-items:center}
+.bola-line{border:1px solid #22c55e;border-radius:12px;padding:8px;margin:8px 0;font-size:13px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
 .controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;background:#111;padding:10px;border-radius:12px}
 .controls select,.controls input{background:#000;color:#fff;border:1px solid #333;border-radius:6px;padding:4px}
 .cerebro{border:2px solid #22c55e;border-radius:15px;padding:12px;background:#111a0f;margin:12px 0;font-size:13px}
-.cerebro.red{color:#f87171}.cerebro b{color:#fff}
 .coins{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 @media(max-width:600px){.coins{grid-template-columns:1fr 1fr}}
 .coin{background:#1a1a1a;border-radius:16px;padding:12px;border:1px solid #222}
@@ -36,21 +35,22 @@ table{width:100%;font-size:12px;border-collapse:collapse} th{color:#aaa;font-siz
 <div style="text-align:center;color:#facc15;font-weight:900;font-size:20px">💰 MÁQUINA BOLA DE NIEVE - REAL FEES</div>
 
 <div class="circle-wrap">
-<div class="circle yellow"><div class="dot"></div><span class="small" style="color:#facc15;font-weight:900">500 USD</span><span class="big-green" id="mxn_top">$8480</span><span class="small">MXN</span><span class="small blue" id="pct_top">0% - $0.00 USD</span></div>
-<div class="circle green"><div class="dot"></div><span class="small">ACUMULADO</span><span class="blue" style="font-size:22px;font-weight:900" id="acum_usd">$0.59</span><span class="small">USD</span><span class="big-green" style="font-size:28px" id="acum_mxn">$10</span><span class="small">MXN desde 00.00</span></div>
+<div class="circle yellow" style="border-color:#facc15"><div class="dot yellow"></div><span class="small" style="color:#facc15;font-weight:900">500 USD</span><span class="big-green" id="mxn_top">$8480</span><span class="small">MXN</span><span class="small blue" id="pct_top">0% - $0.00 USD</span></div>
+<div class="circle green" style="border-color:#22c55e"><div class="dot green"></div><span class="small">ACUMULADO</span><span class="blue" style="font-size:22px;font-weight:900" id="acum_usd">$0.59</span><span class="small">USD</span><span class="big-green" style="font-size:28px" id="acum_mxn">$10</span><span class="small">MXN desde 00.00</span></div>
 </div>
 
-<div class="bola-line">🎯 BOLA: <b id="bola_line">$62.57 USD / $1061 MXN (8 bolas) = $500.59 / 8</b></div>
-<div style="background:#000;border-radius:8px;padding:6px;font-size:12px">USD/MXN $<span id="usdmxn">16.961</span> / <span id="winline">1Win 100%NETO 0.3%</span></div>
+<div class="bola-line">🎯 BOLA: <b id="bola_line">$62.57 USD / $1061 MXN (8 bolas) = $500.59 / 8</b> <span id="bola_split" style="color:#facc15;font-size:11px;margin-left:8px"></span></div>
+<div style="background:#000;border-radius:8px;padding:6px;font-size:12px">USD/MXN $<span id="usdmxn">16.961</span> / <span id="winline">1Win 100%NETO 0.3%</span> / <span id="modo_line" style="color:#38bdf8"></span></div>
 </div>
 
 <div class="controls">
-<div>💰 Cierre: <select id="tp" onchange="saveGlobal()"><option value="0.1">0.1% NETO (0.3% bruto)</option><option value="0.2">0.2% NETO (0.4% bruto)</option><option value="0.4">0.4% NETO</option><option value="0.5">0.5% NETO</option><option value="0.6">0.6% NETO</option></select></div>
+<div>🎮 Modo: <select id="modo" onchange="setModo(this.value)"><option value="LONG">Solo LONG</option><option value="SHORT">Solo SHORT</option><option value="AMBOS">AMBOS 4+4</option></select></div>
+<div>💰 Cierre: <select id="tp" onchange="saveGlobal()"><option value="0.3">0.1% NETO (0.3% bruto)</option><option value="0.4">0.2% NETO (0.4% bruto)</option><option value="0.6">0.4% NETO (0.6% bruto)</option><option value="0.7">0.5% NETO (0.7% bruto)</option><option value="0.8">0.6% NETO (0.8% bruto)</option></select></div>
  <div>🛑 SL: <select id="sl" onchange="saveGlobal()"><option value="-1">-1%</option><option value="-1.5">-1.5%</option><option value="-2.5">-2.5%</option><option value="-3">-3%</option></select></div>
 <div>📤 RSI Venta: <select id="rsi_v" onchange="saveGlobal()"><option>70</option><option>75</option></select></div>
 <div>📈 P>EMA: <select id="ema" onchange="saveGlobal()"><option value="ON">ON Seguro</option><option value="OFF">OFF Caida</option></select></div>
 <div style="grid-column:1/3">📉 RSI Compra Global: <select id="rsi_c"><option value="30">30 Agresivo</option><option value="35">35 Equilibrado</option><option value="40">40 Caida</option></select> <button class="set" onclick="saveGlobal()">SET</button> <span id="autotune_status" style="margin-left:10px;color:#22c55e;font-weight:900"></span></div>
-<div>🎯 Bolas: <select id="max" onchange="setMax(this.value)"><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></div>
+<div>🎯 Bolas Totales: <select id="max" onchange="setMax(this.value)"><option value="2">2 (1+1)</option><option value="4">4 (2+2)</option><option value="6">6 (3+3)</option><option value="8">8 (4+4)</option></select></div>
 <div><label><input type="checkbox" id="autotune" onchange="toggleTune()"> 🧠 AUTO-TUNE ON</label></div>
 </div>
 
@@ -67,7 +67,7 @@ table{width:100%;font-size:12px;border-collapse:collapse} th{color:#aaa;font-siz
 </div>
 
 <div style="background:#111;border-radius:12px;padding:8px;margin:10px 0">
-<table><thead><tr><th>Moneda</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr></thead><tbody id="pos_table"><tr><td colspan="5">Sin posiciones</td></tr></tbody></table>
+<table><thead><tr><th>Moneda</th><th>Tipo</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr></thead><tbody id="pos_table"><tr><td colspan="6">Sin posiciones</td></tr></tbody></table>
 </div>
 
 <div style="background:#111;border-radius:12px;padding:8px">
@@ -87,29 +87,40 @@ async function load(){
  document.getElementById('acum_usd').innerText='$'+st.gan_acum.toFixed(2);
  document.getElementById('acum_mxn').innerText='$'+st.gan_acum_mxn.toFixed(0);
  document.getElementById('bola_line').innerText='$'+st.bola.toFixed(2)+' USD / $'+st.bola_mxn.toFixed(0)+' MXN ('+st.max_entradas+' bolas) = $'+st.capital.toFixed(2)+' / '+st.max_entradas;
- document.getElementById('usdmxn').innerText=st.usd_mxn; document.getElementById('winline').innerText=st.ganadas+'Win '+st.winrate.toFixed(0)+'%NETO '+st.tp+'%';
+ document.getElementById('usdmxn').innerText=st.usd_mxn;
+ let neto = (st.tp - st.fee_total).toFixed(1);
+ document.getElementById('winline').innerText=st.ganadas+'Win '+st.winrate.toFixed(0)+'% NETO '+neto+'% ('+st.tp+'% bruto)';
  document.getElementById('tp').value=st.tp; document.getElementById('sl').value=st.sl_pct; document.getElementById('rsi_v').value=st.rsi_venta; document.getElementById('ema').value=st.filtro_ema; document.getElementById('rsi_c').value=st.rsi_compra; document.getElementById('max').value=st.max_entradas;
+ document.getElementById('modo').value=st.modo||'AMBOS';
+ document.getElementById('modo_line').innerText= 'MODO: '+(st.modo||'AMBOS');
+ document.getElementById('bola_split').innerText= `(${Math.ceil(st.max_entradas/2)} LONG + ${Math.floor(st.max_entradas/2)} SHORT)`;
  document.getElementById('autotune').checked=st.auto_tune; document.getElementById('autotune_status').innerText=st.auto_tune?'🧠 AUTO-TUNE ON':'MANUAL';
  document.getElementById('btn_auto').innerText=st.auto?'AUTO ON 🤖':'AUTO OFF';
 
  let debajo=0,total=0; for(let c in pr){ if(pr[c].price>0){ total++; if(pr[c].price < pr[c].ema) debajo++; } }
- let cerebro=''; if(debajo>=6){ cerebro=`📉 CAIDA FUERTE ${debajo}/${total} bajo EMA<br>👉 LO MEJOR HOY:<br>• SL: <b>-2% o -3%</b><br>• RSI Venta: <b>70 (deja correr)</b><br>• Filtro P>EMA: <b>OFF</b><br>Si lo dejas ON no va a comprar nada hoy.`; }
- else if(debajo<=2){ cerebro=`📈 SUBIDA FUERTE ${total-debajo}/${total} sobre EMA<br>👉 LO MEJOR HOY:<br>• SL: -1%<br>• RSI Venta: 75<br>• Filtro P>EMA: ON`; }
- else { cerebro=`➖ LATERAL ${debajo}/${total} bajo EMA<br>👉 LO MEJOR HOY:<br>• SL: -1.5%<br>• RSI Venta: 70<br>• Filtro P>EMA: OFF`; }
- cerebro+='<br><br>Por moneda:<br>'; for(let c in pr){ cerebro+=`${c}: ${pr[c].sug} | Límite: ${pr[c].limite}<br>`; }
+ let cerebro=''; if(debajo>=6){ cerebro=`📉 CAIDA FUERTE ${debajo}/${total} bajo EMA<br>👉 LO MEJOR HOY:<br>• SL: <b>-2% o -3%</b><br>• RSI Venta: <b>70</b> | Compra: <b>40</b><br>• Filtro P>EMA: <b>OFF</b> + SHORT activo<br>Si lo dejas ON no va a comprar LONG, pero SHORT sí.`; }
+ else if(debajo<=2){ cerebro=`📈 SUBIDA FUERTE ${total-debajo}/${total} sobre EMA<br>👉 LO MEJOR HOY:<br>• SL: -1%<br>• RSI Venta: 75 | Compra: 30<br>• Filtro P>EMA: ON | LONG activo`; }
+ else { cerebro=`➖ LATERAL ${debajo}/${total} bajo EMA<br>👉 LO MEJOR HOY:<br>• SL: -1.5%<br>• RSI Venta: 70<br>• Filtro P>EMA: OFF | AMBOS`; }
+ cerebro+='<br><br>Por moneda:<br>'; for(let c in pr){ cerebro+=`${c}: ${pr[c].sug} | RSI ${pr[c].rsi}<br>`; }
  document.getElementById('cerebro_txt').innerHTML=cerebro;
 
  let h=''; for(let c in pr){ let p=pr[c]; let act=st.coins_activas[c];
+ let colorSug = p.sug.includes('LONG')? '#22c55e' : p.sug.includes('SHORT')? '#f87171' : '#888';
  h+=`<div class="coin"><h3>${c} $${p.price>1?p.price.toFixed(2):p.price.toFixed(4)} <button class="onoff" onclick="toggleCoin('${c}')">${act?'ON 🟢':'OFF'}</button></h3>
- <div style="text-align:center;font-weight:900">${p.sug}</div><div class="rsi">RSI ${p.rsi} (lim ${p.limite})<br><span class="small">P ${p.price.toFixed(2)} ${p.price>p.ema?'>': '<'} EMA ${p.ema.toFixed(2)}</span><br><span class="yellow-text">${p.motivo}</span></div>
+ <div style="text-align:center;font-weight:900;color:${colorSug}">${p.sug}</div><div class="rsi">RSI ${p.rsi} (lim ${p.limite})<br><span class="small">P ${p.price.toFixed(2)} ${p.price>p.ema?'>': '<'} EMA ${p.ema.toFixed(2)}</span><br><span class="yellow-text">${p.motivo}</span></div>
  <div class="set-row"><input id="rsi_${c}" value="${p.limite}"><button class="set" onclick="setRsi('${c}')">SET</button><button class="reset" onclick="resetRsi('${c}')">RESET</button></div>
  <div class="robot">🤖 ROBOT ${st.auto?'ON':'OFF'}</div><button class="grafica" onclick="window.open('/chart/${c}','_blank')">GRÁFICA</button></div>`; }
  document.getElementById('coins').innerHTML=h;
 
- let pt=''; if(st.pos.length==0) pt='<tr><td colspan="5">Sin posiciones</td></tr>'; else st.pos.forEach(p=>{ pt+=`<tr><td>${p.sym}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td style="color:${p.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${p.gan_neta_pct.toFixed(2)}%</td><td><button onclick="sell('${p.sym}')" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">Vender</button></td></tr>`; });
+ let pt=''; if(st.pos.length==0) pt='<tr><td colspan="6">Sin posiciones</td></tr>';
+ else st.pos.forEach(p=>{
+   let tipo = p.tipo|| (p.sym.includes('SHORT')? 'SHORT' : 'LONG');
+   let colTipo = tipo==='SHORT'? '#f87171' : '#22c55e';
+   pt+=`<tr><td>${p.sym.replace(' SHORT','').replace(' LONG','')}</td><td style="color:${colTipo};font-weight:900">${tipo}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td style="color:${p.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${p.gan_neta_pct.toFixed(2)}%</td><td><button onclick="sell('${p.sym.replace(' LONG','').replace(' SHORT','')}')" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">Vender</button></td></tr>`;
+ });
  document.getElementById('pos_table').innerHTML=pt;
 
- let ht=''; st.historial.slice(-20).reverse().forEach(x=>{ ht+=`<tr><td>${x.fecha}</td><td>${x.sym}</td><td>$${x.monto.toFixed(2)}</td><td>${x.entry.toFixed(2)}->${x.exit.toFixed(2)}</td><td style="color:${x.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${x.gan_neta_pct.toFixed(2)}%</td><td style="color:#22c55e">$${x.gan_neta_mxn.toFixed(2)}</td><td>$${x.capital_despues.toFixed(2)}</td><td>$${x.bola_despues.toFixed(2)}</td></tr>`; });
+ let ht=''; st.historial.slice(-30).reverse().forEach(x=>{ ht+=`<tr><td>${x.fecha}</td><td>${x.sym}</td><td>$${x.monto.toFixed(2)}</td><td>${x.entry.toFixed(2)}->${x.exit.toFixed(2)}</td><td style="color:${x.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${x.gan_neta_pct.toFixed(2)}%</td><td style="color:#22c55e">$${x.gan_neta_mxn.toFixed(2)}</td><td>$${x.capital_despues.toFixed(2)}</td><td>$${x.bola_despues.toFixed(2)}</td></tr>`; });
  document.getElementById('hist_table').innerHTML=ht;
 
  let labels=st.capital_history.map(x=>new Date(x.t).toLocaleTimeString()); let caps=st.capital_history.map(x=>x.cap); let bolas=st.capital_history.map(x=>x.cap/st.max_entradas);
@@ -117,6 +128,7 @@ async function load(){
  ch=new Chart(document.getElementById('chart'),{type:'line',data:{labels:labels,datasets:[{label:'Capital USD',data:caps,borderColor:'#22c55e',backgroundColor:'#22c55e22',fill:true},{label:'Bola USD',data:bolas,borderColor:'#facc15',borderDash:[5,5]}]},options:{plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#666'}},y:{ticks:{color:'#666'}}}}});
 }
 function setMax(v){ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max:parseInt(v)})}).then(()=>setTimeout(load,300)); }
+function setModo(v){ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({modo:v})}).then(()=>load()); }
 function saveGlobal(){ let tp=document.getElementById('tp').value, sl=document.getElementById('sl').value, rv=document.getElementById('rsi_v').value, ema=document.getElementById('ema').value, rc=document.getElementById('rsi_c').value;
  fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tp:tp,sl_pct:sl,rsi_venta:rv,filtro_ema:ema,rsi_compra:rc})}).then(()=>load()); }
 function toggleCoin(c){ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin:c})}).then(()=>load()); }
