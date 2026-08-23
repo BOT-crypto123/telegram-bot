@@ -149,19 +149,15 @@ def api_config():
     if "toggle_coin" in j: data["coins_activas"][j["toggle_coin"]]=not data["coins_activas"].get(j["toggle_coin"],True)
     if "max" in j: data["max_entradas"]=int(j["max"])
     if "auto_tune" in j: data["auto_tune"]=(j["auto_tune"]=="ON" or j["auto_tune"]==True)
-    # Si AUTO-TUNE ON, no deja editar manual, el lo hace solo
-    if not data.get("auto_tune", True):
+    if not data.get("auto_tune",True):
         if "rsi_compra" in j: data["rsi_compra"]=float(j["rsi_compra"])
-        if "rsi_coin" in j: data["rsi_por_moneda"][j["rsi_coin"]["sym"]]=float(j["rsi_coin"]["val"])
-        if "rsi_coin_reset" in j: data["rsi_por_moneda"].pop(j["rsi_coin_reset"],None)
         if "tp" in j: data["tp"]=float(j["tp"])
         if "sl_pct" in j: data["sl_pct"]=float(j["sl_pct"])
         if "rsi_venta" in j: data["rsi_venta"]=float(j["rsi_venta"])
         if "filtro_ema" in j: data["filtro_ema"]=j["filtro_ema"]
-    else:
-        # Permite cambiar bolas aunque auto-tune este ON
-        if "rsi_compra" in j: data["rsi_por_moneda"] = data.get("rsi_por_moneda", {})
-    save(); return jsonify(ok=True)
+    if "rsi_coin" in j: data["rsi_por_moneda"][j["rsi_coin"]["sym"]]=float(j["rsi_coin"]["val"])
+    if "rsi_coin_reset" in j: data["rsi_por_moneda"].pop(j["rsi_coin_reset"],None)
+    save();return jsonify(ok=True)
 
 @app.route("/api/buy/<sym>", methods=["POST"])
 def buy_sym(sym):
