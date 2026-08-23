@@ -45,12 +45,12 @@ table{width:100%;font-size:12px;border-collapse:collapse} th{color:#aaa;font-siz
 </div>
 
 <div class="controls">
-<div>💰 Cierre: <select id="tp"><option value="0.3">0.3% NETO</option><option value="0.5">0.5% NETO</option><option value="0.8">0.8% NETO</option></select></div>
-<div>🛑 SL: <select id="sl"><option value="-1">-1%</option><option value="-1.5">-1.5%</option><option value="-2.5">-2.5%</option><option value="-3">-3%</option></select></div>
-<div>📤 RSI Venta: <select id="rsi_v"><option>70</option><option>75</option></select></div>
-<div>📈 P>EMA: <select id="ema"><option value="ON">ON Seguro</option><option value="OFF">OFF Caida</option></select></div>
+<div>💰 Cierre: <select id="tp" onchange="saveGlobal()"><option value="0.3">0.3% NETO</option><option value="0.5">0.5% NETO</option><option value="0.8">0.8% NETO</option></select></div>
+<div>🛑 SL: <select id="sl" onchange="saveGlobal()"><option value="-1">-1%</option><option value="-1.5">-1.5%</option><option value="-2.5">-2.5%</option><option value="-3">-3%</option></select></div>
+<div>📤 RSI Venta: <select id="rsi_v" onchange="saveGlobal()"><option>70</option><option>75</option></select></div>
+<div>📈 P>EMA: <select id="ema" onchange="saveGlobal()"><option value="ON">ON Seguro</option><option value="OFF">OFF Caida</option></select></div>
 <div style="grid-column:1/3">📉 RSI Compra Global: <select id="rsi_c"><option value="30">30 Agresivo</option><option value="35">35 Equilibrado</option><option value="40">40 Caida</option></select> <button class="set" onclick="saveGlobal()">SET</button> <span id="autotune_status" style="margin-left:10px;color:#22c55e;font-weight:900"></span></div>
-<div>🎯 Bolas: <select id="max"><option value="3">3</option><option value="5">5</option><option value="8">8</option></select></div>
+<div>🎯 Bolas: <select id="max" onchange="setMax(this.value)"><option value="3">3</option><option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option><option value="8">8</option></select></div>
 <div><label><input type="checkbox" id="autotune" onchange="toggleTune()"> 🧠 AUTO-TUNE ON</label></div>
 </div>
 
@@ -92,7 +92,6 @@ async function load(){
  document.getElementById('autotune').checked=st.auto_tune; document.getElementById('autotune_status').innerText=st.auto_tune?'🧠 AUTO-TUNE ON':'MANUAL';
  document.getElementById('btn_auto').innerText=st.auto?'AUTO ON 🤖':'AUTO OFF';
 
- // Cerebro
  let debajo=0,total=0; for(let c in pr){ if(pr[c].price>0){ total++; if(pr[c].price < pr[c].ema) debajo++; } }
  let cerebro=''; if(debajo>=6){ cerebro=`📉 CAIDA FUERTE ${debajo}/${total} bajo EMA<br>👉 LO MEJOR HOY:<br>• SL: <b>-2% o -3%</b><br>• RSI Venta: <b>70 (deja correr)</b><br>• Filtro P>EMA: <b>OFF</b><br>Si lo dejas ON no va a comprar nada hoy.`; }
  else if(debajo<=2){ cerebro=`📈 SUBIDA FUERTE ${total-debajo}/${total} sobre EMA<br>👉 LO MEJOR HOY:<br>• SL: -1%<br>• RSI Venta: 75<br>• Filtro P>EMA: ON`; }
@@ -100,7 +99,6 @@ async function load(){
  cerebro+='<br><br>Por moneda:<br>'; for(let c in pr){ cerebro+=`${c}: ${pr[c].sug} | Límite: ${pr[c].limite}<br>`; }
  document.getElementById('cerebro_txt').innerHTML=cerebro;
 
- // Coins
  let h=''; for(let c in pr){ let p=pr[c]; let act=st.coins_activas[c];
  h+=`<div class="coin"><h3>${c} $${p.price>1?p.price.toFixed(2):p.price.toFixed(4)} <button class="onoff" onclick="toggleCoin('${c}')">${act?'ON 🟢':'OFF'}</button></h3>
  <div style="text-align:center;font-weight:900">${p.sug}</div><div class="rsi">RSI ${p.rsi} (lim ${p.limite})<br><span class="small">P ${p.price.toFixed(2)} ${p.price>p.ema?'>': '<'} EMA ${p.ema.toFixed(2)}</span><br><span class="yellow-text">${p.motivo}</span></div>
@@ -108,19 +106,17 @@ async function load(){
  <div class="robot">🤖 ROBOT ${st.auto?'ON':'OFF'}</div><button class="grafica" onclick="window.open('/chart/${c}','_blank')">GRÁFICA</button></div>`; }
  document.getElementById('coins').innerHTML=h;
 
- // Pos
  let pt=''; if(st.pos.length==0) pt='<tr><td colspan="5">Sin posiciones</td></tr>'; else st.pos.forEach(p=>{ pt+=`<tr><td>${p.sym}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td style="color:${p.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${p.gan_neta_pct.toFixed(2)}%</td><td><button onclick="sell('${p.sym}')" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">Vender</button></td></tr>`; });
  document.getElementById('pos_table').innerHTML=pt;
 
- // Hist
  let ht=''; st.historial.slice(-20).reverse().forEach(x=>{ ht+=`<tr><td>${x.fecha}</td><td>${x.sym}</td><td>$${x.monto.toFixed(2)}</td><td>${x.entry.toFixed(2)}->${x.exit.toFixed(2)}</td><td style="color:${x.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${x.gan_neta_pct.toFixed(2)}%</td><td style="color:#22c55e">$${x.gan_neta_mxn.toFixed(2)}</td><td>$${x.capital_despues.toFixed(2)}</td><td>$${x.bola_despues.toFixed(2)}</td></tr>`; });
  document.getElementById('hist_table').innerHTML=ht;
 
- // Chart
  let labels=st.capital_history.map(x=>new Date(x.t).toLocaleTimeString()); let caps=st.capital_history.map(x=>x.cap); let bolas=st.capital_history.map(x=>x.cap/st.max_entradas);
  if(ch) ch.destroy();
  ch=new Chart(document.getElementById('chart'),{type:'line',data:{labels:labels,datasets:[{label:'Capital USD',data:caps,borderColor:'#22c55e',backgroundColor:'#22c55e22',fill:true},{label:'Bola USD',data:bolas,borderColor:'#facc15',borderDash:[5,5]}]},options:{plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#666'}},y:{ticks:{color:'#666'}}}}});
 }
+function setMax(v){ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({max:parseInt(v)})}).then(()=>setTimeout(load,300)); }
 function saveGlobal(){ let tp=document.getElementById('tp').value, sl=document.getElementById('sl').value, rv=document.getElementById('rsi_v').value, ema=document.getElementById('ema').value, rc=document.getElementById('rsi_c').value;
  fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({tp:tp,sl_pct:sl,rsi_venta:rv,filtro_ema:ema,rsi_compra:rc})}).then(()=>load()); }
 function toggleCoin(c){ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin:c})}).then(()=>load()); }
