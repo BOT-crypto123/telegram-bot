@@ -6,90 +6,58 @@
 <title>DUAL V5 - $500 + $500</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
-body{background:#000;display:flex;min-height:100vh;color:#fff}
-.col{width:50%;min-height:100vh;padding:12px 10px}
-.left{background:#0a0a0a;border-right:1px solid #222}
-.right{background:#0d1425}
-.header{font-size:14px;font-weight:900;margin-bottom:2px}
-.left .header{color:#ffcc00}
-.right .header{color:#4da3ff}
-.sub{font-size:10px;opacity:0.6;margin-bottom:14px}
-.circle-wrap{display:flex;justify-content:center;margin:12px 0 16px}
-.circle{width:160px;height:160px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000}
-.left .circle{border:6px solid #ffcc00}
-.right .circle{border:6px solid #3b82f6}
-.circle .lab{font-size:12px;opacity:0.7}
-.circle .cap{font-size:34px;font-weight:900}
-.circle .bola{font-size:20px;font-weight:800;margin-top:2px}
-.left .bola{color:#ffcc00}
-.right .bola{color:#60a5fa}
-.info-box{background:#141414;border:1px solid #222;border-radius:12px;padding:10px 6px;margin-bottom:14px}
-.right .info-box{background:#121a2e;border-color:#1e2d50}
-.info-row{display:flex;justify-content:space-around;text-align:center}
-.green{color:#22c55e}.yellow{color:#ffcc00}
-.market-item{background:#1a1a1a;border:1px solid #252525;border-radius:10px;padding:9px 10px;margin-bottom:7px;display:flex;justify-content:space-between}
-.right .market-item{background:#162040;border-color:#1e2d50}
-.left .price{color:#ffcc00;font-weight:700}
-.right .price{color:#60a5fa;font-weight:700}
+body{background:#000;display:flex;min-height:100vh}
+.col{width:50%;min-height:100vh;padding:10px 8px 80px 8px;position:relative}
+.left{background:#0a0a0a}
+.right{background:#0e1426;border-left:1px solid #1a2744}
+.hdr{font-weight:900;font-size:13px}.left .hdr{color:#facc15}.right .hdr{color:#60a5fa}
+.sub{font-size:10px;color:#6b7280;margin:2px 0 14px 20px}
+.circle-wrap{display:flex;justify-content:center;margin:6px 0 18px}
+.circle{width:162px;height:162px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer}
+.left .circle{border:6px solid #facc15;background:radial-gradient(circle at 30% 30%, #1a1a0a 0%, #000 70%)}
+.right .circle{border:6px solid #3b82f6;background:radial-gradient(circle at 30% 30%, #0f1b3a 0%, #000 70%)}
+.cap{font-size:38px;font-weight:900;color:#fff}.bola{font-size:22px;font-weight:900}.left .bola{color:#facc15}.right .bola{color:#60a5fa}
+.card{background:#161616;border:1px solid #262626;border-radius:12px;padding:10px;margin-bottom:8px}
+.right .card{background:#151e32;border-color:#1e2e50}
+.price-row{display:flex;justify-content:space-between;margin-top:8px}
+.pct.up{background:#052e1a;color:#22c55e;padding:2px 6px;border-radius:6px;font-size:11px}
+.pct.down{background:#2e0a0a;color:#ef4444;padding:2px 6px;border-radius:6px;font-size:11px}
+.open-box{margin-top:14px;background:rgba(250,204,21,0.06);border-radius:12px;padding:10px}
+.right .open-box{background:rgba(59,130,246,0.06)}
 </style>
 </head>
 <body>
-<div class="col left">
-  <div class="header">◆ BINANCE - CRYPTO</div>
-  <div style="font-size:10px;opacity:0.6;margin-bottom:14px">Crypto Trading • Live</div>
-  <div class="circle-wrap"><div class="circle">
-    <div class="lab">Capital</div>
-    <div class="cap" id="capBin">$501</div>
-    <div style="font-size:12px;opacity:0.7">bola</div>
-    <div class="bola" id="bolaBin">$62.6</div>
-  </div></div>
-  <div class="info-box">
-    <div class="info-row">
-      <div><b class="green" id="dispBin">$500</b><br><span style="font-size:8px;opacity:0.5">DISPONIBLE</span></div>
-      <div><b class="yellow" id="ganBin">+ $0.59</b><br><span style="font-size:8px;opacity:0.5">GANANCIA</span></div>
-      <div><b id="totalBin">$501</b><br><span style="font-size:8px;opacity:0.5">TOTAL REAL</span></div>
-    </div>
-  </div>
-  <div style="color:#ffcc00;font-weight:800;font-size:12px;margin:12px 0 8px">🔥 MARKETS</div>
-  <div class="market-item"><span>₿ BTC</span><span class="price" id="pBTC">$63,421</span></div>
-  <div class="market-item"><span>♦ ETH</span><span class="price" id="pETH">$3,210</span></div>
-  <div class="market-item"><span>◎ SOL</span><span class="price" id="pSOL">$145</span></div>
+<div class="col left" onclick="location.href='/dashboard'">
+  <div class="hdr">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
+  <div class="circle-wrap"><div class="circle"><div style="color:#a3a3a3;font-size:13px">Capital</div><div class="cap" id="capBin">$500</div><div style="color:#a3a3a3;font-size:13px">bola</div><div class="bola" id="bolaBin">$62.5</div></div></div>
+  <div style="color:#facc15;font-weight:900;font-size:11px;margin:14px 0 8px">🔥 MARKETS</div>
+  <div class="card"><div>₿ BTC Bitcoin</div><div class="price-row"><span>$63,421.50</span><span class="pct up">+1.24% ↑</span></div></div>
+  <div class="card"><div>♦ ETH Ethereum</div><div class="price-row"><span>$3,210.88</span><span class="pct up">+0.87% ↑</span></div></div>
+  <div class="card"><div>◎ SOL Solana</div><div class="price-row"><span>$145.32</span><span class="pct down">-0.52% ↓</span></div></div>
+  <div class="open-box"><div style="color:#facc15;font-weight:900;font-size:11px">🧳 OPEN POSITIONS</div><div id="openBin" style="color:#52525b;text-align:center;padding:10px">Sin posiciones</div></div>
 </div>
-<div class="col right">
-  <div class="header">📊 MT5 SIN MT5</div>
-  <div style="font-size:10px;opacity:0.6;margin-bottom:14px">Forex • Commodities • Indices</div>
-  <div class="circle-wrap"><div class="circle">
-    <div class="lab">Capital</div>
-    <div class="cap" id="capMT5">$500</div>
-    <div style="font-size:12px;opacity:0.7">bola</div>
-    <div class="bola" id="bolaMT5">$125.0</div>
-  </div></div>
-  <div class="info-box">
-    <div class="info-row">
-      <div><b class="green" id="dispMT5">$500</b><br><span style="font-size:8px;opacity:0.5">DISPONIBLE</span></div>
-      <div><b class="yellow" id="ganMT5">+ $0.00</b><br><span style="font-size:8px;opacity:0.5">GANANCIA</span></div>
-      <div><b id="totalMT5">$500</b><br><span style="font-size:8px;opacity:0.5">TOTAL REAL</span></div>
-    </div>
-  </div>
-  <div style="color:#60a5fa;font-weight:800;font-size:12px;margin:12px 0 8px">📈 MARKETS</div>
-  <div class="market-item"><span>🏅 XAUUSD</span><span class="price">$2,341</span></div>
-  <div class="market-item"><span>🥈 XAGUSD</span><span class="price">$28.15</span></div>
-  <div class="market-item"><span>🛢️ USOIL</span><span class="price">$76.42</span></div>
+<div class="col right" onclick="location.href='/dashboard_mt5.html'">
+  <div class="hdr">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
+  <div class="circle-wrap"><div class="circle"><div style="color:#a3a3a3;font-size:13px">Capital</div><div class="cap" id="capMT5">$500</div><div style="color:#a3a3a3;font-size:13px">bola</div><div class="bola" id="bolaMT5">$62.5</div></div></div>
+  <div style="color:#60a5fa;font-weight:900;font-size:11px;margin:14px 0 8px">📈 MARKETS</div>
+  <div class="card"><div>● XAUUSD GOLD Gold Spot</div><div class="price-row"><span>$2,341.20</span><span class="pct up">+0.64% ↑</span></div></div>
+  <div class="card"><div>● XAGUSD SILVER Silver Spot</div><div class="price-row"><span>$28.15</span><span class="pct down">-0.31% ↓</span></div></div>
+  <div class="card"><div>🛢️ USOIL Crude Oil WTI</div><div class="price-row"><span>$76.42</span><span class="pct up">+0.18% ↑</span></div></div>
+  <div class="open-box"><div style="color:#60a5fa;font-weight:900;font-size:11px">🧳 OPEN POSITIONS</div><div id="openMT5" style="color:#52525b;text-align:center;padding:10px">Sin posiciones</div></div>
 </div>
 <script>
-async function loadState(){
- const r=await fetch('/api/state'); const s=await r.json();
- const capBin=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0);
- document.getElementById('capBin').textContent='$'+capBin.toFixed(0);
- document.getElementById('bolaBin').textContent='$'+(capBin/(s.max_entradas||8)).toFixed(1);
- document.getElementById('dispBin').textContent='$'+(s.disponible_usd||0).toFixed(0);
- document.getElementById('ganBin').textContent='+ $'+(s.gan_acum||0).toFixed(2);
- document.getElementById('totalBin').textContent='$'+capBin.toFixed(0);
+async function load(){
+ const s=await (await fetch('/api/state')).json();
+ const capB=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0);
+ document.getElementById('capBin').textContent='$'+capB.toFixed(0);
+ document.getElementById('bolaBin').textContent='$'+(capB/(s.max_entradas||8)).toFixed(1);
  const capM=(s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0);
  document.getElementById('capMT5').textContent='$'+capM.toFixed(0);
- document.getElementById('bolaMT5').textContent='$'+(capM/(s.max_m||4)).toFixed(1);
+ document.getElementById('bolaMT5').textContent='$'+(capM/(s.max_m||8)).toFixed(1);
+ let hB=s.pos.length?'':'Sin posiciones'; s.pos.forEach(p=>hB+=`<div>${p.sym} $${p.size.toFixed(0)} ${p.tipo}</div>`); document.getElementById('openBin').innerHTML=hB;
+ let hM=(s.pos_m.length+s.pos_m_short.length)?'':'Sin posiciones'; s.pos_m.concat(s.pos_m_short).forEach(p=>hM+=`<div>${p.sym} $${p.size.toFixed(0)} ${p.tipo}</div>`); document.getElementById('openMT5').innerHTML=hM;
 }
-loadState(); setInterval(loadState,3000);
+load(); setInterval(load,3000);
 </script>
 </body>
-  </html>
+</html>
