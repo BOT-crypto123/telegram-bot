@@ -17,10 +17,18 @@ def load_state():
  try:
   if os.path.exists(FILE):
    with open(FILE) as f:
-    return json.load(f)
- except:
-  pass
+    data = json.load(f)
+    # junta default con lo guardado para que no falte nada
+    merged = DEFAULT.copy()
+    merged.update(data)
+    return merged
+ except Exception as e:
+  print("Error load_state", e)
  return DEFAULT.copy()
+
+def save_state(state):
+ with open(FILE, 'w') as f:
+  json.dump(state, f)
 
 @app.route('/')
 def index():
@@ -38,9 +46,33 @@ def dashm():
 def api_state():
  return jsonify(load_state())
 
+@app.route('/api/state', methods=['POST'])
+def api_state_save():
+ data = request.get_json(force=True)
+ save_state(data)
+ return jsonify({"ok": True})
+
+@app.route('/api/upload', methods=['POST'])
+def api_upload():
+ # para restaurar respaldo
+ try:
+  data = request.get_json(force=True)
+  # si viene con formato de respaldo viejo, lo normalizamos
+  if isinstance(data, dict):
+   save_state(data)
+   return jsonify({"ok": True})
+  return jsonify({"ok": False, "error": "formato invalido"})
+ except Exception as e:
+  return jsonify({"ok": False, "error": str(e)}), 400
+
 @app.route('/api/prices')
 def api_prices():
- return jsonify({"BTC":77355.93,"ETH":2439.75,"SOL":94.26})
+ # Agregué RSI para que no salga undefined en los 3 circulos
+ return jsonify({
+  "BTC": 77355.93, "BTC_RSI": 62,
+  "ETH": 2439.75, "ETH_RSI": 58,
+  "SOL": 94.26, "SOL_RSI": 55
+ })
 
 BOT_TOKEN=os.environ.get("BOT_TOKEN","")
 bot=telegram.Bot(token=BOT_TOKEN) if BOT_TOKEN else None
@@ -56,7 +88,8 @@ def tg():
  txt=(up.message.text or '').upper()
  cid=up.message.chat.id
  if 'DASHBOARD' in txt or '/START' in txt or 'DUAL' in txt or 'HOLA' in txt:
-  bot.send_message(chat_id=cid,text="DUAL V5 $1000\n\nPORTADA:\nhttps://telegram-bot-cijp.onrender.com/\n\nBINANCE $62.5:\nhttps://telegram-bot-cijp.onrender.com/dashboard\n\nMT5 $100:\nhttps://telegram-bot-cijp.onrender.com/dashboard_mt5.html")
+  # AQUI ESTA EL CAMBIO: Solo AMBAS, ya no MT5
+  bot.send_message(chat_id=cid,text="DUAL V5 AMBAS $1000\n\nPORTADA:\nhttps://telegram-bot-cijp.onrender.com/\n\nDASHBOARD AMBAS (BINANCE + MT5):\nhttps://telegram-bot-cijp.onrender.com/dashboard")
  return 'ok'
 
 @app.route('/set_webhook')
