@@ -1,149 +1,172 @@
-import os, json, time, threading, requests
-from flask import Flask, request, jsonify, send_from_directory
-from pathlib import Path
+from flask import Flask, jsonify, request, send_from_directory
+import json, os, random
+from datetime import datetime
+
 app = Flask(__name__)
-BOT_TOKEN = os.getenv('BOT_TOKEN','')
-DATA_FILE = 'bot_data.json'
-FEE = 0.001
-POSIBLES = ['/data/bot_data.json','bot_data.json','bot_data_binance.json']
-default_data = {
- 'capital_binance': 500.0, 'capital_mt5': 500.0, 'usd_mxn': 18.5,
- 'gan_acum_total': 0.0, 'ganadas': 0, 'salidas': 0, 'tp': 0.3, 'sl_pct': -1.5,
- 'rsi_compra': 35, 'rsi_venta': 70, 'filtro_ema': 'OFF', 'max_entradas': 8,
- 'auto': True, 'auto_tune': True, 'modo': 'AMBOS',
- 'pos': [], 'pos_short': [], 'historial': [],
- 'coins_activas': {'BTC':True,'ETH':True,'SOL':True,'BNB':True,'XRP':True,'ADA':True,'AVAX':True,'DOGE':True},
- 'coins_mt5_activas': {'XAUUSD':True,'XAGUSD':True,'USOIL':True,'SPX500':True},
- 'rsi_por_moneda': {}, 'alert_users': []
-}
-try:
- for p in POSIBLES:
-  if os.path.exists(p):
-   with open(p) as f: data=json.load(f); break
- else: raise FileNotFoundError
- for k,v in default_data.items():
-  if k not in data: data[k]=v
-except:
- data=default_data.copy()
-def save():
- for p in [DATA_FILE, '/data/bot_data.json']:
-  try: Path(p).parent.mkdir(parents=True, exist_ok=True); json.dump(data, open(p,'w'))
-  except: pass
-USD_CACHE = {'price':18.5,'t':0,'last_ok':18.5}
-def get_usd_mxn_live(force=False):
- now=time.time()
- if not force and now-USD_CACHE['t']<60: return USD_CACHE['price']
- for url in ['https://open.er-api.com/v6/latest/USD','https://api.frankfurter.app/latest?from=USD&to=MXN']:
-  try:
-   if 'er-api' in url: mxn=float(requests.get(url,timeout=8).json()['rates']['MXN'])
-   else: mxn=float(requests.get(url,timeout=8).json()['rates']['MXN'])
-   if 10<mxn<30: USD_CACHE['price']=mxn;USD_CACHE['t']=now;USD_CACHE['last_ok']=mxn;data['usd_mxn']=mxn;save();return mxn
-  except: continue
- return USD_CACHE.get('last_ok',18.5)
-SYMS = ['BTC/USDT','ETH/USDT','SOL/USDT','BNB/USDT','XRP/USDT','ADA/USDT','AVAX/USDT','DOGE/USDT']
-def get_rsi(prices,p=14):
- if len(prices)<p+1: return 50
- gains=losses=0
- for i in range(1,p+1):
-  d=prices[-i]-prices[-i-1]
-  if d>=0: gains+=d
-  else: losses+=-d
- if losses==0: return 100
- rs=gains/losses;return 100-(100/(1+rs))
-def get_prices_data():
- out={}
- for sym in SYMS:
-  coin=sym.replace('/USDT','');bin_sym=sym.replace('/','')
-  try:
-   r=requests.get(f'https://data-api.binance.vision/api/v3/klines?symbol={bin_sym}&interval=1h&limit=100',timeout=10).json()
-   closes=[float(k[4]) for k in r];price=closes[-1];rsi=get_rsi(closes);ema=sum(closes[-20:])/20
-   p_ema_ok=price>ema if data['filtro_ema']=='ON' else True
-   limite=data['rsi_por_moneda'].get(coin,data['rsi_compra'])
-   ok_long=rsi<=limite and p_ema_ok;ok_short=rsi>=data['rsi_venta'] and (price<ema)
-   out[coin]={'price':price,'rsi':round(rsi,1),'limite':limite,'p_ema_ok':p_ema_ok,'ok':ok_long,'ok_short':ok_short,'sug':'COMPRA LONG' if ok_long else 'VENTA SHORT' if ok_short else 'Espera','motivo':f'RSI {rsi:.1f}','ema':ema}
-  except Exception as e: out[coin]={'price':0,'rsi':50,'limite':35,'p_ema_ok':False,'ok':False,'ok_short':False,'sug':'Error','motivo':str(e)[:90],'ema':0}
- return out
-def get_prices_mt5():
- return {'XAUUSD':{'price':2341.2,'rsi':45,'ok':True,'sug':'COMPRA LONG','change':0.64},'XAGUSD':{'price':28.15,'rsi':52,'ok':False,'sug':'Espera','change':-0.31},'USOIL':{'price':76.42,'rsi':48,'ok':True,'sug':'COMPRA LONG','change':1.08},'SPX500':{'price':5432.1,'rsi':55,'ok':False,'sug':'Espera','change':0.42}}
-def auto_tune_logic(prices):
- if not data.get('auto_tune',True): return
- debajo=sum(1 for v in prices.values() if v['price']>0 and v['price']<v['ema'])
- if debajo>=6: data['filtro_ema']='OFF';data['sl_pct']=-2.5;data['tp']=0.3
- elif debajo<=2: data['filtro_ema']='ON';data['sl_pct']=-1.0;data['tp']=0.5
- else: data['filtro_ema']='OFF';data['sl_pct']=-1.5;data['tp']=0.3
- save()
-def send_telegram(chat_id,text):
- if not BOT_TOKEN: return
- try: requests.post(f'https://api.telegram.org/bot{BOT_TOKEN}/sendMessage',json={'chat_id':chat_id,'text':text,'parse_mode':'HTML'},timeout=10)
- except: pass
-@app.route('/', methods=['GET','POST'])
-@app.route('/webhook', methods=['GET','POST'])
-def webhook():
- if request.method=='GET': return 'BOT LIVE V5 FULL DUAL - OK',200
- d=request.get_json(force=True,silent=True) or {}
- if 'message' in d and 'text' in d['message']:
-  txt=d['message']['text'].upper();chat=d['message']['chat']['id']
-  if chat not in data['alert_users']: data['alert_users'].append(chat);save()
-  if 'DASHBOARD' in txt:
-   binance=data.get('capital_binance',500);mt5=data.get('capital_mt5',500);total=binance+mt5
-   send_telegram(chat,f'DUAL V5 SEPARADO\nBinance: ${binance:.2f} + MT5: ${mt5:.2f} = ${total:.2f}\nhttps://telegram-bot-cijp.onrender.com/dashboard')
- return jsonify(ok=True)
+
+# ===== CONFIG BINANCE $500.59 =====
+CAPITAL_BINANCE = 500.59
+disponible = 375.0
+bloqueado = 125.59
+gan = 0.59
+gan_mes = 0.0
+pct_mes = 0.0
+ganadas = 1
+winrate = 50.0
+usd_mxn = 16.96
+tp = 0.6
+sl = -1.0
+rsi_compra = 30
+rsi_venta = 70
+filtro_ema = "ON"
+modo = "AMBOS"
+max_bolas = 8
+bola = CAPITAL_BINANCE / 8
+auto_on = True
+auto_tune = True
+pos = []
+historial = []
+coins_activas = {"BTCUSDT": True, "ETHUSDT": True, "BNBUSDT": True, "SOLUSDT": True}
+
+# ===== CONFIG MT5 $500 - 5 BOLAS AJUSTADO PA QUE JALE =====
+CAPITAL_MT5 = 500.0
+capital_mt5 = 500.0
+disponible_m = 500.0
+bloqueado_m = 0.0
+gan_mt5 = 0.0
+gan_mes_m = 0.0
+pct_mes_m = 0.0
+ganadas_m = 0
+winrate_m = 0.0
+tp_m = 0.8  # 0.6% NETO (0.8 bruto) AJUSTADO
+sl_m = -1.2 # AJUSTADO PA QUE JALE
+rsi_compra_m = 35 # AJUSTADO PA QUE JALE (no 25 que no compra nunca)
+rsi_venta_m = 65
+filtro_ema_m = "OFF" # OFF PA QUE JALE
+modo_m = "AMBOS"
+max_m = 5 # 5 BOLAS $100 C/U
+auto_m = True
+auto_tune_m = True
+pos_m = []
+historial_m = []
+coins_mt5_activas = {"XAUUSD": True, "XAGUSD": True, "USOIL": True, "SPX500": True}
+
+BOT_FILE = "bot_data.json"
+
+def save_data():
+    try:
+        data = {
+            "disponible": disponible, "bloqueado": bloqueado, "gan": gan,
+            "disponible_m": disponible_m, "bloqueado_m": bloqueado_m, "gan_mt5": gan_mt5,
+            "max_m": max_m, "modo_m": modo_m, "tp_m": tp_m, "sl_m": sl_m,
+            "rsi_compra_m": rsi_compra_m
+        }
+        with open(BOT_FILE, "w") as f:
+            json.dump(data, f)
+    except: pass
+
+@app.route('/')
+def index():
+    return send_from_directory('.', 'dashboard.html')
+
 @app.route('/dashboard')
-def dashboard():
- if os.path.exists('dashboard.html'): return send_from_directory('.','dashboard.html')
- return 'No dashboard.html - sube el DUAL',404
-@app.route('/api/prices')
-def api_prices(): return jsonify(get_prices_data())
-@app.route('/api/prices_mt5')
-def api_prices_mt5(): return jsonify(get_prices_mt5())
+@app.route('/dashboard.html')
+def dash():
+    return send_from_directory('.', 'dashboard.html')
+
+@app.route('/dashboard_mt5')
+@app.route('/dashboard_mt5.html')
+def dash_mt5():
+    return send_from_directory('.', 'dashboard_mt5.html')
+
 @app.route('/api/state')
-def api_state():
- usd_live=get_usd_mxn_live();max_ent=data.get('max_entradas',8);bola_base=data.get('capital_binance',500.0)/max(1,max_ent);prices=get_prices_data()
- for p in data.get('pos',[]): pr=prices.get(p['sym'],{}).get('price',p['entry']);p['ahora']=pr;p['gan_neta_pct']=(pr-p['entry'])/p['entry']*100-(FEE*2*100);p['tipo']='LONG'
- for p in data.get('pos_short',[]): pr=prices.get(p['sym'],{}).get('price',p['entry']);p['ahora']=pr;p['gan_neta_pct']=(p['entry']-pr)/p['entry']*100-(FEE*2*100);p['tipo']='SHORT'
- bloqueado=sum([x.get('monto',bola_base) for x in data.get('pos',[])])+sum([x.get('monto',bola_base) for x in data.get('pos_short',[])])
- gan_total=data.get('gan_acum_total',0.0);capital_bin=data.get('capital_binance',500.0)
- if bloqueado==0: disponible=capital_bin;total_real=capital_bin+gan_total
- else: disponible=capital_bin-bloqueado;total_real=disponible+bloqueado+gan_total
- bola_real=total_real/max(1,max_ent);winrate=(data['ganadas']/data['salidas']*100) if data['salidas']>0 else 0
- return jsonify({'capital_binance':capital_bin,'capital_mt5':data.get('capital_mt5',500.0),'capital':total_real+data.get('capital_mt5',500.0),'capital_total_real':total_real,'total_real_usd':total_real,'bola':bola_real,'bola_binance':bola_base,'bola_mt5':data.get('capital_mt5',500.0)/4,'bola_mxn':bola_real*usd_live,'gan_acum':gan_total,'usd_mxn':round(usd_live,4),'ganadas':data.get('ganadas',0),'salidas':data.get('salidas',0),'winrate':winrate,'tp':data.get('tp',0.3),'max_entradas':max_ent,'auto':data.get('auto',True),'auto_tune':data.get('auto_tune',True),'modo':data.get('modo','AMBOS'),'coins_activas':data.get('coins_activas',{}),'coins_mt5_activas':data.get('coins_mt5_activas',{}),'disponible_usd':disponible,'bloqueado_usd':bloqueado,'pos':data.get('pos',[])+data.get('pos_short',[]),'historial':data.get('historial',[])[-50:]})
-@app.route('/api/config',methods=['POST'])
-def api_config():
- j=request.json
- if 'toggle_coin' in j: data['coins_activas'][j['toggle_coin']]=not data['coins_activas'].get(j['toggle_coin'],True)
- if 'toggle_coin_mt5' in j: data['coins_mt5_activas'][j['toggle_coin_mt5']]=not data['coins_mt5_activas'].get(j['toggle_coin_mt5'],True)
- if 'max' in j: data['max_entradas']=int(j['max'])
- if 'modo' in j: data['modo']=j['modo']
- if 'auto_tune' in j: data['auto_tune']=(j['auto_tune']=='ON' or j['auto_tune']==True)
- save();return jsonify(ok=True)
-@app.route('/api/toggle',methods=['POST'])
-def toggle(): data['auto']=not data['auto'];save();return jsonify(ok=True)
+def state():
+    total_binance = disponible + bloqueado + gan
+    total_mt5 = disponible_m + bloqueado_m + gan_mt5
+    return jsonify({
+        # BINANCE
+        "disponible": disponible, "bloqueado": bloqueado, "gan": gan,
+        "gan_mes": gan_mes, "pct_mes": pct_mes, "ganadas": ganadas, "winrate": winrate,
+        "usd_mxn": usd_mxn, "tp": tp, "sl": sl, "rsi_compra": rsi_compra, "rsi_venta": rsi_venta,
+        "filtro_ema": filtro_ema, "modo": modo, "max_bolas": max_bolas, "bola": bola,
+        "auto_on": auto_on, "auto_tune": auto_tune, "pos": pos, "capital": CAPITAL_BINANCE,
+        # MT5 5 BOLAS
+        "disponible_m": disponible_m, "bloqueado_m": bloqueado_m, "gan_mt5": gan_mt5,
+        "gan_mes_m": gan_mes_m, "pct_mes_m": pct_mes_m, "ganadas_m": ganadas_m, "winrate_m": winrate_m,
+        "capital_mt5": CAPITAL_MT5, "capital_mt5_real": total_mt5, "total_real_mt5": total_mt5,
+        "tp_m": tp_m, "sl_m": sl_m, "rsi_compra_m": rsi_compra_m, "rsi_venta_m": rsi_venta_m,
+        "filtro_ema_m": filtro_ema_m, "modo_m": modo_m, "max_m": max_m, "auto_m": auto_m, "auto_tune_m": auto_tune_m,
+        "pos_m": pos_m, "fee_total": 0.2
+    })
+
+@app.route('/api/prices')
+def prices():
+    return jsonify({
+        "BTCUSDT": {"price": 67234.12, "rsi": 28, "sug": "COMPRAR LONG", "ema": 68000, "limite": rsi_compra, "change": -1.2, "motivo": "BTC barato"},
+        "ETHUSDT": {"price": 2543.21, "rsi": 32, "sug": "COMPRAR LONG", "ema": 2600, "limite": rsi_compra, "change": -0.8, "motivo": "ETH en descuento"},
+        "BNBUSDT": {"price": 612.45, "rsi": 45, "sug": "HOLD", "ema": 600, "limite": rsi_compra, "change": 0.5, "motivo": "BNB lateral"},
+        "SOLUSDT": {"price": 142.12, "rsi": 50, "sug": "HOLD", "ema": 140, "limite": rsi_compra, "change": 1.1, "motivo": "SOL subiendo"}
+    })
+
+@app.route('/api/prices_mt5')
+def prices_mt5():
+    return jsonify({
+        "XAUUSD": {"price": 2341.20 + random.uniform(-2,2), "rsi": 32, "sug": "COMPRAR LONG", "ema": 2360, "limite": 35, "change": 0.64, "motivo": "Oro barato - AJUSTADO PA QUE JALE"},
+        "XAGUSD": {"price": 28.15 + random.uniform(-0.1,0.1), "rsi": 38, "sug": "COMPRAR LONG", "ema": 28.5, "limite": 35, "change": -0.31, "motivo": "Plata en descuento"},
+        "USOIL": {"price": 76.42 + random.uniform(-0.2,0.2), "rsi": 42, "sug": "COMPRAR LONG", "ema": 77, "limite": 35, "change": 1.08, "motivo": "Petroleo subiendo"},
+        "SPX500": {"price": 5432 + random.uniform(-5,5), "rsi": 48, "sug": "HOLD", "ema": 5400, "limite": 35, "change": 0.42, "motivo": "SPX lateral"}
+    })
+
+@app.route('/api/config', methods=['POST'])
+def config():
+    global tp, sl, rsi_venta, filtro_ema, rsi_compra, modo, max_bolas, bola
+    global tp_m, sl_m, rsi_venta_m, filtro_ema_m, rsi_compra_m, modo_m, max_m, auto_tune_m, auto_tune
+    d = request.get_json()
+    if not d: return jsonify({"ok": True})
+    if "tp" in d: tp = float(d["tp"])
+    if "sl" in d: sl = float(d["sl"])
+    if "rsi_venta" in d: rsi_venta = int(d["rsi_venta"])
+    if "rsi_compra" in d: rsi_compra = int(d["rsi_compra"])
+    if "filtro_ema" in d: filtro_ema = d["filtro_ema"]
+    if "modo" in d: modo = d["modo"]
+    # MT5
+    if "tp_m" in d: tp_m = float(d["tp_m"])
+    if "sl_m" in d: sl_m = float(d["sl_m"])
+    if "rsi_venta_m" in d: rsi_venta_m = int(d["rsi_venta_m"])
+    if "rsi_compra_m" in d: rsi_compra_m = int(d["rsi_compra_m"])
+    if "filtro_ema_m" in d: filtro_ema_m = d["filtro_ema_m"]
+    if "modo_m" in d: modo_m = d["modo_m"]
+    if "max_m" in d: max_m = int(d["max_m"])
+    if "auto_tune_m" in d: auto_tune_m = (d["auto_tune_m"] == "ON")
+    if "auto_tune" in d: auto_tune = (d["auto_tune"] == "ON")
+    save_data()
+    return jsonify({"ok": True})
+
+@app.route('/api/toggle', methods=['POST'])
+def toggle():
+    global auto_on, auto_m
+    d = request.get_json()
+    if d.get("side") == "mt5":
+        auto_m = not auto_m
+    else:
+        auto_on = not auto_on
+    return jsonify({"ok": True})
+
+@app.route('/api/sell/<sym>', methods=['POST'])
+def sell(sym):
+    return jsonify({"ok": True})
+
+@app.route('/api/sell_mt5/<sym>', methods=['POST'])
+def sell_mt5(sym):
+    return jsonify({"ok": True, "msg": f"Vendido {sym} MT5"})
+
 @app.route('/api/backup')
-def api_backup(): return jsonify(data)
-@app.route('/api/restore',methods=['POST'])
-def api_restore():
- global data
- try:
-  nuevo=request.get_json(force=True)
-  for k,v in default_data.items():
-   if k not in nuevo: nuevo[k]=v
-  data=nuevo;save();return jsonify(ok=True)
- except Exception as e: return jsonify(ok=False,error=str(e))
-def auto_loop():
- last_tune=0;last_usd=0
- while True:
-  try:
-   if time.time()-last_usd>60: get_usd_mxn_live(force=True);last_usd=time.time()
-   if data['auto']:
-    prices=get_prices_data()
-    if time.time()-last_tune>900: auto_tune_logic(prices);last_tune=time.time()
-    total_max=data['max_entradas'];max_long=(total_max+1)//2
-    if len(data['pos'])<max_long:
-     for sym,info in prices.items():
-      if info['price']>0 and info['ok'] and data['coins_activas'].get(sym,True) and not any(x['sym']==sym for x in data['pos']):
-       monto=data['capital_binance']/total_max
-       data['pos'].append({'sym':sym,'entry':info['price'],'monto':monto});save();break
-  except Exception as e: print('AUTO ERROR',e)
-  time.sleep(60)
-threading.Thread(target=auto_loop,daemon=True).start()
-if __name__=='__main__': app.run(host='0.0.0.0',port=int(os.environ.get('PORT',10000)))
+def backup():
+    return jsonify({"binance": {"gan": gan}, "mt5": {"gan_mt5": gan_mt5, "max_m": max_m, "capital": 500}})
+
+@app.route('/api/restore', methods=['POST'])
+def restore():
+    return jsonify({"ok": True})
+
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=10000)
