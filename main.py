@@ -1,11 +1,9 @@
 import os, json
 from flask import Flask, request, send_from_directory, jsonify
-from flask_cors import CORS
 import telegram
 from telegram import Update
 
 app = Flask(__name__)
-CORS(app)
 
 FILE='state.json'
 DEFAULT={
