@@ -12,10 +12,13 @@ DEFAULT = {
  "disponible_usd":500,"bloqueado_usd":0,"gan_acum":0,
  "disponible_m":500,"bloqueado_m":0,"gan_mt5":0,
  "max_entradas":8,"max_m":8,
- "tp":0.3,"sl_pct":2.5,"tp_m":0.3,"sl_m":2.5,
+ "bolas_long":4,"bolas_short":4,"bolas_long_m":4,"bolas_short_m":4,
+ "tp":0.3,"sl_pct":2.5,"tp_m":0.5,"sl_m":3.0,
  "auto":True,"auto_m":True,
  "modo":"AMBOS","modo_m":"AMBOS",
- "rsi_compra":40,"rsi_venta":70,"rsi_compra_m":40,"rsi_venta_m":70,
+ "rsi_compra":40,"rsi_venta":70,"rsi_compra_m":50,"rsi_venta_m":65,
+ "ema":"OFF Caida","ema_m":"EMA200 ORO",
+ "cierre":0.1,"cierre_m":0.5,
  "coins_activas":{"ADA":True,"AVAX":True,"BNB":True,"BTC":True,"DOGE":True,"ETH":True,"SOL":True,"XRP":True},
  "coins_mt5_activas":{"XAUUSD":True,"XAGUSD":True,"USOIL":True,"SPX500":True,"EURUSD":True,"GBPUSD":True,"NAS100":True,"GER40":True},
  "pos":[],"pos_m":[],"pos_m_short":[],"historial":[],"historial_m":[],"evolucion":[],"evolucion_m":[]
@@ -28,9 +31,6 @@ def load():
    if k not in s: s[k]=v
   if not s.get("coins_activas"): s["coins_activas"]=DEFAULT["coins_activas"]
   if not s.get("coins_mt5_activas"): s["coins_mt5_activas"]=DEFAULT["coins_mt5_activas"]
-  s["max_entradas"]=8; s["max_m"]=8
-  if s["disponible_usd"]>500: s["disponible_usd"]=500
-  if s["disponible_m"]>500: s["disponible_m"]=500
   return s
  except:
   return DEFAULT.copy()
@@ -56,10 +56,75 @@ async def state(): return load()
 @app.post("/api/config")
 async def config(req:Request):
  s=load(); d=await req.json()
+ # toggle monedas
  if "toggle_coin" in d: s["coins_activas"][d["toggle_coin"]] = not s["coins_activas"].get(d["toggle_coin"],False)
  if "toggle_coin_mt5" in d: s["coins_mt5_activas"][d["toggle_coin_mt5"]] = not s["coins_mt5_activas"].get(d["toggle_coin_mt5"],False)
- for k in ["max_entradas","max_m","tp","sl_pct","tp_m","sl_m","modo","modo_m","rsi_compra","rsi_venta","rsi_compra_m","rsi_venta_m","auto","auto_m"]:
+
+ # === DINAMICO BINANCE ===
+ if "modo" in d: s["modo"]=d["modo"] # AMBOS / LONG / SHORT
+ if "bolas" in d:
+  total=int(d["bolas"])
+  s["max_entradas"]=total
+  if s["modo"]=="AMBOS":
+   # 2=1+1, 4=2+2, 6=3+3, 8=4+4
+   s["bolas_long"]=total//2
+   s["bolas_short"]=total//2
+  elif s["modo"]=="LONG":
+   s["bolas_long"]=total
+   s["bolas_short"]=0
+  else:
+   s["bolas_long"]=0
+   s["bolas_short"]=total
+
+ # cierre % dinamico 0.05 - 5% -> tp
+ if "cierre" in d: s["cierre"]=float(d["cierre"]); s["tp"]=float(d["cierre"])
+ if "tp" in d: s["tp"]=float(d["tp"]); s["cierre"]=float(d["tp"])
+
+ # sl dinamico -0.1 a -15% acepta -1,-2,-3
+ if "sl" in d: s["sl_pct"]=abs(float(d["sl"])); s["sl_m"] if False else None
+ if "sl_pct" in d: s["sl_pct"]=abs(float(d["sl_pct"]))
+
+ # rsi dinamico 10-90
+ if "rsi_venta" in d: s["rsi_venta"]=int(d["rsi_venta"])
+ if "rsi_compra" in d: s["rsi_compra"]=int(d["rsi_compra"])
+ if "rsi_venta_m" in d: s["rsi_venta_m"]=int(d["rsi_venta_m"])
+ if "rsi_compra_m" in d: s["rsi_compra_m"]=int(d["rsi_compra_m"])
+
+ # MT5 dinamico
+ if "modo_m" in d: s["modo_m"]=d["modo_m"]
+ if "bolas_m" in d:
+  total=int(d["bolas_m"])
+  s["max_m"]=total
+  if s.get("modo_m")=="AMBOS":
+   s["bolas_long_m"]=total//2
+   s["bolas_short_m"]=total//2
+  elif s.get("modo_m")=="LONG":
+   s["bolas_long_m"]=total
+   s["bolas_short_m"]=0
+  else:
+   s["bolas_long_m"]=0
+   s["bolas_short_m"]=total
+ if "cierre_m" in d: s["cierre_m"]=float(d["cierre_m"]); s["tp_m"]=float(d["cierre_m"])
+ if "sl_m" in d: s["sl_m"]=abs(float(d["sl_m"]))
+ if "rsi_v_m" in d: s["rsi_venta_m"]=int(d["rsi_v_m"])
+ if "rsi_c_m" in d: s["rsi_compra_m"]=int(d["rsi_c_m"])
+ if "rsi_venta_m" not in d and "rsi_v_m" in d: pass
+ if "rsi_compra_m" not in d and "rsi_c_m" in d: pass
+
+ # ema
+ if "ema" in d: s["ema"]=d["ema"]
+ if "ema_m" in d: s["ema_m"]=d["ema_m"]
+
+ # auto-tune: ON = robot hace solo, OFF = solo recomienda en cerebro
+ if "auto_tune" in d: s["auto"]=bool(d["auto_tune"])
+ if "auto" in d: s["auto"]=bool(d["auto"])
+ if "auto_m" in d: s["auto_m"]=bool(d["auto_m"])
+ if "auto_tune_m" in d: s["auto_m"]=bool(d["auto_tune_m"])
+
+ # compatibilidad viejos nombres
+ for k in ["max_entradas","max_m","tp","sl_pct","tp_m","sl_m","modo","modo_m","rsi_compra","rsi_venta","rsi_compra_m","rsi_venta_m"]:
   if k in d: s[k]=d[k]
+
  save(s); return s
 
 @app.post("/api/toggle")
@@ -74,7 +139,8 @@ async def buy(sym:str, req:Request):
  s=load(); data={}
  try: data=await req.json()
  except: pass
- bola = (s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"])/8 if (s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"])>0 else 62.5
+ total = s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"]
+ bola = total / s.get("max_entradas",8) if total>0 else 62.5
  if s["disponible_usd"]>=bola:
   s["disponible_usd"]-=bola; s["bloqueado_usd"]+=bola
   s["pos"].append({"sym":sym,"size":bola,"entry":data.get("price",0),"tipo":data.get("tipo","LONG"),"fecha":datetime.now().isoformat()})
@@ -86,10 +152,15 @@ async def buy_mt5(sym:str, req:Request):
  s=load(); data={}
  try: data=await req.json()
  except: pass
- bola = (s["disponible_m"]+s["bloqueado_m"]+s["gan_mt5"])/8 if (s["disponible_m"]+s["bloqueado_m"]+s["gan_mt5"])>0 else 62.5
+ total = s["disponible_m"]+s["bloqueado_m"]+s["gan_mt5"]
+ bola = total / s.get("max_m",8) if total>0 else 62.5
  if s["disponible_m"]>=bola:
   s["disponible_m"]-=bola; s["bloqueado_m"]+=bola
-  s["pos_m"].append({"sym":sym,"size":bola,"entry":data.get("price",0),"tipo":data.get("tipo","LONG"),"fecha":datetime.now().isoformat()})
+  tipo = data.get("tipo","LONG")
+  if tipo=="SHORT":
+   s["pos_m_short"].append({"sym":sym,"size":bola,"entry":data.get("price",0),"tipo":tipo,"fecha":datetime.now().isoformat()})
+  else:
+   s["pos_m"].append({"sym":sym,"size":bola,"entry":data.get("price",0),"tipo":tipo,"fecha":datetime.now().isoformat()})
   save(s)
  return s
 
@@ -98,7 +169,8 @@ async def sell(sym:str):
  s=load()
  for p in s["pos"]:
   if p["sym"]==sym:
-   gan = p["size"]*0.003
+   # usa tp dinamico
+   gan = p["size"]*(s.get("tp",0.3)/100)
    s["bloqueado_usd"]-=p["size"]; s["disponible_usd"]+=p["size"]+gan; s["gan_acum"]+=gan
    s["historial"].append({"fecha":datetime.now().isoformat(),"moneda":sym,"gan":round(gan,4),"gan_mxn":round(gan*16.96,2),"cap":round(s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"],2)})
    s["pos"]=[x for x in s["pos"] if x["sym"]!=sym]; break
@@ -109,7 +181,7 @@ async def sell_mt5(sym:str):
  s=load()
  for p in s["pos_m"]+s["pos_m_short"]:
   if p["sym"]==sym:
-   gan = p["size"]*0.003
+   gan = p["size"]*(s.get("tp_m",0.5)/100)
    s["bloqueado_m"]-=p["size"]; s["disponible_m"]+=p["size"]+gan; s["gan_mt5"]+=gan
    s["historial_m"].append({"fecha":datetime.now().isoformat(),"moneda":sym,"gan":round(gan,4)})
    s["pos_m"]=[x for x in s["pos_m"] if x["sym"]!=sym]; s["pos_m_short"]=[x for x in s["pos_m_short"] if x["sym"]!=sym]; break
@@ -137,7 +209,9 @@ DASHBOARD AMBAS (BINANCE $500 + MT5 $500):
 {RENDER_URL}/dashboard
 
 MT5 Detalle:
-{RENDER_URL}/dashboard_mt5.html"""
+{RENDER_URL}/dashboard_mt5.html
+
+Config actual: {load().get('modo')} {load().get('max_entradas')} bolas SL {load().get('sl_pct')}% RSI {load().get('rsi_compra')}/{load().get('rsi_venta')} AUTO {'ON' if load().get('auto') else 'OFF'}"""
   else:
    reply = "Comandos: DASHBOARD"
   if BOT_TOKEN:
