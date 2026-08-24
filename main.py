@@ -321,7 +321,7 @@ def api_restore():
             if "historial_mt5" in nuevo: data["historial_mt5"]=nuevo["historial_mt5"]
             if "capital_history_mt5" in nuevo: data["capital_history_mt5"]=nuevo["capital_history_mt5"]
             save(); return jsonify(ok=True, msg="MT5 restaurado")
-        global data
+         global data
         data=nuevo
         for k,v in default_data.items():
             if k not in data: data[k]=v
