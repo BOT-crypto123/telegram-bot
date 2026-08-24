@@ -31,13 +31,13 @@ data = default_data.copy()
 try:
     for p in POSIBLES_RUTAS:
         if os.path.exists(p):
-            with open(p) as f: 
+            with open(p) as f:
                 loaded_json=json.load(f)
                 data.update(loaded_json)
             break
     for k,v in default_data.items():
         if k not in data: data[k]=v
-except: 
+except:
     data=default_data.copy()
 
 def save():
@@ -50,6 +50,23 @@ def save():
         with open(DATA_FILE_MT5,"w") as f: json.dump(data,f)
         with open("/data/"+DATA_FILE_MT5,"w") as f: json.dump(data,f)
     except: pass
+
+def tg(chat_id, text):
+    if not BOT_TOKEN:
+        return
+    try:
+        DASH_URL = "https://telegram-bot-cijp.onrender.com/dashboard"
+        url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
+        payload = {
+            "chat_id": chat_id,
+            "text": text,
+            "reply_markup": {
+                "inline_keyboard": [[{"text":"🚀 VER DASHBOARD V5","url": DASH_URL}]]
+            }
+        }
+        requests.post(url, json=payload, timeout=10)
+    except Exception as e:
+        print("TG ERROR", e)
 
 def keep_alive_render():
     while True:
@@ -110,162 +127,4 @@ def get_prices_mt5():
         r=requests.get("https://api.gold-api.com/price/XAG",timeout=8).json()
         out["XAGUSD"]={"price":float(r.get("price",28.15)),"rsi":52,"ok":False,"sug":"Espera","change":-0.31}
     except: out["XAGUSD"]={"price":28.15+random.uniform(-0.3,0.3),"rsi":52,"ok":False,"sug":"Espera","change":-0.31}
-    out["USOIL"]={"price":76.42+random.uniform(-0.5,0.5),"rsi":48,"ok":True,"sug":"COMPRA LONG","change":1.08}
-    out["SPX500"]={"price":5432.10+random.uniform(-5,5),"rsi":55,"ok":False,"sug":"Espera","change":0.42}
-    return out
-
-def auto_tune_logic(prices):
-    if not data.get("auto_tune",True): return
-    debajo=sum(1 for v in prices.values() if v["price"]>0 and v["price"]<v["ema"])
-    if debajo>=6: data["filtro_ema"]="OFF"; data["sl_pct"]=-2.5; data["tp"]=0.3; data["rsi_venta"]=70; data["rsi_compra"]=40
-    elif debajo<=2: data["filtro_ema"]="ON"; data["sl_pct"]=-1.0; data["tp"]=0.5; data["rsi_venta"]=75; data["rsi_compra"]=30
-    else: data["filtro_ema"]="OFF"; data["sl_pct"]=-1.5; data["tp"]=0.3; data["rsi_venta"]=70; data["rsi_compra"]=35
-    save()
-
-@app.route("/", methods=["GET","POST"])
-@app.route("/webhook", methods=["GET","POST"])
-def webhook():
-    if request.method=="GET": return "BOT LIVE V5 DUAL - /dashboard OK",200
-    d=request.get_json(force=True,silent=True) or {}
-    return jsonify(ok=True)
-
-@app.route("/dashboard")
-def dashboard():
-    if os.path.exists("dashboard.html"): return send_from_directory(".","dashboard.html")
-    return "No existe dashboard.html",404
-
-@app.route("/api/prices")
-def api_prices(): return jsonify(get_prices_data())
-@app.route("/api/prices_mt5")
-def api_prices_mt5(): return jsonify(get_prices_mt5())
-
-@app.route("/api/state")
-def api_state():
-    bola=data["capital_binance"]/data["max_entradas"]
-    bola_m=data["capital_mt5"]/data["max_entradas"]
-    winrate=(data["ganadas"]/data["salidas"]*100) if data["salidas"]>0 else 0
-    prices=get_prices_data()
-    for p in data["pos"]:
-        pr=prices.get(p["sym"],{}).get("price",p["entry"]); p["ahora"]=pr; gan_b=(pr-p["entry"])/p["entry"]*100; gan_n=gan_b-(FEE*2*100); p["gan_neta_pct"]=gan_n; p["tipo"]="LONG"
-    for p in data.get("pos_short",[]):
-        pr=prices.get(p["sym"],{}).get("price",p["entry"]); p["ahora"]=pr; gan_b=(p["entry"]-pr)/p["entry"]*100; gan_n=gan_b-(FEE*2*100); p["gan_neta_pct"]=gan_n; p["tipo"]="SHORT"
-    bloqueado=sum([x.get("monto",bola) for x in data["pos"]]) + sum([x.get("monto",bola) for x in data.get("pos_short",[])])
-    disponible=data["capital_binance"]-bloqueado
-    return jsonify({
-        "capital_binance": data["capital_binance"], "capital_mt5": data["capital_mt5"],
-        "capital": data["capital_binance"]+data["capital_mt5"],
-        "bola_binance": bola, "bola_mt5": bola_m,
-        "gan_acum": data["gan_acum_total"], "usd_mxn": round(data["usd_mxn"],4),
-        "pct_mes": data["pct_mes"], "gan_mes": data["gan_mes"], "ganadas": data["ganadas"], "salidas": data["salidas"], "winrate": winrate,
-        "tp": data["tp"], "fee_total": FEE*2*100, "max_entradas": data["max_entradas"],
-        "rsi_compra": data["rsi_compra"], "sl_pct": data["sl_pct"], "rsi_venta": data["rsi_venta"],
-        "filtro_ema": data["filtro_ema"], "auto": data["auto"], "auto_tune": data.get("auto_tune",True),
-        "modo": data.get("modo","AMBOS"), "coins_activas": data["coins_activas"], "coins_mt5_activas": data["coins_mt5_activas"],
-        "bola": bola, "bola_mxn": bola*data["usd_mxn"],
-        "disponible_usd": disponible, "bloqueado_usd": bloqueado,
-        "pos": data["pos"]+data.get("pos_short",[]), "pos_long": data["pos"], "pos_short": data.get("pos_short",[]),
-        "pos_binance": data["pos"], "pos_mt5": data.get("pos_mt5",[]),
-        "historial": data["historial"][-50:], "capital_history": data["capital_history"][-100:]
-    })
-
-@app.route("/api/config", methods=["POST"])
-def api_config():
-    j=request.json
-    if "toggle_coin" in j: data["coins_activas"][j["toggle_coin"]]=not data["coins_activas"].get(j["toggle_coin"],True)
-    if "toggle_coin_mt5" in j: data["coins_mt5_activas"][j["toggle_coin_mt5"]]=not data["coins_mt5_activas"].get(j["toggle_coin_mt5"],True)
-    if "max" in j: data["max_entradas"]=int(j["max"])
-    if "modo" in j: data["modo"]=j["modo"]
-    if "auto_tune" in j: data["auto_tune"]=(j["auto_tune"]=="ON" or j["auto_tune"]==True)
-    if not data.get("auto_tune",True):
-        if "rsi_compra" in j: data["rsi_compra"]=float(j["rsi_compra"])
-        if "tp" in j: data["tp"]=float(j["tp"])
-        if "sl_pct" in j: data["sl_pct"]=float(j["sl_pct"])
-        if "rsi_venta" in j: data["rsi_venta"]=float(j["rsi_venta"])
-        if "filtro_ema" in j: data["filtro_ema"]=j["filtro_ema"]
-    if "rsi_coin" in j: data["rsi_por_moneda"][j["rsi_coin"]["sym"]]=float(j["rsi_coin"]["val"])
-    if "rsi_coin_reset" in j: data["rsi_por_moneda"].pop(j["rsi_coin_reset"],None)
-    save();return jsonify(ok=True)
-
-@app.route("/api/sell/<sym>", methods=["POST"])
-def sell_sym(sym):
-    prices=get_prices_data()
-    for p in list(data["pos"]):
-        if p["sym"]==sym:
-            pr=prices.get(sym,{}).get("price",p["entry"]); gan_b=(pr-p["entry"])/p["entry"]*100; gan_n=gan_b-FEE*2*100; gan_mxn=p["monto"]*gan_n/100*data["usd_mxn"]
-            data["capital_binance"]+=p["monto"]*gan_n/100; data["gan_acum_total"]+=p["monto"]*gan_n/100; data["salidas"]+=1
-            if gan_n>0: data["ganadas"]+=1
-            h={"fecha":time.strftime("%m-%d %H:%M"),"sym":sym+" LONG","monto":p["monto"],"entry":p["entry"],"exit":pr,"gan_neta_pct":gan_n,"gan_neta_mxn":gan_mxn,"capital_despues":data["capital_binance"],"bola_despues":data["capital_binance"]/data["max_entradas"]}
-            data["historial"].append(h); data["historial_binance"].append(h)
-            data["capital_history"].append({"t":int(time.time()*1000),"cap":data["capital_binance"]})
-            data["pos"].remove(p); save(); return jsonify(ok=True)
-    return jsonify(ok=True)
-
-@app.route("/api/toggle", methods=["POST"])
-def api_toggle(): data["auto"]=not data["auto"]; save(); return jsonify(ok=True)
-
-@app.route("/api/backup")
-def api_backup():
-    tipo=request.args.get("tipo","all")
-    if tipo=="binance":
-        return jsonify({"tipo":"binance","capital_binance":data["capital_binance"],"pos_binance":data["pos"],"historial_binance":data.get("historial_binance",[]),"coins_activas":data["coins_activas"]})
-    if tipo=="mt5":
-        return jsonify({"tipo":"mt5","capital_mt5":data["capital_mt5"],"pos_mt5":data.get("pos_mt5",[]),"historial_mt5":data.get("historial_mt5",[]),"coins_mt5_activas":data["coins_mt5_activas"]})
-    return jsonify(data)
-
-@app.route("/api/backup/binance")
-def api_backup_binance():
-    return jsonify({"tipo":"binance","capital_binance":data["capital_binance"],"pos_binance":data["pos"],"historial_binance":data.get("historial_binance",data["historial"]),"coins_activas":data["coins_activas"],"timestamp":int(time.time())})
-
-@app.route("/api/backup/mt5")
-def api_backup_mt5():
-    return jsonify({"tipo":"mt5","capital_mt5":data["capital_mt5"],"pos_mt5":data.get("pos_mt5",[]),"historial_mt5":data.get("historial_mt5",[]),"coins_mt5_activas":data["coins_mt5_activas"],"timestamp":int(time.time())})
-
-@app.route("/api/restore", methods=["POST"])
-def api_restore():
-    global data
-    try:
-        nuevo=request.get_json(force=True)
-        tipo=nuevo.get("tipo","all")
-        if tipo=="binance":
-            if "capital_binance" in nuevo: data["capital_binance"]=nuevo["capital_binance"]
-            if "pos_binance" in nuevo: data["pos"]=nuevo["pos_binance"]
-            if "historial_binance" in nuevo: data["historial_binance"]=nuevo["historial_binance"]
-            save(); return jsonify(ok=True, msg="BINANCE restaurado")
-        if tipo=="mt5":
-            if "capital_mt5" in nuevo: data["capital_mt5"]=nuevo["capital_mt5"]
-            if "pos_mt5" in nuevo: data["pos_mt5"]=nuevo["pos_mt5"]
-            if "historial_mt5" in nuevo: data["historial_mt5"]=nuevo["historial_mt5"]
-            save(); return jsonify(ok=True, msg="MT5 restaurado")
-        # restore total
-        data=nuevo
-        for k,v in default_data.items():
-            if k not in data: data[k]=v
-        save(); return jsonify(ok=True)
-    except Exception as e: 
-        return jsonify(ok=False, error=str(e))
-
-def auto_loop():
-    last_tune=0; last_usd=0
-    while True:
-        try:
-            if time.time()-last_usd>300:
-                try: get_usd_mxn_live(force=True)
-                except: pass
-                last_usd=time.time()
-            if data["auto"]:
-                prices=get_prices_data()
-                if time.time()-last_tune>900:
-                    try: auto_tune_logic(prices)
-                    except: pass
-                    last_tune=time.time()
-                total_max=data["max_entradas"]
-                if len(data["pos"]) < (total_max+1)//2:
-                    for sym,info in prices.items():
-                        if info["price"]>0 and info["ok"] and data["coins_activas"].get(sym,True) and not any(x["sym"]==sym for x in data["pos"]):
-                            monto=data["capital_binance"]/total_max; data["pos"].append({"sym":sym,"entry":info["price"],"monto":monto}); save(); break
-        except Exception as e: print("AUTO ERROR",e)
-        time.sleep(60)
-
-threading.Thread(target=auto_loop,daemon=True).start()
-if __name__=="__main__":
-    app.run(host="0.0.0.0",port=int(os.environ.get("PORT",10000)))
+    out["USOIL"]={"price":76.42+random.uniform(-0.5,0
