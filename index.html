@@ -1,38 +1,51 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 FINAL - CIRCULOS CLICKEABLES</title>
-<style>body{margin:0;background:#020617;color:#fff;font-family:system-ui}.wrap{display:flex;min-height:100vh}.left{flex:1;background:#050505;border-right:2px solid #facc15;padding:10px}.right{flex:1;background:#0a1020;padding:10px}.circle{width:190px;height:190px;border-radius:50%;margin:15px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#000;cursor:pointer;transition:.2s}.circle:active{transform:scale(.95)}.c-bin{border:8px solid #facc15;box-shadow:0 0 20px rgba(250,204,21,.3)}.c-mt5{border:8px solid #38bdf8;box-shadow:0 0 20px rgba(56,189,248,.3)}.val{font-size:40px;font-weight:900}.bola{color:#facc15;font-weight:900;font-size:18px}.bola-m{color:#38bdf8;font-weight:900;font-size:18px}.up{color:#22c55e;background:#0a1a0a;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:900}.down{color:#ef4444;background:#1a0a0a;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:900}.open{background:#111;border:1px dashed #333;border-radius:12px;padding:10px;margin-top:10px;font-size:12px}
-</style></head><body><div class="wrap">
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DUAL V5</title>
+<style>
+body{margin:0;background:#000;color:#fff;font-family:system-ui}
+.wrap{display:flex;min-height:100vh}
+.left{flex:1;background:#0a0a0a;padding:14px;border-right:1px solid #1a1a1a}
+.right{flex:1;background:#0a1228;padding:14px}
+.h{font-weight:900;font-size:15px;letter-spacing:.5px} .hy{color:#facc15} .hb{color:#38bdf8}
+.sub{font-size:11px;opacity:.5;margin-bottom:12px}
+.circle{width:180px;height:180px;border-radius:50%;margin:16px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#0f0f0a;cursor:pointer}
+.cy{border:7px solid #facc15} .cb{border:7px solid #3b82f6;background:#0a1020}
+.cap{font-size:36px;font-weight:900} .bola{font-size:20px;font-weight:900;margin-top:2px} .by{color:#facc15} .bb{color:#60a5fa}
+.mt{font-weight:900;font-size:13px;margin:18px 0 8px} .mty{color:#facc15} .mtb{color:#60a5fa}
+.card{background:#151515;border:1px solid #222;border-radius:16px;padding:12px;margin:8px 0;display:flex;justify-content:space-between;align-items:center}
+.right .card{background:#121c35;border-color:#1e2f5a}
+.price{font-weight:700;margin-top:4px} .chg{font-size:11px;font-weight:900;padding:4px 8px;border-radius:8px} .up{background:#052e16;color:#22c55e} .down{background:#2e0a0a;color:#ef4444}
+.pos{background:#1a0f00;border:1px solid #2a1f00;border-radius:16px;padding:12px;margin-top:16px}
+.right .pos{background:#0f1a33;border-color:#1e2f5a}
+.small{font-size:11px;opacity:.5} .row{display:flex;justify-content:space-between;font-size:12px;padding:6px 0;border-top:1px solid #222;margin-top:6px}
+@media(max-width:750px){.wrap{flex-direction:column}}
+</style>
+</head>
+<body>
+<div class="wrap">
 <div class="left">
-<div style="color:#facc15;font-weight:900">◆ BINANCE - CRYPTO<br><span style="opacity:.5;font-size:10px">TOCA EL CIRCULO PARA ENTRAR</span></div>
-<div class="circle c-bin" onclick="location.href='dashboard.html'">
-<div style="opacity:.5;font-size:12px">Capital</div><div class="val" id="cap_bin">$500</div><div style="opacity:.6;font-size:12px">bola</div><div class="bola" id="bola_bin">$62.5</div><div id="gan_bin" style="font-size:12px;color:#22c55e;margin-top:6px;font-weight:900">$0.00</div><div style="font-size:9px;opacity:.4;margin-top:4px">↗ VER DESARROLLO</div>
-</div>
-<div id="open_bin" class="open"><b style="color:#facc15">🔵 POSICIONES BINANCE EN VIVO</b><div id="list_bin" style="margin-top:6px">Sin posiciones - esperando RSI</div></div>
+<div class="h hy">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
+<div class="circle cy" onclick="location.href='/dashboard.html'"><div class="small">Capital</div><div class="cap" id="cap_b">$500</div><div class="small">bola</div><div class="bola by" id="bola_b">$62.5</div></div>
+<div class="mt mty">🔥 MARKETS</div>
+<div id="mk_b"></div>
+<div class="pos"><div class="h hy" style="font-size:12px">📦 OPEN POSITIONS</div><div style="display:flex;justify-content:space-between" class="small"><span>Asset</span><span>Size</span><span>PnL</span></div><div id="pos_b" style="text-align:center;margin-top:8px" class="small">Sin posiciones</div></div>
 </div>
 <div class="right">
-<div style="color:#38bdf8;font-weight:900">📊 MT5 - ORO / FOREX<br><span style="opacity:.5;font-size:10px">TOCA EL CIRCULO PARA ENTRAR</span></div>
-<div class="circle c-mt5" onclick="location.href='dashboard_mt5.html'">
-<div style="opacity:.5;font-size:12px">Capital</div><div class="val" id="cap_mt5">$500</div><div style="opacity:.6;font-size:12px">bola</div><div class="bola-m" id="bola_mt5">$62.5</div><div id="gan_mt5" style="font-size:12px;color:#22c55e;margin-top:6px;font-weight:900">$0.00</div><div style="font-size:9px;opacity:.4;margin-top:4px">↗ VER DESARROLLO</div>
-</div>
-<div id="open_mt5" class="open" style="border-color:#1e3a8a"><b style="color:#38bdf8">🔵 POSICIONES MT5 EN VIVO</b><div id="list_mt5" style="margin-top:6px">Sin posiciones - esperando ORO</div></div>
+<div class="h hb">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
+<div class="circle cb" onclick="location.href='/dashboard_mt5.html'"><div class="small">Capital</div><div class="cap" id="cap_m">$500</div><div class="small">bola</div><div class="bola bb" id="bola_m">$62.5</div></div>
+<div class="mt mtb">📈 MARKETS</div>
+<div id="mk_m"></div>
+<div class="pos"><div class="h hb" style="font-size:12px">📦 OPEN POSITIONS MT5</div><div style="display:flex;justify-content:space-between" class="small"><span>Asset</span><span>Size</span><span>PnL</span></div><div id="pos_m" style="text-align:center;margin-top:8px" class="small">Sin posiciones</div></div>
 </div>
 </div>
 <script>
-function lee(t){try{let pos=JSON.parse(localStorage.getItem('pos_'+t+'_demo')||'[]'); let gan=parseFloat(localStorage.getItem('gan_'+t+'_demo')||'0'); let bloq=pos.reduce((s,p)=>s+p.monto,0); let total=500+gan; let bola=total/(parseInt(localStorage.getItem('bolas_'+t)||'8')); return {pos,bloq,gan,total,bola}}catch(e){return {pos:[],bloq:0,gan:0,total:500,bola:62.5}}}
-let simB=0, simM=0;
-function render(){
- let b=lee('binance'); let m=lee('mt5');
- if(b.pos.length==0 && b.gan==0){simB+=(Math.random()-0.45)*0.15; b.gan=simB; b.total=500+simB; b.bola=b.total/8;}
- if(m.pos.length==0 && m.gan==0){simM+=(Math.random()-0.45)*0.20; m.gan=simM; m.total=500+simM; m.bola=m.total/8;}
- document.getElementById('cap_bin').innerText='$'+b.total.toFixed(2);
- document.getElementById('bola_bin').innerText='$'+b.bola.toFixed(2);
- document.getElementById('gan_bin').innerText=(b.gan>=0?'+$':'-$')+Math.abs(b.gan).toFixed(2)+' '+(b.pos.length? '('+b.pos.length+')':'');
- document.getElementById('gan_bin').style.color=b.gan>=0?'#22c55e':'#ef4444';
- document.getElementById('cap_mt5').innerText='$'+m.total.toFixed(2);
- document.getElementById('bola_mt5').innerText='$'+m.bola.toFixed(2);
- document.getElementById('gan_mt5').innerText=(m.gan>=0?'+$':'-$')+Math.abs(m.gan).toFixed(2)+' '+(m.pos.length? '('+m.pos.length+')':'');
- document.getElementById('gan_mt5').style.color=m.gan>=0?'#22c55e':'#ef4444';
- document.getElementById('list_bin').innerHTML=b.pos.length? b.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:3px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</span></div>`).join('') : 'Esperando RSI < 40 para comprar... (toca círculo para ver desarrollo completo)';
- document.getElementById('list_mt5').innerHTML=m.pos.length? m.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:3px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</span></div>`).join('') : 'Esperando RSI ORO < 50... (toca círculo para ver desarrollo completo)';
-}
-setInterval(render,1200); render();
-</script></body></html>
+const MB=[{s:'BTC',n:'Bitcoin',p:'$63,421.50',c:'+1.24% ↑',u:true},{s:'ETH',n:'Ethereum',p:'$3,210.88',c:'+0.87% ↑',u:true},{s:'SOL',n:'Solana',p:'$145.32',c:'-0.52% ↓',u:false}];
+const MM=[{s:'XAUUSD GOLD',n:'Gold Spot',p:'$2,341.20',c:'+0.64% ↑',u:true},{s:'XAGUSD SILVER',n:'Silver Spot',p:'$28.15',c:'-0.31% ↓',u:false},{s:'USOIL',n:'Crude Oil WTI',p:'$78.40',c:'+0.88% ↑',u:true}];
+document.getElementById('mk_b').innerHTML=MB.map(m=>`<div class="card"><div><div style="font-weight:900">${m.s}</div><div class="small">${m.n}</div><div class="price">${m.p}</div></div><div class="chg ${m.u?'up':'down'}">${m.c}</div></div>`).join('');
+document.getElementById('mk_m').innerHTML=MM.map(m=>`<div class="card"><div><div style="font-weight:900">${m.s}</div><div class="small">${m.n}</div><div class="price">${m.p}</div></div><div class="chg ${m.u?'up':'down'}">${m.c}</div></div>`).join('');
+async function load(){try{let r=await fetch('/api/state');let s=await r.json();let tb=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0);let tm=(s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0);document.getElementById('cap_b').innerText='$'+tb.toFixed(2);document.getElementById('bola_b').innerText='$'+(tb/(s.max_entradas||8)).toFixed(1);document.getElementById('cap_m').innerText='$'+tm.toFixed(2);document.getElementById('bola_m').innerText='$'+(tm/(s.max_m||8)).toFixed(1);}catch{}} load(); setInterval(load,2000);
+</script>
+</body>
+ </html>
