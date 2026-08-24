@@ -306,29 +306,33 @@ def api_backup_mt5():
 
 @app.route("/api/restore", methods=["POST"])
 def api_restore():
+    global data
     try:
         nuevo=request.get_json(force=True)
         tipo=nuevo.get("tipo","all")
         if tipo=="binance":
             if "capital_binance" in nuevo: data["capital_binance"]=nuevo["capital_binance"]
             if "pos_binance" in nuevo: data["pos"]=nuevo["pos_binance"]
-            if "historial_binance" in nuevo: data["historial_binance"]=nuevo["historial_binance"]; data["historial"]=nuevo["historial_binance"]
+            if "historial_binance" in nuevo:
+                data["historial_binance"]=nuevo["historial_binance"]
+                data["historial"]=nuevo["historial_binance"]
             if "capital_history_binance" in nuevo: data["capital_history_binance"]=nuevo["capital_history_binance"]
-            save(); return jsonify(ok=True, msg="BINANCE restaurado")
+            save()
+            return jsonify(ok=True, msg="BINANCE restaurado")
         if tipo=="mt5":
             if "capital_mt5" in nuevo: data["capital_mt5"]=nuevo["capital_mt5"]
             if "pos_mt5" in nuevo: data["pos_mt5"]=nuevo["pos_mt5"]
             if "historial_mt5" in nuevo: data["historial_mt5"]=nuevo["historial_mt5"]
             if "capital_history_mt5" in nuevo: data["capital_history_mt5"]=nuevo["capital_history_mt5"]
-            save(); return jsonify(ok=True, msg="MT5 restaurado")
-         global data
-        data=nuevo
+            save()
+            return jsonify(ok=True, msg="MT5 restaurado")
         for k,v in default_data.items():
-            if k not in data: data[k]=v
-        save(); return jsonify(ok=True, msg="TODO restaurado")
-    except Exception as e: return jsonify(ok=False, error=str(e))
-
-def auto_loop():
+            if k not in nuevo: nuevo[k]=v
+        data=nuevo
+        save()
+        return jsonify(ok=True, msg="TODO restaurado")
+    except Exception as e:
+        return jsonify(ok=False, error=str(e))def auto_loop():
     last_tune=0; last_usd=0
     while True:
         try:
