@@ -1,5 +1,8 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MÁQUINA BOLA</title>
-<style>body{margin:0;background:#0a0a0a;color:#fff;font-family:system-ui}.wrap{max-width:500px;margin:0 auto;border-left:2px solid #facc15;border-right:2px solid #facc15;min-height:100vh;padding:10px}.h{text-align:center;font-weight:900;color:#facc15;font-size:18px;margin:10px 0}.circle{width:200px;height:200px;border-radius:50%;margin:15px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative}.c1{border:6px solid #facc15;background:#1a1500}.c2{border:6px solid #22c55e;background:#0a1a0a}.c3{border:6px solid #38bdf8;background:#0a1520}.lab{font-size:11px;opacity:.8;font-weight:900}.val{font-size:28px;font-weight:900}.sub{font-size:11px;opacity:.6}.subb{font-size:11px;color:#22c55e}.box{border:1px solid #22c55e;border-radius:12px;padding:10px;margin:10px 0;background:#0f1a0f}.box2{border:1px solid #333;border-radius:12px;padding:10px;margin:10px 0;background:#111}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.coin{background:#1a1a1a;border-radius:12px;padding:10px;border:1px solid #222}.on{border-color:#22c55e}.btn{width:100%;padding:8px;border-radius:8px;border:0;font-weight:900;margin:4px 0}.y{background:#facc15;color:#000}.g{background:#22c55e;color:#000}.d{background:#222;color:#fff} select,input{width:100%;padding:8px;background:#111;border:1px solid #333;color:#fff;border-radius:8px;font-size:12px} table{width:100%;font-size:10px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:4px} td{padding:6px;border-top:1px solid #222}.vender{background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 10px}</style></head><body>
+<style>body{margin:0;background:#0a0a0a;color:#fff;font-family:system-ui}.wrap{max-width:500px;margin:0 auto;border-left:2px solid #facc15;border-right:2px solid #facc15;min-height:100vh;padding:10px 10px 80px 10px}.h{text-align:center;font-weight:900;color:#facc15;font-size:18px;margin:10px 0}.circle{width:200px;height:200px;border-radius:50%;margin:15px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;position:relative}.c1{border:6px solid #facc15;background:#1a1500}.c2{border:6px solid #22c55e;background:#0a1a0a}.c3{border:6px solid #38bdf8;background:#0a1520}.lab{font-size:11px;opacity:.8;font-weight:900}.val{font-size:28px;font-weight:900}.sub{font-size:11px;opacity:.6}.subb{font-size:11px;color:#22c55e}.box{border:1px solid #22c55e;border-radius:12px;padding:10px;margin:10px 0;background:#0f1a0f}.box2{border:1px solid #333;border-radius:12px;padding:10px;margin:10px 0;background:#111}.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.coin{background:#1a1a1a;border-radius:12px;padding:10px;border:1px solid #222}.on{border-color:#22c55e}.btn{width:100%;padding:8px;border-radius:8px;border:0;font-weight:900;margin:4px 0}.y{background:#facc15;color:#000}.g{background:#22c55e;color:#000}.d{background:#222;color:#fff} select,input{width:100%;padding:8px;background:#111;border:1px solid #333;color:#fff;border-radius:8px;font-size:12px} table{width:100%;font-size:10px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:4px} td{padding:6px;border-top:1px solid #222}.vender{background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 10px}
+#robot_float{position:fixed;bottom:20px;right:15px;z-index:9999;background:#0f1a0f;border:2px solid #22c55e;border-radius:25px;padding:10px 16px;font-weight:900;font-size:12px;display:flex;align-items:center;gap:6px;box-shadow:0 0 15px #22c55e50;cursor:pointer}
+#robot_float.off{border-color:#ef4444;background:#1a0a0a;box-shadow:0 0 15px #ef444450}
+</style></head><body>
 <div class="wrap">
 <div class="h">💰 MÁQUINA BOLA DE NIEVE - REAL FEES</div>
 <div class="circle c1"><div class="lab" style="color:#facc15">DISPONIBLE<br>Arriba Chico</div><div class="val" id="disp">$500</div><div class="sub" id="disp_mxn">$8483 MXN</div><div class="subb" id="bloq">Bloq: $0 en 0</div></div>
@@ -14,13 +17,16 @@
 <div class="box2"><div style="color:#22c55e;font-weight:900">📋 REGISTRO COMPLETO</div><table id="hist"><tr><th>Fecha</th><th>Moneda</th><th>Monto</th><th>Entry->Exit</th><th>% Neta</th><th>Gan MXN</th><th>Capital</th></tr></table></div>
 <div style="border:2px dashed #facc15;border-radius:12px;padding:12px;text-align:center;margin:10px 0"><div style="font-weight:900;color:#facc15">💾 RESPALDO PARA PLAN GRATIS DE RENDER</div><button class="btn y" onclick="backup()">💾 DESCARGAR RESPALDO</button><button class="btn g" onclick="document.getElementById('res').click()">📤 RESTAURAR RESPALDO</button><input type="file" id="res" hidden onchange="restore(this)"></div>
 </div>
+
+<div id="robot_float" onclick="toggleAuto()"><span id="float_icon">🤖</span><span id="float_txt">AUTO ON BINANCE</span></div>
+
 <script>
 let S={}; let capital=500;
 function llenarBolas(){
  let modo=document.getElementById('modo').value;
  let sel=document.getElementById('bolas'); sel.innerHTML="";
  if(modo==="AMBOS"){
-  [[1,1],[2,2],[3,3],[4,4]].forEach(p=>{
+  [[4,4],[3,3],[2,2],[1,1]].forEach(p=>{
    let t=p[0]+p[1]; let o=document.createElement('option'); o.value=t; o.dataset.l=p[0]; o.dataset.s=p[1];
    o.text=`${p[0]}+${p[1]} = ${t} (${p[0]} LONG + ${p[1]} SHORT)`; if(t==8) o.selected=true; sel.appendChild(o);
   });
@@ -42,27 +48,9 @@ function cambioBolas(){
  guardar();
 }
 function toggleAuto(){
- let on=document.getElementById('auto_tune').checked;
+ let chk=document.getElementById('auto_tune'); chk.checked=!chk.checked;
+ let on=chk.checked;
  document.getElementById('auto_lab').innerText= on? '🧠 AUTO-TUNE ON' : '🧠 AUTO-TUNE OFF';
- document.getElementById('auto_desc').innerText= on? 'ON: Robot mueve SL -1/-2/-3 y RSI 40/45/50 solo' : 'OFF: Solo recomienda en CEREBRO, tú ajustas manual';
- guardar();
-}
-function guardar(){
- let sel=document.getElementById('bolas'); let total=sel.options.length?parseInt(sel.options[sel.selectedIndex].value):8;
- let data={modo:document.getElementById('modo').value,bolas:total,cierre:parseFloat(document.getElementById('cierre').value),sl:parseFloat(document.getElementById('sl').value),rsi_venta:parseInt(document.getElementById('rsi_v').value),rsi_compra:parseInt(document.getElementById('rsi_c').value),ema:document.getElementById('ema').value,auto_tune:document.getElementById('auto_tune').checked};
- document.getElementById('cierre_txt').innerText=data.cierre+'% NETO';
- fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
-}
-async function load(){try{S=await fetch('/api/state').then(r=>r.json());}catch(e){S={}} capital=(S.disponible_usd||500)+(S.bloqueado_usd||0)+(S.gan_acum||0);
-let total=capital; let bloq=(S.bloqueado_usd||0);
-document.getElementById('disp').innerText='$'+(S.disponible_usd||0).toFixed(2);document.getElementById('disp_mxn').innerText='$'+((S.disponible_usd||0)*16.96).toFixed(0)+' MXN';document.getElementById('bloq').innerText='Bloq: $'+bloq.toFixed(2)+' en '+(S.pos||[]).length;
-document.getElementById('gan').innerText='$'+(S.gan_acum||0).toFixed(2);document.getElementById('gan_mxn').innerText='$'+((S.gan_acum||0)*16.96).toFixed(0);
-document.getElementById('total').innerText='$'+total.toFixed(2);document.getElementById('total_mxn').innerText='$'+(total*16.96).toFixed(0)+' MXN';
-let cerebro='Por moneda:\n';Object.keys(S.coins_activas||{}).forEach(k=>{cerebro+=k+': Espera RSI | RSI '+(40+Math.random()*15).toFixed(1)+'\n'});document.getElementById('cerebro').innerText='CAIDA FUERTE 8/8 bajo EMA\nLO MEJOR HOY:\n• SL: -2% o -3%\n• RSI Venta: 70 | Compra: 40\n• Filtro P>EMA: OFF + SHORT activo\nSi lo dejas ON no va a comprar LONG, pero SHORT sí.\n\n'+cerebro;
-document.getElementById('coins').innerHTML=Object.entries(S.coins_activas||{}).map(([k,v])=>`<div class="coin ${v?'on':''}"><div style="display:flex;justify-content:space-between"><b>${k}</b><button class="g" style="border-radius:20px;padding:4px 12px" onclick="toggleC('${k}')">${v?'ON':''}</button></div><div style="font-size:18px;font-weight:900;margin:4px 0">$${(Math.random()*1000).toFixed(4)}</div><div style="font-size:11px;opacity:.7">Espera RSI<br>RSI ${(40+Math.random()*10).toFixed(1)} (lim 40)<br>P 0.22 < EMA 0.23<br>RSI > 40</div><div style="display:flex;gap:4px;margin:6px 0"><input value="40" style="width:40px"><button class="y" style="width:40px">SET</button><button class="d">RESET</button></div><div style="color:#22c55e;font-weight:900">🤖 ROBOT ON</div><button class="btn d">GRÁFICA</button></div>`).join('');
-}
-function toggleC(k){fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin:k})}).then(load)}
-function backup(){fetch('/api/backup').then(r=>r.blob()).then(b=>{let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='respaldo_binance.json';a.click()})}
-function restore(i){let f=i.files[0];let r=new FileReader();r.onload=e=>fetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:e.target.result}).then(load);r.readAsText(f)}
-llenarBolas(); cambioBolas(); setInterval(load,3000); load();
-</script></body></html>
+ document.getElementById('auto_desc').innerText= on? 'ON: Robot compra/vende solo + SL -1/-2/-3 y RSI 40/45/50' : 'OFF: Solo alerta Telegram, no ejecuta';
+ let flo=document.getElementById('robot_float'); let txt=document.getElementById('float_txt');
+ if(on){ flo.classList.remove('off'); txt.innerText='AUTO ON 🤖 BINANCE'; } else { flo.classList.add('off'); txt.innerText='AUTO OFF 🔕
