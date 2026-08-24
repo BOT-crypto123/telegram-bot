@@ -330,9 +330,13 @@ def api_restore():
             if k not in nuevo: nuevo[k]=v
         data=nuevo
         save()
-        return jsonify(ok=True, msg="TODO restaurado")
-    except Exception as e:
-        return jsonify(ok=False, error=str(e))def auto_loop():
+            except Exception as e:
+        return jsonify(ok=False, error=str(e))
+
+def auto_loop():
+    last_tune=0
+    last_usd=0
+    while True:  return jsonify(ok=False, error=str(e))def auto_loop():
     last_tune=0; last_usd=0
     while True:
         try:
