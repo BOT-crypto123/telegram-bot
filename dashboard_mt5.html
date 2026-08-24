@@ -2,89 +2,125 @@
 <title>MÁQUINA BOLA MT5</title>
 <style>
 *{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui}
-.wrap{max-width:520px;margin:0 auto;border-left:3px solid #facc15;border-right:3px solid #facc15;min-height:100vh;background:#050505}
+.wrap{max-width:520px;margin:0 auto;border-left:3px solid #38bdf8;border-right:3px solid #38bdf8;min-height:100vh;background:#050505;padding-bottom:80px}
 .circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
 .c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)} .c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)} .c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}
 .val{font-size:48px;font-weight:900} 
 .box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}
-.box-bola{background:#0a1a0a;border:1.5px solid #22c55e}
-.box-cerebro{background:#0a1a0a;border:1.5px solid #22c55e}
+.box-bola{background:#0a1a0a;border:1.5px solid #38bdf8}
+.box-cerebro{background:#0a1a0a;border:1.5px solid #38bdf8}
 .sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}
 .btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}
+.inp{width:100%;background:#000;color:#fff;border:1px solid #38bdf8;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
-.card{background:#111;border:1.5px solid #22c55e;border-radius:16px;padding:12px;position:relative}
-.on{position:absolute;top:10px;right:10px;background:#22c55e;color:#000;font-weight:900;padding:4px 14px;border-radius:20px;font-size:13px}
+.card{background:#111;border:1.5px solid #38bdf8;border-radius:16px;padding:12px;position:relative}
+.on{position:absolute;top:10px;right:10px;background:#38bdf8;color:#000;font-weight:900;padding:4px 14px;border-radius:20px;font-size:13px}
 .price{font-size:22px;font-weight:900;margin:8px 0}
 .detail{font-size:12px;opacity:.7;line-height:1.3}
-.row{margin-top:8px}
-.input-rsi{width:48px;background:#000;color:#fff;border:1px solid #333;border-radius:6px;padding:8px;text-align:center}
+.row{margin-top:8px;display:flex;gap:6px}
+.input-rsi{width:60px;background:#000;color:#fff;border:1px solid #333;border-radius:6px;padding:8px;text-align:center}
 .btn-y{background:#facc15;color:#000;font-weight:900;border:0;border-radius:6px;padding:8px 12px}
 .btn-d{background:#222;color:#fff;border:1px solid #444;border-radius:6px;padding:8px 10px}
-.rob{color:#22c55e;font-weight:900;margin-top:8px;font-size:14px}
+.rob{color:#38bdf8;font-weight:900;margin-top:8px;font-size:14px}
 .btn-graf{width:100%;background:#1a1a1a;color:#fff;border:0;border-radius:8px;padding:10px;margin-top:8px;font-weight:900}
 table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:6px} td{padding:6px;border-top:1px solid #222}
-.auto-float{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:8px 16px;border-radius:22px;font-weight:900;font-size:12px;z-index:99}
+#float_mt5{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:10px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #38bdf8;box-shadow:0 0 15px #38bdf850;cursor:pointer}
+#float_mt5.off{background:#1a0a0a;color:#fff;border-color:#ef4444}
 </style></head><body><div class="wrap">
 <div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">MÁQUINA BOLA MT5<br><span style="font-size:12px;opacity:.5">cij p.onrender.com - $500 / 8 BOLAS</span></div>
 
-<div class="circle c1"><div style="color:#facc15;font-weight:900;font-size:14px">DISPONIBLE<br>Arriba Chico</div><div class="val">$500.00</div><div style="opacity:.7">$8480 MXN</div><div style="color:#22c55e;font-size:13px">Bloq: $0.00 en 0</div></div>
-<div class="circle c2"><div style="font-weight:900;font-size:14px;color:#fff">GANANCIA<br>Medio</div><div class="val">$0.00</div><div style="font-size:12px;opacity:.7">USD</div><div style="font-size:28px;color:#22c55e;font-weight:900">$0</div><div style="font-size:12px;opacity:.7">MXN</div></div>
-<div class="circle c3"><div style="color:#38bdf8;font-weight:900;font-size:14px">TOTAL REAL<br>Abajo Grande</div><div class="val">$500.00</div><div style="opacity:.7">$8480 MXN</div><div style="font-size:12px;opacity:.6">0.0% - $0.00 USD</div></div>
+<div class="circle c1"><div style="color:#facc15;font-weight:900;font-size:14px">DISPONIBLE<br>Arriba Chico</div><div class="val" id="disp_m">$500.00</div><div style="opacity:.7" id="disp_mxn_m">$8480 MXN</div><div style="color:#22c55e;font-size:13px" id="bloq_m">Bloq: $0.00 en 0</div></div>
+<div class="circle c2"><div style="font-weight:900;font-size:14px;color:#fff">GANANCIA<br>Medio</div><div class="val" id="gan_m">$0.00</div><div style="font-size:12px;opacity:.7">USD</div><div style="font-size:28px;color:#22c55e;font-weight:900" id="gan_mxn_m">$0</div><div style="font-size:12px;opacity:.7">MXN</div></div>
+<div class="circle c3"><div style="color:#38bdf8;font-weight:900;font-size:14px">TOTAL REAL<br>Abajo Grande</div><div class="val" id="total_m">$500.00</div><div style="opacity:.7" id="total_mxn_m">$8480 MXN</div><div style="font-size:12px;opacity:.6" id="total_pct_m">0.0% - $0.00 USD</div></div>
 
-<div class="box box-bola"><div style="font-size:14px">🎯 BOLA:</div><b>$62.50 USD / $1060 MXN (8 bolas) = $500.00 / 8</b><div style="color:#facc15;font-size:13px">(4 LONG + 4 SHORT) MT5</div><div style="font-size:12px;opacity:.7">USD/MXN $16.96 / 0Win 0% NETO 0.5% (0.8% bruto) MT5 / MODO: AMBOS MT5</div></div>
+<div class="box box-bola"><div style="font-size:14px">🎯 BOLA:</div><b id="bola_info_m">$62.50 USD / $1060 MXN (8 bolas) = $500.00 / 8</b><div style="color:#38bdf8;font-size:13px" id="bola_det_m">(4 LONG + 4 SHORT) MT5</div><div style="font-size:12px;opacity:.7">USD/MXN $16.96 / <span id="cierre_txt_m">0.5% MT5</span> / <span id="modo_txt_m" style="color:#38bdf8">MODO: AMBOS MT5</span></div></div>
 
 <div class="box">
-<div style="display:flex;gap:8px"><div style="flex:1">🎮 Modo:<select id="modo_m" class="sel"><option selected>AMBOS 4+4</option><option>SOLO LONG</option><option>SOLO SHORT</option></select></div><div style="flex:1">💰 Cierre:<select id="cierre_m" class="sel"><option selected>0.5% NETO MT5 (0.8% bruto)</option><option>0.3% NETO</option><option>1% NETO</option></select></div></div>
-<div style="display:flex;gap:8px"><div style="flex:1">🛑 SL:<select id="sl_m" class="sel"><option selected>-3% MT5</option><option>-2.5%</option><option>-5%</option></select></div><div style="flex:1">📤 RSI Venta:<select id="rsiv_m" class="sel"><option selected>65 MT5</option><option>70</option></select></div></div>
-<div>📈 P&gt;EMA:<select id="ema_m" class="sel"><option selected>EMA200 ORO (distinto a cripto)</option><option>OFF Caida</option><option>EMA100</option></select></div>
-<div>📉 RSI Compra Global:<select id="rsic_m" class="sel"><option selected>50 MT5 (no 40 como BINANCE)</option><option>40 Caida</option><option>45</option></select></div>
-<button class="btn-set" onclick="saveMT5()">SET</button>
-<div style="margin-top:10px;color:#22c55e;font-weight:900">🧠 AUTO-TUNE ON MT5 - ESTRATEGIA INDEPENDIENTE</div>
-<div>🎯 Bolas Totales:<select class="sel"><option>8 (4+4) MT5</option></select></div>
-<div style="margin-top:6px"><input type="checkbox" id="auto_m" checked> 🧠 AUTO-TUNE ON MT5</div>
+<div style="display:flex;gap:8px"><div style="flex:1">🎮 Modo:<select id="modo_m" class="sel" onchange="cambioModoMT5()"><option value="AMBOS" selected>AMBOS 4+4 MT5</option><option value="LONG">SOLO LONG MT5</option><option value="SHORT">SOLO SHORT MT5</option></select></div><div style="flex:1">💰 Cierre %:<div style="display:flex;gap:4px"><input type="number" id="cierre_m" class="inp" style="margin:0" value="0.5" step="0.05"><button class="btn-set" style="margin:0" onclick="guardarMT5()">SET</button></div></div></div>
+
+<div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">🛑 SL %:<div style="display:flex;gap:4px"><input type="number" id="sl_m" class="inp" style="margin:0" value="-3" step="0.1"><button class="btn-set" style="margin:0" onclick="guardarMT5()">SET</button></div><div style="font-size:10px;opacity:.5">-1,-2,-3 MT5</div></div><div style="flex:1">📤 RSI Venta:<div style="display:flex;gap:4px"><input type="number" id="rsiv_m" class="inp" style="margin:0" value="65" step="1"><button class="btn-set" style="margin:0" onclick="guardarMT5()">SET</button></div><div style="font-size:10px;opacity:.5">65,70 MT5</div></div></div>
+
+<div style="margin-top:8px">📈 P&gt;EMA:<select id="ema_m" class="sel" onchange="guardarMT5()"><option selected>EMA200 ORO (distinto a cripto)</option><option>OFF Caida MT5</option><option>EMA100</option><option>ON MT5</option></select></div>
+<div style="margin-top:8px">📉 RSI Compra:<div style="display:flex;gap:4px"><input type="number" id="rsic_m" class="inp" style="margin:0" value="50" step="1"><button class="btn-set" style="margin:0" onclick="guardarMT5()">SET</button></div><div style="font-size:10px;opacity:.5">50 MT5 (no 40 BINANCE) - 40,45,50</div></div>
+
+<div style="margin-top:10px;background:#08111f;border:1.5px solid #38bdf8;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div style="color:#38bdf8;font-weight:900" id="auto_lab_m">🧠 AUTO-TUNE ON MT5</div><div style="font-size:11px;opacity:.6" id="auto_desc_m">ON: Robot mueve SL -1/-2/-3 y RSI 40/45/50 solo</div></div><input type="checkbox" id="auto_m" checked onchange="toggleAutoMT5()" style="width:22px;height:22px"></div>
+<div style="margin-top:8px">🎯 Bolas Totales:<select id="bolas_m" class="sel" onchange="cambioBolasMT5()"></select></div>
 </div>
 
-<div class="box box-cerebro"><b>🤖 CEREBRO DEL ROBOT MT5 - MISMA LOGICA QUE BINANCE</b><div id="cere" style="font-size:13px;white-space:pre-line;margin-top:8px">CAIDA FUERTE 8/8 bajo EMA MT5
-LO MEJOR HOY MT5:
-• SL: -3% MT5 o -2.5%
-• RSI Venta: 65 MT5 | Compra: 50 MT5
-• Filtro P>EMA: EMA200 ORO + SHORT activo
-Si lo dejas ON no va a comprar LONG ORO, pero SHORT sí.
-
-Por moneda MT5:
-XAUUSD: Espera RSI | RSI 52.3
-XAGUSD: Espera RSI | RSI 48.1
-USOIL: Espera RSI | RSI 46.8
-SPX500: Espera RSI | RSI 44.2
-NAS100: Espera RSI | RSI 47.5
-GER40: Espera RSI | RSI 43.9
-EURUSD: Espera RSI | RSI 45.6
-GBPUSD: Espera RSI | RSI 46.1</div></div>
+<div class="box box-cerebro"><b>🤖 CEREBRO DEL ROBOT MT5 - MISMA LOGICA QUE BINANCE</b><div id="cere" style="font-size:13px;white-space:pre-line;margin-top:8px">Cargando...</div></div>
 
 <div class="grid" id="grid"></div>
+<div class="box"><b style="color:#38bdf8">📈 EVOLUCIÓN CAPITAL MT5</b><canvas id="ch" height="140" style="width:100%;background:#000;border-radius:10px;margin-top:10px"></canvas></div>
+<div class="box"><div style="display:flex;justify-content:space-between;font-size:11px;opacity:.5"><span>Moneda</span><span>Tipo</span><span>Entry</span><span>Ahora</span><span>Neta</span><span>Acción</span></div><table id="pos_m"><tr><td colspan=6 style="text-align:center;opacity:.4;padding:18px">Sin posiciones MT5 - Esperando señal ORO/PLATA</td></tr></table></div>
+</div>
 
-<div class="box"><b style="color:#facc15">📈 EVOLUCIÓN CAPITAL MT5</b><canvas id="ch" height="140" style="width:100%;background:#000;border-radius:10px;margin-top:10px"></canvas></div>
-
-<div class="box"><div style="display:flex;justify-content:space-between;font-size:11px;opacity:.5"><span>Moneda</span><span>Tipo</span><span>Entry</span><span>Ahora</span><span>Neta</span><span>Acción</span></div><table id="pos"><tr><td colspan=6 style="text-align:center;opacity:.4;padding:18px">Sin posiciones MT5 - Esperando señal ORO/PLATA</td></tr></table></div>
-
-<div class="box"><b style="color:#22c55e">📋 REGISTRO COMPLETO MT5</b><table><thead><tr><th>Fecha</th><th>Moneda MT5</th><th>Monto</th><th>%</th><th>Gan</th></tr></thead><tbody><tr><td colspan=5 style="text-align:center;opacity:.4">Sin historial MT5 aun</td></tr></tbody></table></div>
-
-<div style="margin:10px;border:2px dashed #facc15;border-radius:16px;padding:12px;text-align:center"><b style="color:#facc15">💾 RESPALDO PARA PLAN GRATIS DE RENDER MT5 - MISMA LOGICA BINANCE</b><div style="font-size:11px;opacity:.6">En gratis se borra al hacer deploy. Usa esto:</div><button class="btn-set" style="width:100%;margin:8px 0;padding:14px;font-size:14px">💾 DESCARGAR RESPALDO MT5</button><button style="width:100%;padding:14px;background:#22c55e;color:#000;font-weight:900;border:0;border-radius:10px">📤 RESTAURAR RESPALDO MT5</button></div>
-
-<div class="auto-float">AUTO ON 🤖 MT5</div>
+<div id="float_mt5" onclick="toggleAutoMT5()"><span id="float_txt_m">AUTO ON 🤖 MT5</span></div>
 </div>
 
 <script>
 const MT5=["XAUUSD","XAGUSD","USOIL","SPX500","NAS100","GER40","EURUSD","GBPUSD"];
-function render(){
+let S={}; let capital_m=500;
+function llenarBolasMT5(){
+ let modo=document.getElementById('modo_m').value;
+ let sel=document.getElementById('bolas_m'); sel.innerHTML="";
+ if(modo==="AMBOS"){
+  [[4,4],[3,3],[2,2],[1,1]].forEach(p=>{
+   let t=p[0]+p[1]; let o=document.createElement('option'); o.value=t; o.dataset.l=p[0]; o.dataset.s=p[1];
+   o.text=`${t} (${p[0]}+${p[1]}) MT5 - ${p[0]} LONG + ${p[1]} SHORT`; if(t==8) o.selected=true; sel.appendChild(o);
+  });
+ } else if(modo==="LONG"){
+  for(let i=1;i<=8;i++){ let o=document.createElement('option'); o.value=i; o.text=`${i} LONG MT5`; if(i==8) o.selected=true; sel.appendChild(o); }
+ } else {
+  for(let i=1;i<=8;i++){ let o=document.createElement('option'); o.value=i; o.text=`${i} SHORT MT5`; if(i==8) o.selected=true; sel.appendChild(o); }
+ }
+}
+function cambioModoMT5(){ llenarBolasMT5(); cambioBolasMT5(); }
+function cambioBolasMT5(){
+ let sel=document.getElementById('bolas_m'); if(!sel.options.length) return;
+ let opt=sel.options[sel.selectedIndex]; let total=parseInt(opt.value);
+ let bola=(capital_m/total).toFixed(2);
+ let modo=document.getElementById('modo_m').value;
+ document.getElementById('bola_info_m').innerText=`$${bola} USD / $${(bola*16.96).toFixed(0)} MXN (${total} bolas) = $500.00 / ${total}`;
+ if(modo==="AMBOS"){ document.getElementById('bola_det_m').innerText=`(${opt.dataset.l} LONG + ${opt.dataset.s} SHORT) MT5`; document.getElementById('modo_txt_m').innerText=`MODO: AMBOS MT5 ${opt.dataset.l}+${opt.dataset.s}`; }
+ else { document.getElementById('bola_det_m').innerText=`(${total} ${modo} MT5)`; document.getElementById('modo_txt_m').innerText=`MODO: SOLO ${modo} MT5 ${total}`; }
+ guardarMT5();
+}
+function toggleAutoMT5(){
+ let chk=document.getElementById('auto_m'); // el checkbox
+ // si clic en flotante, toggle
+ if(event.currentTarget.id==='float_mt5'){ chk.checked=!chk.checked; }
+ let on=chk.checked;
+ document.getElementById('auto_lab_m').innerText= on? '🧠 AUTO-TUNE ON MT5' : '🧠 AUTO-TUNE OFF MT5';
+ document.getElementById('auto_desc_m').innerText= on? 'ON: Robot compra/vende solo + SL -1/-2/-3 MT5' : 'OFF: Solo alerta Telegram MT5, no ejecuta';
+ let flo=document.getElementById('float_mt5'); let txt=document.getElementById('float_txt_m');
+ if(on){ flo.classList.remove('off'); txt.innerText='AUTO ON 🤖 MT5'; } else { flo.classList.add('off'); txt.innerText='AUTO OFF 🔕 MT5'; }
+ guardarMT5();
+}
+function guardarMT5(){
+ let sel=document.getElementById('bolas_m'); let total=sel.options.length?parseInt(sel.options[sel.selectedIndex].value):8;
+ let data={modo_m:document.getElementById('modo_m').value, bolas_m:total, cierre_m:parseFloat(document.getElementById('cierre_m').value), sl_m:parseFloat(document.getElementById('sl_m').value), rsi_venta_m:parseInt(document.getElementById('rsiv_m').value), rsi_compra_m:parseInt(document.getElementById('rsic_m').value), ema_m:document.getElementById('ema_m').value, auto_m:document.getElementById('auto_m').checked};
+ document.getElementById('cierre_txt_m').innerText=data.cierre_m+'% MT5';
+ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+}
+function renderGrid(){
 document.getElementById('grid').innerHTML=MT5.map(k=>{
 let price=k=='XAUUSD'?'2341.20':k=='XAGUSD'?'28.15':k=='USOIL'?'76.42':k=='SPX500'?'5420.10':k=='NAS100'?'18500.50':k=='GER40'?'18200.30':k=='EURUSD'?'1.0845':'1.2745';
 let rsi=(40+Math.random()*12).toFixed(1);
 return `<div class=card><div class=on>ON</div><div style="font-weight:900;font-size:15px">${k}</div><div class=price>$${price}</div><div class=detail>Espera RSI<br>RSI ${rsi} (lim 50 MT5)<br>P 0.22 < EMA 0.23<br>RSI > 50 MT5</div><div class=row><input class=input-rsi id="rsi_${k}" value="50"><button class=btn-y onclick="setRSI('${k}')">SET</button><button class=btn-d>RESET</button></div><div class=rob>🤖 ROBOT ON MT5</div><button class=btn-graf>GRÁFICA</button></div>`;
 }).join('');
 }
-function saveMT5(){ let d={modo_m:document.getElementById('modo_m').value,tp_m:0.5,sl_m:-3,rsiv_m:65,rsic_m:50,ema_m:document.getElementById('ema_m').value,auto_tune_m:document.getElementById('auto_m').checked}; fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(()=>alert('SET ESTRATEGIA MT5 guardada')); }
 function setRSI(k){ let v=document.getElementById('rsi_'+k).value; fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({['rsi_'+k+'_m']:parseInt(v)})}); }
-render();
-let c=document.getElementById('ch');let ctx=c.getContext('2d');function draw(){ctx.clearRect(0,0,c.width,c.height);ctx.strokeStyle='#facc15';ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<80;i++){let y=70+Math.sin(i/8)*20+Math.random()*8;if(i==0)ctx.moveTo(i*4,y);else ctx.lineTo(i*4,y)}ctx.stroke()}draw();
+async function loadM(){ try{S=await fetch('/api/state').then(r=>r.json());}catch(e){S={}} capital_m=(S.disponible_m||500)+(S.bloqueado_m||0)+(S.gan_mt5||0);
+document.getElementById('disp_m').innerText='$'+(S.disponible_m||0).toFixed(2); document.getElementById('disp_mxn_m').innerText='$'+((S.disponible_m||0)*16.96).toFixed(0)+' MXN'; document.getElementById('bloq_m').innerText=`Bloq: $${(S.bloqueado_m||0).toFixed(2)} en ${(S.pos_m||[]).length+(S.pos_m_short||[]).length}`;
+document.getElementById('gan_m').innerText='$'+(S.gan_mt5||0).toFixed(2); document.getElementById('gan_mxn_m').innerText='$'+((S.gan_mt5||0)*16.96).toFixed(0);
+document.getElementById('total_m').innerText='$'+capital_m.toFixed(2);
+if(S.auto_m!==undefined){ document.getElementById('auto_m').checked=S.auto_m; let flo=document.getElementById('float_mt5'); let txt=document.getElementById('float_txt_m'); if(S.auto_m){ flo.classList.remove('off'); txt.innerText='AUTO ON 🤖 MT5'; } else { flo.classList.add('off'); txt.innerText='AUTO OFF 🔕 MT5'; } }
+if(S.cierre_m!==undefined) document.getElementById('cierre_m').value=S.cierre_m;
+if(S.sl_m!==undefined) document.getElementById('sl_m').value=-Math.abs(S.sl_m);
+if(S.rsi_venta_m!==undefined) document.getElementById('rsiv_m').value=S.rsi_venta_m;
+if(S.rsi_compra_m!==undefined) document.getElementById('rsic_m').value=S.rsi_compra_m;
+let txt='CAIDA FUERTE 8/8 bajo EMA MT5\nLO MEJOR HOY MT5:\n• SL: -3% MT5 o -2.5%\n• RSI Venta: 65 MT5 | Compra: 50 MT5\n• Filtro: EMA200 ORO + SHORT activo\n\nPor moneda MT5:\n'; MT5.forEach(k=>{ txt+=`${k}: Espera RSI | RSI ${(40+Math.random()*12).toFixed(1)}\n`; }); document.getElementById('cere').innerText=txt;
+}
+llenarBolasMT5(); renderGrid(); setInterval(loadM,3000); loadM();
+let c=document.getElementById('ch');let ctx=c.getContext('2d');function draw(){ctx.clearRect(0,0,c.width,c.height);ctx.strokeStyle='#38bdf8';ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<80;i++){let y=70+Math.sin(i/8)*20+Math.random()*8;if(i==0)ctx.moveTo(i*4,y);else ctx.lineTo(i*4,y)}ctx.stroke()}draw();
 </script></body></html>
