@@ -158,7 +158,7 @@ def get_mt5():
  out['USOIL']={'price':76.42,'rsi':48,'ok':True,'sug':'COMPRA LONG','change':1.08}
  out['SPX500']={'price':5432.1,'rsi':55,'ok':False,'sug':'Espera','change':0.42}
  return out
- def tune(prices):
+def tune(prices):
  if not data.get('auto_tune',True):
   return
  debajo=sum(1 for v in prices.values() if v['price']>0 and v['price']<v['ema'])
