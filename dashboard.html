@@ -1,62 +1,41 @@
-<!DOCTYPE html>
-<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>DUAL V5 AMBAS $500 + $500</title>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DUAL V5 - $500 + $500</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#080a0f;color:#fff;font-family:system-ui;display:flex;min-height:100vh}
-.panel{flex:1;padding:12px;border-right:1px solid #222;min-width:50%}
-.panel:last-child{border:0}
-.top{padding:10px 0}.binance-title{color:#facc15;font-weight:900}.mt5-title{color:#60a5fa;font-weight:900}
-.circle{width:160px;height:160px;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;margin:15px auto;border:8px solid}
-.circle.binance{border-color:#facc15;background:#1a1600}.circle.mt5{border-color:#3b82f6;background:#0a1620}
-.circle .lab{font-size:12px;opacity:.7}.circle .cap{font-size:32px;font-weight:900}.circle .bola{font-size:20px;font-weight:900;color:#facc15}.circle.mt5 .bola{color:#60a5fa}
-.markets{margin-top:15px}.market-card{background:#11131a;border-radius:14px;padding:12px;margin:8px 0;display:flex;justify-content:space-between;align-items:center;border:1px solid #1f2937}
-.price{font-weight:900;color:#facc15}.mt5 .price{color:#60a5fa}
-.open{background:#0f1117;border-radius:12px;padding:8px;margin-top:12px}.open h4{margin:5px;color:#facc15;font-size:12px}.mt5 .open h4{color:#60a5fa}
-table{width:100%;font-size:11px;border-collapse:collapse}th{color:#888;font-size:10px;text-align:left;padding:4px}td{padding:6px 4px;border-top:1px solid #222}
-.positive{color:#22c55e}.negative{color:#ef4444}
-.btn{display:inline-block;background:#facc15;color:#000;padding:8px 14px;border-radius:10px;font-weight:900;text-decoration:none;margin:5px;font-size:12px}
-@media(max-width:700px){body{flex-direction:column}}
-</style>
-</head><body>
-<div class="panel binance-panel">
- <div class="top"><span class="binance-title">◆ BINANCE - CRYPTO</span><div style="font-size:10px;opacity:.6">Crypto Trading • Live</div></div>
- <div class="circle binance"><span class="lab">Capital</span><span class="cap" id="cap_b">$500</span><span class="lab">bola</span><span class="bola" id="bola_b">$62.5</span></div>
- <div class="markets"><div style="font-size:12px;font-weight:900;color:#facc15">🔥 MARKETS</div>
-  <div class="market-card"><span>₿ BTC<br><small>Bitcoin</small></span><span class="price" id="btc_p">$63,421</span></div>
-  <div class="market-card"><span>♦ ETH<br><small>Ethereum</small></span><span class="price" id="eth_p">$3,210</span></div>
-  <div class="market-card"><span>◎ SOL<br><small>Solana</small></span><span class="price" id="sol_p">$145.32</span></div>
- </div>
- <div class="open"><h4>💼 OPEN POSITIONS</h4><table id="open_b"><tr><th>Asset</th><th>Size</th><th>PnL</th></tr></table></div>
+*{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;justify-content:center}
+.phone{width:100%;max-width:440px;min-height:100vh;background:#0a0a0f;display:flex;overflow:hidden;border:2px solid #222;border-radius:30px}
+.panel{flex:1;padding:10px 8px;background:#0a0a0a;border-right:1px solid #222}
+.panel:last-child{background:#0a1020;border-right:0}
+.head{padding:8px 4px;margin-bottom:8px}.head b{font-size:13px}.head small{font-size:9px;opacity:.6;display:block}
+.bin .head b{color:#facc15}.mt .head b{color:#60a5fa}
+.circle{width:130px;height:130px;border-radius:50%;margin:12px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;border:7px solid}
+.bin .circle{border-color:#facc15;background:#1a1500}.mt .circle{border-color:#3b82f6;background:#0a1620}
+.circle .l{font-size:11px;opacity:.8}.circle .v{font-size:28px;font-weight:900;line-height:1}.circle .bola{font-size:18px;font-weight:900;margin-top:4px}.bin .bola{color:#facc15}.mt .bola{color:#60a5fa}
+.mark-title{font-size:11px;font-weight:900;margin:14px 4px 6px}.bin .mark-title{color:#facc15}.mt .mark-title{color:#60a5fa}
+.card{background:#151515;border-radius:12px;padding:10px 8px;margin:6px 0;display:flex;flex-direction:column;gap:2px;border:1px solid #222}
+.mt .card{background:#111a2e}
+.coin-row{display:flex;align-items:center;gap:8px}.ico{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px}
+.coin-name{font-size:12px;font-weight:900}.coin-sub{font-size:9px;opacity:.6}.price-row{display:flex;justify-content:space-between;margin-top:4px;font-size:12px;font-weight:900}.change{font-size:10px;padding:2px 6px;border-radius:6px;font-weight:900}.up{background:#0f2e1a;color:#22c55e}.down{background:#2e0f0f;color:#ef4444}
+.pos-box{background:#1a0f0f;border-radius:10px;padding:6px;margin-top:10px}.mt .pos-box{background:#0f1422}
+.pos-box h5{margin:0 0 6px;font-size:10px}.bin .pos-box h5{color:#facc15}.mt .pos-box h5{color:#60a5fa}
+table{width:100%;font-size:10px;border-collapse:collapse}th{opacity:.5;font-size:8px;text-align:left;padding:3px}td{padding:5px 3px;border-top:1px solid #222}
+.pnl-up{color:#22c55e}.pnl-down{color:#ef4444}
+.tabs{display:flex;gap:8px;margin-top:12px;font-size:9px;opacity:.6}.tabs .active{color:#facc15}.mt .tabs .active{color:#60a5fa}
+</style></head><body>
+<div class="phone">
+<div class="panel bin">
+<div class="head"><b>◆ BINANCE - CRYPTO</b><small>Crypto Trading • Live</small></div>
+<div class="circle"><span class="l">Capital</span><span class="v" id="cap_b">$500</span><span class="l">bola</span><span class="bola" id="bola_b">$62.5</span></div>
+<div class="mark-title">🔥 MARKETS</div>
+<div class="card"><div class="coin-row"><div class="ico" style="background:#f7931a">₿</div><div><div class="coin-name">BTC</div><div class="coin-sub">Bitcoin</div></div></div><div class="price-row"><span id="p_btc">$63,421.50</span><span class="change up">+1.24% ↑</span></div></div>
+<div class="card"><div class="coin-row"><div class="ico" style="background:#627eea">♦</div><div><div class="coin-name">ETH</div><div class="coin-sub">Ethereum</div></div></div><div class="price-row"><span id="p_eth">$3,210.88</span><span class="change up">+0.87% ↑</span></div></div>
+<div class="card"><div class="coin-row"><div class="ico" style="background:#000">◎</div><div><div class="coin-name">SOL</div><div class="coin-sub">Solana</div></div></div><div class="price-row"><span id="p_sol">$145.32</span><span class="change down">-0.52% ↓</span></div></div>
+<div class="pos-box"><h5>💼 OPEN POSITIONS</h5><table id="pos_b"><tr><th>Asset</th><th>Size</th><th>PnL</th></tr><tr><td colspan=3 style="text-align:center;opacity:.4">Sin posiciones</td></tr></table></div>
+<div class="tabs"><span class="active">● Portfolio</span><span>Trade</span><span>History</span><span>all</span></div>
 </div>
-<div class="panel mt5">
- <div class="top"><span class="mt5-title">📊 MT5 SIN MT5</span><div style="font-size:10px;opacity:.6">Forex • Commodities • Indices • Live</div></div>
- <div class="circle mt5"><span class="lab">Capital</span><span class="cap" id="cap_m">$500</span><span class="lab">bola</span><span class="bola" id="bola_m">$62.5</span></div>
- <div class="markets"><div style="font-size:12px;font-weight:900;color:#60a5fa">📈 MARKETS</div>
-  <div class="market-card"><span>🥇 XAUUSD GOLD</span><span class="price" id="xau_p">$2,341</span></div>
-  <div class="market-card"><span>🥈 XAGUSD SILVER</span><span class="price" id="xag_p">$28.15</span></div>
-  <div class="market-card"><span>🛢️ USOIL</span><span class="price" id="usoil_p">$76.42</span></div>
-  <div class="market-card"><span>📊 SPX500</span><span class="price" id="spx_p">5,432</span></div>
- </div>
- <div class="open"><h4>📋 OPEN POSITIONS</h4><table id="open_m"><tr><th>Asset</th><th>Size</th><th>PnL</th></tr></table></div>
-</div>
-<script>
-async function load(){
- let st=await fetch('/api/state').then(r=>r.json());
- let total_b = (st.disponible_usd||500)+(st.bloqueado_usd||0)+(st.gan_acum||0);
- let total_m = (st.disponible_m||500)+(st.bloqueado_m||0)+(st.gan_mt5||0);
- let max_b = st.max_entradas||8;
- let max_m = st.max_m||8;
- document.getElementById('cap_b').innerText='$'+total_b.toFixed(0);
- document.getElementById('bola_b').innerText='$'+(total_b/max_b).toFixed(1);
- document.getElementById('cap_m').innerText='$'+total_m.toFixed(0);
- document.getElementById('bola_m').innerText='$'+(total_m/max_m).toFixed(1);
- let html_b=''; (st.pos||[]).forEach(p=>{html_b+=`<tr><td>${p.sym}</td><td>${p.size||0}</td><td class="${(p.gan||0)>=0?'positive':'negative'}">$${p.gan||0}</td></tr>`});
- if(!html_b) html_b='<tr><td colspan=3 style="text-align:center;opacity:.5">Sin posiciones</td></tr>';
- document.getElementById('open_b').innerHTML='<tr><th>Asset</th><th>Size</th><th>PnL</th></tr>'+html_b;
- let html_m=''; [...(st.pos_m||[]),...(st.pos_m_short||[])].forEach(p=>{html_m+=`<tr><td>${p.sym}</td><td>${p.size||0}</td><td class="${(p.gan||0)>=0?'positive':'negative'}">$${p.gan||0}</td></tr>`});
- if(!html_m) html_m='<tr><td colspan=3 style="text-align:center;opacity:.5">Sin posiciones</td></tr>';
- document.getElementById('open_m').innerHTML='<tr><th>Asset</th><th>Size</th><th>PnL</th></tr>'+html_m;
-}
-setInterval(load,3000); load();
-</script>
-</body></html>
+<div class="panel mt">
+<div class="head"><b>📊 MT5 SIN MT5</b><small>Forex • Commodities • Indices • Live</small></div>
+<div class="circle"><span class="l">Capital</span><span class="v" id="cap_m">$500</span><span class="l">bola</span><span class="bola" id="bola_m">$62.5</span></div>
+<div class="mark-title">📈 MARKETS</div>
+<div class="card"><div class="coin-row"><div class="ico" style="background:#d4af37">●</div><div><div class="coin-name">XAUUSD GOLD</div><div class="coin-sub">Gold Spot</div></div></div><div class="price-row"><span id="p_xau">$2,341.20</span><span class="change up">+0.64% ↑</span></div></div>
+<div class="card"><div class="coin-row"><div class="ico" style="background:#999">●</div><div><div class="coin-name">XAGUSD SILVER</div><div class="coin-sub">Silver Spot</div></div></div><div class="price-row"><span id="p_xag">$28.15</span><span class="change down">-0.31% ↓</span></div></div>
+<div class="card"><div class="coin-row"><div class="ico" style="background:#333">🛢️</div><div><div class="coin-name">USOIL</div><div class="coin-sub">Crude Oil WTI</div></div></div><div class="price
