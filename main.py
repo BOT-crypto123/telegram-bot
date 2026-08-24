@@ -17,7 +17,7 @@ default_data = {
  "rsi_compra": 35, "rsi_venta": 70, "filtro_ema": "OFF",
  "max_entradas": 8, "auto": True, "auto_tune": True,
  "modo": "AMBOS", "pos": [], "pos_short": [],
- "historial": [], "coins
+ "historial": [], "coins"
  @app.route("/api/state")
 def api_state():
     usd_live = get_usd_mxn_live()
