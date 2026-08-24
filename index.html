@@ -4,56 +4,75 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DUAL V5</title>
 <style>
-*{box-sizing:border-box;font-family:system-ui} body{margin:0;background:#000;color:#fff;overflow-x:hidden}
-.wrap{display:flex;flex-direction:row!important;width:100vw;min-height:100vh}
-.side{width:50%;min-width:50%;padding:10px}
-.left{background:#0a0a0a;border-right:1px solid #1e1e1e}
-.right{background:#0a1222}
-.h{font-weight:900;font-size:13px} .hy{color:#facc15} .hb{color:#60a5fa}
-.sub{font-size:10px;opacity:.5;margin-bottom:10px}
-.circle{width:140px;height:140px;border-radius:50%;margin:14px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#111;cursor:pointer;text-align:center}
-.cy{border:6px solid #facc15;box-shadow:0 0 15px rgba(250,204,21,.2)} 
-.cb{border:6px solid #3b82f6;box-shadow:0 0 15px rgba(59,130,246,.2);background:#0e172e}
-.cap{font-size:30px;font-weight:900;line-height:1} .lab{font-size:11px;opacity:.6} .bola{font-size:18px;font-weight:900;margin-top:2px} .by{color:#facc15} .bb{color:#60a5fa}
-.mt{font-weight:900;font-size:12px;margin:14px 0 6px} .mty{color:#facc15} .mtb{color:#60a5fa}
-.card{background:#171717;border:1px solid #262626;border-radius:14px;padding:10px;margin:6px 0;display:flex;justify-content:space-between;align-items:center}
-.right .card{background:#152040;border-color:#1e2f5a}
-.icon{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px}
-.ibtc{background:#f7931a;color:#fff} .ieth{background:#627eea} .isol{background:#111;border:1px solid #333}
-.igold{background:#d4af37;color:#000} .isilver{background:#9ca3af;color:#000} .ioil{background:#1e3a5f}
-.price{font-weight:800;font-size:13px;margin-top:3px} .name{font-weight:800;font-size:12px} .sname{font-size:10px;opacity:.5}
-.chg{font-size:10px;font-weight:900;padding:4px 7px;border-radius:8px} .up{background:#0a2a14;color:#22c55e} .down{background:#2a0a0a;color:#ef4444}
-.pos{background:#1a1500;border:1px solid #2a2300;border-radius:14px;padding:10px;margin-top:12px}
-.right .pos{background:#101a33;border-color:#1e2f5a}
-.hdr{font-weight:900;font-size:11px} .row{font-size:11px;opacity:.6}
+*{box-sizing:border-box;font-family:system-ui;margin:0} body{background:#000;color:#fff}
+.wrap{display:flex;width:100vw;min-height:100vh}
+.side{width:50%;padding:8px}
+.left{background:#080808;border-right:1px solid #1a1a1a}
+.right{background:#0b1326}
+.h{font-weight:900;font-size:12px} .hy{color:#facc15} .hb{color:#60a5fa}
+.sub{font-size:9px;opacity:.5;margin-bottom:10px}
+.circle{width:150px;height:150px;border-radius:50%;margin:10px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:pointer}
+.cy{border:7px solid #facc15;background:radial-gradient(circle,#1a1600,#000);box-shadow:0 0 25px rgba(250,204,21,.3)} 
+.cb{border:7px solid #3b82f6;background:radial-gradient(circle,#0e1a35,#0a1226);box-shadow:0 0 25px rgba(59,130,246,.3)}
+.cap{font-size:30px;font-weight:900;line-height:1} .lab{font-size:10px;opacity:.5} .bola{font-size:18px;font-weight:900} .by{color:#facc15} .bb{color:#60a5fa}
+.mxn-in{font-size:11px;font-weight:800;margin-top:4px;color:#22c55e;background:rgba(34,197,94,.15);padding:2px 7px;border-radius:10px;border:1px solid rgba(34,197,94,.3)}
+.mt{font-weight:900;font-size:11px;margin:12px 0 6px}
+.card{background:#181818;border:1px solid #2a2a2a;border-radius:14px;padding:9px;margin:4px 0;display:flex;justify-content:space-between;align-items:center;font-size:12px}
+.right .card{background:#162040;border-color:#1e2f5a}
 </style>
 </head>
 <body>
 <div class="wrap">
 <div class="side left">
 <div class="h hy">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
-<div class="circle cy" onclick="location.href='/dashboard.html'"><div class="lab">Capital</div><div class="cap" id="cap_b">$500</div><div class="lab">bola</div><div class="bola by" id="bola_b">$62.5</div></div>
-<div class="mt mty">🔥 MARKETS</div>
+<div class="circle cy" onclick="location.href='/dashboard.html'">
+<div class="lab">Capital</div><div class="cap" id="cap_b">$500</div>
+<div class="lab">bola</div><div class="bola by" id="bola_b">$62.5</div>
+<div class="mxn-in" id="mxn_in_b">≈ $8,575 MXN</div>
+</div>
+<div class="mt hy">🔥 MARKETS</div>
 <div id="mk_b"></div>
-<div class="pos"><div class="hdr hy">📦 OPEN POSITIONS</div><div style="display:flex;justify-content:space-between;margin-top:6px" class="row"><span>Asset</span><span>Size</span><span>PnL</span></div><div id="pos_b" style="text-align:center;margin-top:8px;font-size:11px;opacity:.5">Sin posiciones</div></div>
-<div style="margin-top:10px;font-size:10px;opacity:.3">● Portfolio Trade History all</div>
 </div>
 <div class="side right">
 <div class="h hb">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
-<div class="circle cb" onclick="location.href='/dashboard_mt5.html'"><div class="lab">Capital</div><div class="cap" id="cap_m">$500</div><div class="lab">bola</div><div class="bola bb" id="bola_m">$62.5</div></div>
-<div class="mt mtb">📈 MARKETS</div>
+<div class="circle cb" onclick="location.href='/dashboard_mt5.html'">
+<div class="lab">Capital</div><div class="cap" id="cap_m">$500</div>
+<div class="lab">bola</div><div class="bola bb" id="bola_m">$62.5</div>
+<div class="mxn-in" id="mxn_in_m">≈ $8,575 MXN</div>
+</div>
+<div class="mt hb">📈 MARKETS</div>
 <div id="mk_m"></div>
 </div>
 </div>
 <script>
-const MB=[{s:'BTC',n:'Bitcoin',p:63421.5,c:1.24,cls:'ibtc',ic:'₿'},{s:'ETH',n:'Ethereum',p:3210.88,c:0.87,cls:'ieth',ic:'♦'},{s:'SOL',n:'Solana',p:145.32,c:-0.52,cls:'isol',ic:'◎'}];
-const MM=[{s:'XAUUSD GOLD',n:'Gold Spot',p:2341.2,c:0.64,cls:'igold',ic:'•'},{s:'XAGUSD SILVER',n:'Silver Spot',p:28.15,c:-0.31,cls:'isilver',ic:'•'},{s:'USOIL',n:'Crude Oil WTI',p:78.40,c:0.64,cls:'ioil',ic:'🛢'}];
-function mk(){
-document.getElementById('mk_b').innerHTML=MB.map(m=>`<div class="card"><div><div style="display:flex;gap:6px;align-items:center"><div class="icon ${m.cls}">${m.ic}</div><div><div class="name">${m.s}</div><div class="sname">${m.n}</div></div></div><div class="price">$${m.p.toLocaleString()}</div></div><div class="chg ${m.c>=0?'up':'down'}">${m.c>=0?'+':''}${m.c}% ${m.c>=0?'↑':'↓'}</div></div>`).join('');
-document.getElementById('mk_m').innerHTML=MM.map(m=>`<div class="card"><div><div style="display:flex;gap:6px;align-items:center"><div class="icon ${m.cls}">${m.ic}</div><div><div class="name">${m.s}</div><div class="sname">${m.n}</div></div></div><div class="price">$${m.p.toLocaleString()}</div></div><div class="chg ${m.c>=0?'up':'down'}">${m.c>=0?'+':''}${m.c}% ${m.c>=0?'↑':'↓'}</div></div>`).join('');
+let USDMXN=17.15;
+async function getDolar(){
+ try{
+  let r=await fetch('https://open.er-api.com/v6/latest/USD',{cache:'no-store'});
+  let j=await r.json(); USDMXN=j.rates.MXN;
+ }catch{}
 }
-async function load(){try{let r=await fetch('/api/state');let s=await r.json();let tb=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0);let tm=(s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0);document.getElementById('cap_b').innerText='$'+Math.round(tb);document.getElementById('bola_b').innerText='$'+(tb/(s.max_entradas||8)).toFixed(1);document.getElementById('cap_m').innerText='$'+Math.round(tm);document.getElementById('bola_m').innerText='$'+(tm/(s.max_m||8)).toFixed(1);}catch{}}
-mk();load();setInterval(load,2000);
+async function live(){
+ try{
+  let r=await fetch('/api/state?t='+Date.now(),{cache:'no-store'});
+  let s=await r.json();
+  let tb=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0)||500;
+  let tm=(s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0)||500;
+  let bb=tb/(s.max_entradas||8); let bm=tm/(s.max_m||8);
+  document.getElementById('cap_b').innerText='$'+tb.toFixed(0);
+  document.getElementById('bola_b').innerText='$'+bb.toFixed(1);
+  document.getElementById('cap_m').innerText='$'+tm.toFixed(0);
+  document.getElementById('bola_m').innerText='$'+bm.toFixed(1);
+  // SOLO ADENTRO
+  document.getElementById('mxn_in_b').innerText='≈ $'+(tb*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
+  document.getElementById('mxn_in_m').innerText='≈ $'+(tm*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
+ }catch{}
+}
+getDolar(); live();
+setInterval(live,1500);
+setInterval(getDolar,30000);
+document.getElementById('mk_b').innerHTML='<div class="card"><div>BTC $63,421</div><div style="color:#22c55e">+1.24%</div></div><div class="card"><div>ETH $3,210</div><div style="color:#22c55e">+0.87%</div></div><div class="card"><div>SOL $145</div><div style="color:#ef4444">-0.52%</div></div>';
+document.getElementById('mk_m').innerHTML='<div class="card"><div>XAUUSD $2,341</div><div style="color:#22c55e">+0.64%</div></div><div class="card"><div>XAGUSD $28.15</div><div style="color:#ef4444">-0.31%</div></div><div class="card"><div>USOIL $78.4</div><div style="color:#22c55e">+0.64%</div></div>';
 </script>
 </body>
 </html>
