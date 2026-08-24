@@ -30,17 +30,14 @@ function render(){
  document.getElementById('cap_mt5').innerText='$'+m.total.toFixed(0);
  document.getElementById('bola_mt5').innerText='$'+m.bola.toFixed(1);
  document.getElementById('gan_mt5').innerText=(m.gan>=0?'+$': '-$')+Math.abs(m.gan).toFixed(2)+' '+(m.pos.length? '('+m.pos.length+' abiertas)':'');
- 
  document.getElementById('markets_bin').innerHTML=Object.entries(PRE_BIN).slice(0,3).map(([k,v])=>{
-   let vari=(Math.random()-0.5)*0.04; let up=vari>=0; return `<div class=card><div style="display:flex;justify-content:space-between"><b>₿ ${k} ${k==='BTC'?'Bitcoin':k==='ETH'?'Ethereum':'Solana'}</b><span class="${up?'up':'down'}">${up?'+':''}${(vari*100).toFixed(2)}% ${up?'↑':'↓'}</span></div><div style="margin-top:4px;font-weight:900">$${(v*(1+vari)).toFixed(2)}</div></div>`;
+   let vari=(Math.random()-0.5)*0.04; let up=vari>=0; return `<div class=card><div style="display:flex;justify-content:space-between"><b>₿ ${k}</b><span class="${up?'up':'down'}">${up?'+':''}${(vari*100).toFixed(2)}% ${up?'↑':'↓'}</span></div><div style="margin-top:4px;font-weight:900">$${(v*(1+vari)).toFixed(2)}</div></div>`;
  }).join('');
-
  document.getElementById('markets_mt5').innerHTML=Object.entries(PRE_MT5).slice(0,3).map(([k,v])=>{
-   let vari=(Math.random()-0.5)*0.02; let up=vari>=0; return `<div class=card-m><div style="display:flex;justify-content:space-between"><div><b>● ${k}</b><br><span style="opacity:.5;font-size:11px">${k.includes('GOLD')?'Gold Spot':k.includes('SILVER')?'Silver Spot':'Crude Oil WTI'}</span></div><span class="${up?'up':'down'}" style="height:fit-content">${up?'+':''}${(vari*100).toFixed(2)}% ${up?'↑':'↓'}</span></div><div style="margin-top:4px;font-weight:900">$${(v*(1+vari)).toFixed(2)}</div></div>`;
+   let vari=(Math.random()-0.5)*0.02; let up=vari>=0; return `<div class=card-m><div style="display:flex;justify-content:space-between"><div><b>● ${k}</b></div><span class="${up?'up':'down'}" style="height:fit-content">${up?'+':''}${(vari*100).toFixed(2)}% ${up?'↑':'↓'}</span></div><div style="margin-top:4px;font-weight:900">$${(v*(1+vari)).toFixed(2)}</div></div>`;
  }).join('');
-
- document.getElementById('open_bin').innerHTML=b.pos.length? b.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:4px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}% $${(p.monto*p.neta/100).toFixed(2)}</span></div>`).join('') : 'Sin posiciones - esperando RSI < 40';
- document.getElementById('open_mt5').innerHTML=m.pos.length? m.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:4px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}% $${(p.monto*p.neta/100).toFixed(2)}</span></div>`).join('') : 'Sin posiciones MT5 - esperando RSI ORO < 50';
+ document.getElementById('open_bin').innerHTML=b.pos.length? b.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:4px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</span></div>`).join('') : 'Sin posiciones - esperando RSI < 40';
+ document.getElementById('open_mt5').innerHTML=m.pos.length? m.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:4px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</span></div>`).join('') : 'Sin posiciones MT5 - esperando RSI ORO < 50';
 }
 setInterval(render,2000); render();
 </script></body></html>
