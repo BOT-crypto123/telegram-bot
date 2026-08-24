@@ -1,7 +1,3 @@
-Aqui todavía estábamos bien.
-
-
-
 import os, json, time, threading, requests, random
 from flask import Flask, request, jsonify, send_from_directory
 from pathlib import Path
@@ -42,35 +38,20 @@ try:
     if "capital_binance" not in data:
         data["capital_binance"] = data.get("capital_actual",500)
         data["capital_mt5"] = 500.0
-    # Migrar historial si no existe
     if "historial_binance" not in data: data["historial_binance"]=data.get("historial",[])
     if "historial_mt5" not in data: data["historial_mt5"]=[]
     if "capital_history_binance" not in data: data["capital_history_binance"]=data.get("capital_history",[])
 except: data=default_data.copy()
 
 def save():
-    # Guarda TODO en todos lados para no perder
     for p in [DATA_FILE, DATA_FILE_BINANCE, "/data/bot_data.json", "/data/bot_data_binance.json"]:
         try:
             Path(p).parent.mkdir(parents=True, exist_ok=True)
             with open(p,"w") as f: json.dump(data,f)
         except: pass
-    # Guarda separado MT5
     try:
-        with open(DATA_FILE_MT5,"w") as f: json.dump({
-            "capital_mt5": data["capital_mt5"],
-            "pos_mt5": data.get("pos_mt5",[]),
-            "historial_mt5": data.get("historial_mt5",[]),
-            "capital_history_mt5": data.get("capital_history_mt5",[]),
-            "coins_mt5_activas": data["coins_mt5_activas"]
-        },f)
-        with open("/data/"+DATA_FILE_MT5,"w") as f: json.dump({
-            "capital_mt5": data["capital_mt5"],
-            "pos_mt5": data.get("pos_mt5",[]),
-            "historial_mt5": data.get("historial_mt5",[]),
-            "capital_history_mt5": data.get("capital_history_mt5",[]),
-            "coins_mt5_activas": data["coins_mt5_activas"]
-        },f)
+        with open(DATA_FILE_MT5,"w") as f: json.dump({"capital_mt5": data["capital_mt5"],"pos_mt5": data.get("pos_mt5",[]),"historial_mt5": data.get("historial_mt5",[]),"capital_history_mt5": data.get("capital_history_mt5",[]),"coins_mt5_activas": data["coins_mt5_activas"]},f)
+        with open("/data/"+DATA_FILE_MT5,"w") as f: json.dump({"capital_mt5": data["capital_mt5"],"pos_mt5": data.get("pos_mt5",[]),"historial_mt5": data.get("historial_mt5",[]),"capital_history_mt5": data.get("capital_history_mt5",[]),"coins_mt5_activas": data["coins_mt5_activas"]},f)
     except: pass
 
 def tg(chat_id, text):
@@ -101,14 +82,6 @@ def get_usd_mxn_live(force=False):
             USD_CACHE["price"] = mxn; USD_CACHE["t"] = now; USD_CACHE["last_ok"] = mxn
             data["usd_mxn"] = mxn; save()
             return mxn
-    except: pass
-    try:
-        r2 = requests.get("https://api.frankfurter.app/latest?from=USD&to=MXN", timeout=8).json()
-        mxn2 = float(r2["rates"]["MXN"])
-        if 10 < mxn2 < 30:
-            USD_CACHE["price"] = mxn2; USD_CACHE["t"] = now; USD_CACHE["last_ok"] = mxn2
-            data["usd_mxn"] = mxn2; save()
-            return mxn2
     except: pass
     return USD_CACHE.get("last_ok", data.get("usd_mxn", 18.5))
 
@@ -184,7 +157,6 @@ def dashboard():
 
 @app.route("/api/prices")
 def api_prices(): return jsonify(get_prices_data())
-
 @app.route("/api/prices_mt5")
 def api_prices_mt5(): return jsonify(get_prices_mt5())
 
@@ -255,7 +227,6 @@ def sell_sym(sym):
 @app.route("/api/toggle", methods=["POST"])
 def toggle(): data["auto"]=not data["auto"]; save(); return jsonify(ok=True)
 
-# === RESPALDO SEPARADO - LO QUE PEDISTE ===
 @app.route("/api/backup")
 def api_backup():
     tipo=request.args.get("tipo","all")
@@ -290,7 +261,6 @@ def api_restore():
             if "historial_mt5" in nuevo: data["historial_mt5"]=nuevo["historial_mt5"]
             if "capital_history_mt5" in nuevo: data["capital_history_mt5"]=nuevo["capital_history_mt5"]
             save(); return jsonify(ok=True, msg="MT5 restaurado")
-        # restore total
         global data
         data=nuevo
         for k,v in default_data.items():
@@ -322,6 +292,5 @@ def auto_loop():
         time.sleep(60)
 
 threading.Thread(target=auto_loop,daemon=True).start()
-
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=int(os.environ.get("PORT",10000)))
