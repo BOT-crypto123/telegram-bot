@@ -23,7 +23,8 @@ body{display:flex;background:#000;min-height:100vh}
 .down{background:#2a1111;color:#ef4444;padding:3px 7px;border-radius:6px;font-size:11px;font-weight:700}
 .row{display:flex;justify-content:space-between;align-items:center;margin-top:6px}
 .open{margin-top:12px;border-radius:10px;padding:10px}
-.left .open{background:#1a1a0a;border:1px solid #332a00}.right .open{background:#131e36;border:1px solid #1e2f5a}
+.left .open{background:#1a1a0a;border:1px solid #332a00}
+.right .open{background:#131e36;border:1px solid #1e2f5a}
 .open-t{font-size:11px;font-weight:900}.left .open-t{color:#ffcc00}.right .open-t{color:#60a5fa}
 .empty{color:#666;text-align:center;padding:10px;font-size:12px}
 </style></head><body>
@@ -31,21 +32,44 @@ body{display:flex;background:#000;min-height:100vh}
 <div class="hdr">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
 <div class="circle-wrap"><div class="circle"><div class="lbl">Capital</div><div class="cap" id="capBin">$500</div><div class="lbl">bola</div><div class="bola" id="bolaBin">$62.5</div></div></div>
 <div class="mark-title">🔥 MARKETS</div>
-<div class="card"><div class="sym">₿ BTC Bitcoin</div><div class="name">Bitcoin</div><div class="row"><span class="price">$63,421.50</span><span class="up">+1.24% ↑</span></div></div>
-<div class="card"><div class="sym">♦ ETH Ethereum</div><div class="name">Ethereum</div><div class="row"><span class="price">$3,210.88</span><span class="up">+0.87% ↑</span></div></div>
-<div class="card"><div class="sym">◎ SOL Solana</div><div class="name">Solana</div><div class="row"><span class="price">$145.32</span><span class="down">-0.52% ↓</span></div></div>
-<div class="open"><div class="open-t">🧳 OPEN POSITIONS</div><div class="empty" id="oBin">Sin posiciones</div></div>
+<div id="markBin">
+<div class="card"><div class="sym">₿ BTC Bitcoin</div><div class="row"><span class="price">$63,421.50</span><span class="up">+1.24% ↑</span></div></div>
+<div class="card"><div class="sym">♦ ETH Ethereum</div><div class="row"><span class="price">$3,210.88</span><span class="up">+0.87% ↑</span></div></div>
+<div class="card"><div class="sym">◎ SOL Solana</div><div class="row"><span class="price">$145.32</span><span class="down">-0.52% ↓</span></div></div>
+</div>
+<div class="open"><div class="open-t">🧳 OPEN POSITIONS BINANCE</div><div class="empty" id="oBin">Sin posiciones</div></div>
 </div>
 <div class="col right" onclick="location.href='/dashboard_mt5.html'">
-<div class="hdr">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
+<div class="hdr">📊 MT5 - REAL</div><div class="sub">Forex • Commodities • Indices • Live</div>
 <div class="circle-wrap"><div class="circle"><div class="lbl">Capital</div><div class="cap" id="capMT5">$500</div><div class="lbl">bola</div><div class="bola" id="bolaMT5">$62.5</div></div></div>
-<div class="mark-title">📈 MARKETS</div>
+<div class="mark-title">📈 MARKETS MT5</div>
+<div id="markMT5">
 <div class="card"><div class="sym">● XAUUSD GOLD</div><div class="name">Gold Spot</div><div class="row"><span class="price">$2,341.20</span><span class="up">+0.64% ↑</span></div></div>
 <div class="card"><div class="sym">● XAGUSD SILVER</div><div class="name">Silver Spot</div><div class="row"><span class="price">$28.15</span><span class="down">-0.31% ↓</span></div></div>
 <div class="card"><div class="sym">🛢️ USOIL Crude Oil WTI</div><div class="name">Crude Oil WTI</div><div class="row"><span class="price">$76.42</span><span class="up">+0.18% ↑</span></div></div>
-<div class="open"><div class="open-t">🧳 OPEN POSITIONS</div><div class="empty" id="oMT5">Sin posiciones</div></div>
+</div>
+<div class="open"><div class="open-t">🧳 OPEN POSITIONS MT5</div><div class="empty" id="oMT5">Sin posiciones</div></div>
 </div>
 <script>
-async function l(){try{const s=await(await fetch('/api/state')).json();const cB=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0);document.getElementById('capBin').textContent='$'+cB.toFixed(0);document.getElementById('bolaBin').textContent='$'+(cB/(s.max_entradas||8)).toFixed(1);const cM=(s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0);document.getElementById('capMT5').textContent='$'+cM.toFixed(0);document.getElementById('bolaMT5').textContent='$'+(cM/(s.max_m||8)).toFixed(1);let hB=s.pos.length?'':'Sin posiciones';s.pos.forEach(p=>hB+=`<div style='color:#fff;font-size:11px;padding:3px 0'>${p.sym} $${p.size}</div>`);document.getElementById('oBin').innerHTML=hB;let hM=(s.pos_m.length+s.pos_m_short.length)?'':'Sin posiciones';s.pos_m.concat(s.pos_m_short).forEach(p=>hM+=`<div style='color:#fff;font-size:11px;padding:3px 0'>${p.sym} $${p.size}</div>`);document.getElementById('oMT5').innerHTML=hM}catch(e){}}l();setInterval(l,3000);
+async function l(){
+ try{
+  const s=await(await fetch('/api/state')).json();
+  const cB=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0);
+  document.getElementById('capBin').textContent='$'+cB.toFixed(0);
+  document.getElementById('bolaBin').textContent='$'+(cB/(s.max_entradas||8)).toFixed(1);
+  const cM=(s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0);
+  document.getElementById('capMT5').textContent='$'+cM.toFixed(0);
+  document.getElementById('bolaMT5').textContent='$'+(cM/(s.max_m||8)).toFixed(1);
+  
+  let hB=s.pos.length?'':'Sin posiciones';
+  s.pos.forEach(p=>hB+=`<div style='color:#fff;font-size:11px;padding:3px 0;border-top:1px solid #222'>${p.sym} $${p.size.toFixed(2)} ${p.tipo}</div>`);
+  document.getElementById('oBin').innerHTML=hB;
+  
+  let hM=(s.pos_m.length+s.pos_m_short.length)?'':'Sin posiciones';
+  s.pos_m.concat(s.pos_m_short).forEach(p=>hM+=`<div style='color:#aef;font-size:11px;padding:3px 0;border-top:1px solid #1e2f5a'>${p.sym} $${p.size.toFixed(2)} ${p.tipo}</div>`);
+  document.getElementById('oMT5').innerHTML=hM;
+ }catch(e){}
+}
+l();setInterval(l,3000);
 </script>
 </body></html>
