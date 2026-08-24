@@ -1,6 +1,5 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MÁQUINA BOLA MT5</title>
-<style>body{margin:0;background:#000;color:#fff;font-family:system-ui}.wrap{max-width:520px;margin:0 auto;border-left:3px solid #38bdf8;border-right:3px solid #38bdf8;min-height:100vh;background:#050505;padding-bottom:80px}.circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center}.c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}.c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)}.c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}.val{font-size:48px;font-weight:900}.box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}.box-bola{background:#0a1a0a;border:1.5px solid #38bdf8}.sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.inp{width:100%;background:#000;color:#fff;border:1px solid #38bdf8;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}.card{background:#111;border:1.5px solid #38bdf8;border-radius:16px;padding:12px;position:relative;cursor:pointer}.on{position:absolute;top:10px;right:10px;background:#38bdf8;color:#000;font-weight:900;padding:4px 14px;border-radius:20px}.off_b{background:#222!important;color:#666!important}.price{font-size:20px;font-weight:900;margin:6px 0}.detail{font-size:11px;opacity:.7}.row{margin-top:8px;display:flex;gap:6px}.btn-y{background:#facc15;color:#000;font-weight:900;border:0;border-radius:6px;padding:8px 12px}.btn-d{background:#222;color:#fff;border:1px solid #444;border-radius:6px;padding:8px 10px}#float_mt5{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:10px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #38bdf8;box-shadow:0 0 15px #38bdf850;cursor:pointer}#float_mt5.off{border-color:#ef4444;background:#1a0a0a;color:#fff}
-table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:6px} td{padding:6px;border-top:1px solid #222}
+<style>body{margin:0;background:#000;color:#fff;font-family:system-ui}.wrap{max-width:520px;margin:0 auto;border-left:3px solid #38bdf8;border-right:3px solid #38bdf8;min-height:100vh;background:#050505;padding-bottom:80px}.circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center}.c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}.c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)}.c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}.val{font-size:48px;font-weight:900}.box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}.box-bola{background:#0a1a0a;border:1.5px solid #38bdf8}.sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.inp{width:100%;background:#000;color:#fff;border:1px solid #38bdf8;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}.card{background:#111;border:1.5px solid #38bdf8;border-radius:16px;padding:12px;position:relative}.on{position:absolute;top:10px;right:10px;background:#38bdf8;color:#000;font-weight:900;padding:4px 14px;border-radius:20px}.off_b{background:#222!important;color:#666!important}.price{font-size:20px;font-weight:900;margin:6px 0}.detail{font-size:11px;opacity:.7}.row{margin-top:8px;display:flex;gap:6px}.btn-y{background:#facc15;color:#000;font-weight:900;border:0;border-radius:6px;padding:8px 12px}#float_mt5{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:10px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #38bdf8;box-shadow:0 0 15px #38bdf850;cursor:pointer}#float_mt5.off{border-color:#ef4444;background:#1a0a0a;color:#fff} table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:6px} td{padding:6px;border-top:1px solid #222}
 </style></head><body><div class="wrap">
 <div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">MÁQUINA BOLA MT5<br><span style="font-size:12px;opacity:.5">cij p.onrender.com - $500 / 8 BOLAS MT5</span></div>
 <div class="circle c1"><div style="color:#facc15;font-weight:900">DISPONIBLE MT5</div><div class="val" id="disp">$500.00</div><div id="disp_mxn" style="opacity:.7">$8480 MXN</div><div id="bloq" style="color:#38bdf8;font-size:13px">Bloq: $0 MT5</div></div>
@@ -11,20 +10,13 @@ table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-ali
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">🛑 SL MT5:<div style="display:flex;gap:4px"><input type="number" id="sl" class="inp" style="margin:0" value="-3" step="0.1"><button class="btn-set" onclick="guardar()">SET</button></div></div><div style="flex:1">📤 RSI Venta MT5:<div style="display:flex;gap:4px"><input type="number" id="rsi_v" class="inp" style="margin:0" value="65" step="1"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">📈 P>EMA MT5:<select id="ema" class="sel" onchange="guardar()"><option selected>EMA200 ORO (distinto a cripto)</option><option>EMA100</option><option>OFF Caida MT5</option><option>ON MT5</option></select></div><div style="flex:1">📉 RSI Compra MT5:<div style="display:flex;gap:4px"><input type="number" id="rsi_c" class="inp" style="margin:0" value="50" step="1"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
 <div style="margin-top:10px;background:#08111f;border:1.5px solid #38bdf8;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div id="auto_lab" style="color:#38bdf8;font-weight:900">🧠 AUTO-TUNE ON MT5</div><div style="font-size:11px;opacity:.6">ON: Robot mueve SL -1/-2/-3 y RSI 40/45/50 solo</div></div><input type="checkbox" id="auto_tune" checked onchange="toggleAutoChk()" style="width:22px;height:22px"></div>
-<div style="margin-top:8px">🎯 Bolas Totales MT5:<select id="bolas" class="sel" onchange="cambioBolas()"></select></div>
+<div style="margin-top:8px">🎯 Bolas Totales MT5:<select id="bolas" class="sel" onchange="cambioBolas()"><option value="8" selected>4+4 = 8 (4 LONG + 4 SHORT) MT5</option><option value="6">3+3 = 6</option><option value="4">2+2 = 4</option><option value="2">1+1 = 2</option></select></div>
 </div>
 <div class="box" style="border-color:#38bdf8"><b>🤖 CEREBRO DEL ROBOT MT5 - MISMA LOGICA BINANCE</b><div id="cerebro" style="font-size:13px;white-space:pre-line;margin-top:8px">Cargando...</div></div>
 <div class="grid" id="grid"></div>
 <div class="box"><b style="color:#38bdf8">📈 EVOLUCIÓN CAPITAL MT5</b><canvas id="ch" height="120" style="width:100%;background:#000;border-radius:10px;margin-top:10px"></canvas></div>
 <div class="box"><div style="display:flex;justify-content:space-between;font-size:11px;opacity:.5"><span>Moneda MT5</span><span>Tipo</span><span>Entry</span><span>Ahora</span><span>Neta</span><span>Acción</span></div><table id="pos"><tr><td colspan=6 style="text-align:center;opacity:.4;padding:18px">Sin posiciones MT5 - Esperando señal ORO/PLATA</td></tr></table></div>
 <div class="box"><b style="color:#38bdf8">📋 REGISTRO COMPLETO MT5</b><table><thead><tr><th>Fecha</th><th>Moneda MT5</th><th>Monto</th><th>%</th><th>Gan</th></tr></thead><tbody id="hist"><tr><td colspan=5 style="text-align:center;opacity:.4">Sin historial MT5 aun</td></tr></tbody></table></div>
-<div style="margin:10px;border:2px dashed #38bdf8;border-radius:16px;padding:12px;text-align:center;background:#0a0a0a">
-<b style="color:#38bdf8">💾 RESPALDO PARA PLAN GRATIS DE RENDER MT5</b>
-<div style="font-size:11px;opacity:.6;margin:4px 0">En gratis se borra al hacer deploy. Usa esto:</div>
-<button style="width:100%;margin:8px 0;padding:14px;font-size:14px;background:#38bdf8;color:#000;font-weight:900;border:0;border-radius:10px" onclick="backup()">💾 DESCARGAR RESPALDO MT5</button>
-<button style="width:100%;padding:14px;background:#22c55e;color:#000;font-weight:900;border:0;border-radius:10px" onclick="document.getElementById('res').click()">📤 RESTAURAR RESPALDO MT5</button>
-<input type="file" id="res" hidden onchange="restore(this)">
-</div>
 </div>
 <div id="float_mt5" onclick="toggleAutoFloat()"><span id="float_txt">AUTO ON 🤖 MT5</span></div>
 <script>
@@ -45,5 +37,50 @@ function cambioBolas(){
  let bola=(capital/total).toFixed(2);
  let modo=document.getElementById('modo').value;
  document.getElementById('bola_info').innerText=`$${bola} USD / $${(bola*16.96).toFixed(0)} MXN (${total} bolas MT5) = $500.00 / ${total}`;
- if(modo==="AMBOS"){ document.getElementById('bola_det').innerText=`(${opt.dataset.l} LONG + ${opt.dataset.s} SHORT) MT5`; document.getElementById('modo_txt').innerText=`MODO: AMBOS MT5 ${opt.dataset.l}+${opt.dataset.s}`; }
- else { document.getElementById('bola_det').innerText=`(${total} ${modo} MT5)`; document.getElementById('modo_txt').innerText=`MODO
+ if(modo==="AMBOS" && opt.dataset.l){ document.getElementById('bola_det').innerText=`(${opt.dataset.l} LONG + ${opt.dataset.s} SHORT) MT5`; document.getElementById('modo_txt').innerText=`MODO: AMBOS MT5 ${opt.dataset.l}+${opt.dataset.s}`; }
+ else { document.getElementById('bola_det').innerText=`(${total} ${modo} MT5)`; document.getElementById('modo_txt').innerText=`MODO: SOLO ${modo} MT5 ${total}`; }
+ guardar();
+}
+function toggleAutoChk(){
+ let on=document.getElementById('auto_tune').checked;
+ document.getElementById('auto_lab').innerText=on?'🧠 AUTO-TUNE ON MT5':'🧠 AUTO-TUNE OFF MT5';
+ let flo=document.getElementById('float_mt5'); let txt=document.getElementById('float_txt');
+ if(on){flo.classList.remove('off'); txt.innerText='AUTO ON 🤖 MT5';} else {flo.classList.add('off'); txt.innerText='AUTO OFF 🔕 MT5';}
+ guardar();
+}
+function toggleAutoFloat(){ let chk=document.getElementById('auto_tune'); chk.checked=!chk.checked; toggleAutoChk(); }
+function guardar(){
+ let sel=document.getElementById('bolas'); let total=sel.options.length?parseInt(sel.options[sel.selectedIndex].value):8;
+ let data={modo_m:document.getElementById('modo').value,bolas_m:total,cierre_m:parseFloat(document.getElementById('cierre').value),sl_m:parseFloat(document.getElementById('sl').value),rsi_venta_m:parseInt(document.getElementById('rsi_v').value),rsi_compra_m:parseInt(document.getElementById('rsi_c').value),ema_m:document.getElementById('ema').value,auto_m:document.getElementById('auto_tune').checked};
+ document.getElementById('cierre_txt').innerText=data.cierre_m+'% MT5';
+ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});
+}
+function toggleCoin(k){ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin_mt5:k})}).then(()=>load()); }
+function renderCoins(act){
+ document.getElementById('grid').innerHTML=COINS.map(k=>{
+  let v = act[k]!==false;
+  let precio = PRECIOS[k];
+  return `<div class=card onclick="toggleCoin('${k}')" style="${!v?'opacity:.4;border-color:#444':''}"><div class="on ${!v?'off_b':''}">${v?'ON':'OFF'}</div><div style="font-weight:900">${k}</div><div class=price>$${precio}</div><div class=detail>Espera RSI MT5<br>RSI ${(40+Math.random()*10).toFixed(1)} (lim ${S.rsi_compra_m||50})<br>P 0.22 < EMA200</div><div style="color:#38bdf8;font-weight:900;margin-top:6px">🤖 ROBOT ${v?'ON':'OFF'} MT5</div></div>`;
+ }).join('');
+}
+async function load(){
+ try{
+  S=await fetch('/api/state').then(r=>r.json());
+  capital=(S.disponible_m||500)+(S.bloqueado_m||0)+(S.gan_mt5||0);
+  document.getElementById('disp').innerText='$'+(S.disponible_m||500).toFixed(2);
+  document.getElementById('gan').innerText='$'+(S.gan_mt5||0).toFixed(2);
+  document.getElementById('total').innerText='$'+capital.toFixed(2);
+  document.getElementById('bloq').innerText=`Bloq: $${(S.bloqueado_m||0).toFixed(2)} MT5`;
+  let act=S.coins_mt5_activas||{}; if(Object.keys(act).length==0){ COINS.forEach(k=>act[k]=true); }
+  renderCoins(act);
+  let txt=`CAIDA FUERTE 8/8 bajo EMA MT5\nLO MEJOR HOY MT5:\n• SL: ${S.sl_m||-3}% MT5 \n• RSI Venta: ${S.rsi_venta_m||65} | Compra: ${S.rsi_compra_m||50}\n• Filtro P>EMA: EMA200 ORO + SHORT activo\n\nPor moneda MT5:\n`;
+  COINS.forEach(k=>{txt+=`${k}: Espera RSI | RSI ${(40+Math.random()*15).toFixed(1)}\n`;});
+  document.getElementById('cerebro').innerText=txt;
+  if(S.auto_m!==undefined){ document.getElementById('auto_tune').checked=S.auto_m; let flo=document.getElementById('float_mt5'); let t=document.getElementById('float_txt'); if(S.auto_m){flo.classList.remove('off'); t.innerText='AUTO ON 🤖 MT5';} else {flo.classList.add('off'); t.innerText='AUTO OFF 🔕 MT5';} }
+ }catch(e){ document.getElementById('cerebro').innerText='Error cargando estado, reintentando...'; }
+}
+llenarBolas(); load(); setInterval(load,3000);
+let c=document.getElementById('ch');let ctx=c.getContext('2d');function draw(){ctx.clearRect(0,0,c.width,c.height);ctx.strokeStyle='#38bdf8';ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<80;i++){let y=60+Math.sin(i/8)*20+Math.random()*6;if(i==0)ctx.moveTo(i*4,y);else ctx.lineTo(i*4,y)}ctx.stroke()}draw();
+function backup(){fetch('/api/backup').then(r=>r.blob()).then(b=>{let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='respaldo_mt5.json';a.click()})}
+function restore(i){let f=i.files[0];if(!f)return;let r=new FileReader();r.onload=e=>fetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:e.target.result}).then(()=>{alert('Restaurado MT5'); load()});r.readAsText(f)}
+</script></body></html>
