@@ -46,17 +46,26 @@ def tg_send(text):
  try: requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": text}, timeout=5)
  except: pass
 
+# --- CAMBIO DUAL V5 - PORTADA PRINCIPAL ---
 @app.get("/")
 async def index():
- with open("index.html","r") as f: return HTMLResponse(f.read())
+ try:
+  with open("dual_v5.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
+ except:
+  with open("index.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
+
+@app.get("/dual_v5.html")
+async def dual_v5_page():
+ with open("dual_v5.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
 
 @app.get("/dashboard")
 async def dash():
- with open("dashboard.html","r") as f: return HTMLResponse(f.read())
+ with open("dashboard.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
 
 @app.get("/dashboard_mt5.html")
 async def dash_mt5():
- with open("dashboard_mt5.html","r") as f: return HTMLResponse(f.read())
+ with open("dashboard_mt5.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
+# --- FIN CAMBIO ---
 
 @app.get("/api/state")
 async def state(): return load()
@@ -66,14 +75,12 @@ async def config(req:Request):
  s=load(); d=await req.json()
  if "toggle_coin" in d: s["coins_activas"][d["toggle_coin"]] = not s["coins_activas"].get(d["toggle_coin"],False)
  if "toggle_coin_mt5" in d: s["coins_mt5_activas"][d["toggle_coin_mt5"]] = not s["coins_mt5_activas"].get(d["toggle_coin_mt5"],False)
-
  if "modo" in d: s["modo"]=d["modo"]
  if "bolas" in d:
   total=int(d["bolas"]); s["max_entradas"]=total
   if s["modo"]=="AMBOS": s["bolas_long"]=total//2; s["bolas_short"]=total//2
   elif s["modo"]=="LONG": s["bolas_long"]=total; s["bolas_short"]=0
   else: s["bolas_long"]=0; s["bolas_short"]=total
-
  if "cierre" in d: s["cierre"]=float(d["cierre"]); s["tp"]=float(d["cierre"])
  if "tp" in d: s["tp"]=float(d["tp"]); s["cierre"]=float(d["tp"])
  if "sl" in d: s["sl_pct"]=abs(float(d["sl"]))
@@ -82,7 +89,6 @@ async def config(req:Request):
  if "rsi_compra" in d: s["rsi_compra"]=int(d["rsi_compra"])
  if "rsi_venta_m" in d: s["rsi_venta_m"]=int(d["rsi_venta_m"])
  if "rsi_compra_m" in d: s["rsi_compra_m"]=int(d["rsi_compra_m"])
-
  if "modo_m" in d: s["modo_m"]=d["modo_m"]
  if "bolas_m" in d:
   total=int(d["bolas_m"]); s["max_m"]=total
@@ -100,7 +106,6 @@ async def config(req:Request):
  if "auto" in d: s["auto"]=bool(d["auto"])
  if "auto_m" in d: s["auto_m"]=bool(d["auto_m"])
  if "auto_tune_m" in d: s["auto_m"]=bool(d["auto_tune_m"])
-
  for k in ["max_entradas","max_m","tp","sl_pct","tp_m","sl_m","modo","modo_m","rsi_compra","rsi_venta","rsi_compra_m","rsi_venta_m"]:
   if k in d: s[k]=d[k]
  save(s); return s
@@ -117,7 +122,6 @@ async def buy(sym:str, req:Request):
  s=load(); data={}
  try: data=await req.json()
  except: pass
- # Si AUTO OFF -> solo alerta Telegram, no compra
  if not s.get("auto",True):
   tg_send(f"🔔 ALERTA ENTRADA BINANCE OFF: {sym} {data.get('tipo','LONG')} RSI {data.get('rsi','?')} Precio {data.get('price',0)} - AUTO OFF no compro, solo aviso")
   return {"ok":True,"alerta":"AUTO OFF BINANCE"}
@@ -152,7 +156,6 @@ async def buy_mt5(sym:str, req:Request):
 @app.post("/api/sell/{sym}")
 async def sell(sym:str, req:Request=None):
  s=load()
- # permite que tu bot mande info de salida
  data={}
  try:
   if req: data=await req.json()
@@ -207,7 +210,10 @@ async def telegram_webhook(req: Request):
   if not chat_id: return {"ok": True}
   s=load(); s["last_chat_id"]=chat_id; save(s)
   if "DASHBOARD" in text:
-   reply = f"""DUAL V5 AMBAS $1000
+   reply = f"""DUAL V5 AMBAS $1000 - PORTADA
+
+🔥 DUAL V5 PORTADA:
+{RENDER_URL}/dual_v5.html
 
 DASHBOARD BINANCE $500:
 {RENDER_URL}/dashboard
