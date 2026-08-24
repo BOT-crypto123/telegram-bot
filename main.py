@@ -46,7 +46,6 @@ def tg_send(text):
  try: requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": text}, timeout=5)
  except: pass
 
-# --- CAMBIO DUAL V5 - PORTADA PRINCIPAL ---
 @app.get("/")
 async def index():
  try:
@@ -65,7 +64,6 @@ async def dash():
 @app.get("/dashboard_mt5.html")
 async def dash_mt5():
  with open("dashboard_mt5.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
-# --- FIN CAMBIO ---
 
 @app.get("/api/state")
 async def state(): return load()
@@ -209,21 +207,12 @@ async def telegram_webhook(req: Request):
   chat_id = msg.get("chat", {}).get("id")
   if not chat_id: return {"ok": True}
   s=load(); s["last_chat_id"]=chat_id; save(s)
+  # --- SOLO 1 LINK DUAL V5 ---
   if "DASHBOARD" in text:
-   reply = f"""DUAL V5 AMBAS $1000 - PORTADA
-
-🔥 DUAL V5 PORTADA:
-{RENDER_URL}/dual_v5.html
-
-DASHBOARD BINANCE $500:
-{RENDER_URL}/dashboard
-MODO {s.get('modo')} {s.get('max_entradas')} bolas SL {s.get('sl_pct')}% RSI {s.get('rsi_compra')}/{s.get('rsi_venta')} AUTO {'ON 🤖' if s.get('auto') else 'OFF 🔕'}
-
-MT5 Detalle $500:
-{RENDER_URL}/dashboard_mt5.html
-MODO {s.get('modo_m')} {s.get('max_m')} bolas SL {s.get('sl_m')}% RSI {s.get('rsi_compra_m')}/{s.get('rsi_venta_m')} AUTO {'ON 🤖' if s.get('auto_m') else 'OFF 🔕'}"""
+   reply = f"{RENDER_URL}/dual_v5.html"
   else:
    reply = "Comandos: DASHBOARD"
+  # ---------------------------
   if BOT_TOKEN:
    requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": reply}, timeout=5)
   return {"ok": True}
