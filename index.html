@@ -1,54 +1,56 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BINANCE $500 + MT5 $500</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{background:#05070a;color:#fff;font-family:system-ui;display:flex;min-height:100vh}
-.side{flex:1;padding:14px}
-.left{background:#060600;border-right:1px solid #222}
-.right{background:#050a12}
-.header{font-weight:900;font-size:14px}
-.left .header{color:#facc15} .right .header{color:#60a5fa}
-.sub{font-size:11px;opacity:.6}
-.circle{width:180px;height:180px;border-radius:50%;margin:16px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;border:6px solid}
-.left .circle{border-color:#facc15;background:radial-gradient(circle,#1a1500,#000)}
-.right .circle{border-color:#60a5fa;background:radial-gradient(circle,#0a1426,#000)}
-.c-cap{font-size:12px;font-weight:800;opacity:.8}
-.c-val{font-size:42px;font-weight:900}
-.c-bola{font-size:11px;opacity:.5}
-.c-bola-v{font-size:22px;font-weight:900}
-.left .c-bola-v{color:#facc15} .right .c-bola-v{color:#60a5fa}
-.markets{font-size:12px;font-weight:900;margin:18px 0 10px}
-.card{background:#121212;border-radius:18px;padding:12px;margin-bottom:10px;border:1px solid #222;display:flex;align-items:center;justify-content:space-between}
-.left .card{background:#151300;border-color:#2a2200} .right .card{background:#111a2a;border-color:#1a2a44}
-.left .price{color:#facc15} .right .price{color:#60a5fa}
-.asset{display:flex;align-items:center;gap:10px}
-.icon{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900}
-.btc{background:#f7931a} .eth{background:#627eea} .sol{background:linear-gradient(135deg,#9945ff,#14f195);color:#000}
-.gold{background:radial-gradient(circle,#ffe082,#ffb300);color:#000} .silver{background:#e0e0e0;color:#000} .oil{background:#4a6a8a} .spx{background:#fff;color:#000;font-size:10px}
-.name{font-weight:800;font-size:13px} .name-sub{font-size:11px;opacity:.5}
-.pill{font-size:11px;font-weight:800;padding:5px 10px;border-radius:20px} .up{background:#0f2a14;color:#22c55e} .down{background:#2a1111;color:#ef4444}
-a{color:inherit;text-decoration:none}
-</style>
-</head>
-<body>
-<div class="side left">
-<div class="header">◆ BINANCE - CRYPTO<div class="sub">Crypto Trading • Live • $500 / 8 bolas</div></div>
-<div class="circle"><div class="c-cap">Capital</div><div class="c-val">$500</div><div class="c-bola">bola</div><div class="c-bola-v">$62.5</div></div>
-<a href="/dashboard"><div class="card"><div class="asset"><div class="icon btc">₿</div><div><div class="name">BTC</div><div class="name-sub">Bitcoin</div></div></div><div class="price" style="font-weight:900">$77,355.93</div><div class="pill up">+1.24% ↑</div></div></a>
-<a href="/dashboard"><div class="card"><div class="asset"><div class="icon eth">◆</div><div><div class="name">ETH</div><div class="name-sub">Ethereum</div></div></div><div class="price" style="font-weight:900">$2,439.75</div><div class="pill up">+0.87% ↑</div></div></a>
-<a href="/dashboard"><div class="card"><div class="asset"><div class="icon sol">S</div><div><div class="name">SOL</div><div class="name-sub">Solana</div></div></div><div class="price" style="font-weight:900">$94.26</div><div class="pill down">-0.52% ↓</div></div></a>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MÁQUINA BOLA - PORTADA VIVA</title>
+<style>body{margin:0;background:#000;color:#fff;font-family:system-ui}.wrap{max-width:520px;margin:0 auto;background:#050505;min-height:100vh;padding-bottom:20px}.card{margin:12px;border-radius:20px;padding:16px;border:2px solid #222;background:#101010;cursor:pointer}.card-binance{border-color:#facc15;box-shadow:0 0 20px #facc1520}.card-mt5{border-color:#38bdf8;box-shadow:0 0 20px #38bdf820}.circle{width:120px;height:120px;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;font-weight:900}.top{display:flex;justify-content:space-between;align-items:center}
+</style></head><body><div class="wrap">
+<div style="text-align:center;padding:16px;font-weight:900;font-size:22px">💰 MÁQUINA BOLA - PORTADA VIVA</div>
+
+<div class="card card-binance" onclick="location.href='dashboard.html'">
+<div style="display:flex;justify-content:space-between"><b style="color:#facc15">💛 BINANCE - 8 BOLAS</b><span style="background:#facc15;color:#000;padding:4px 10px;border-radius:20px;font-weight:900;font-size:11px">ENTRAR →</span></div>
+<div class="top" style="margin-top:12px">
+<div class="circle" style="border:6px solid #facc15;background:radial-gradient(circle,#1a1500,#000)"><span style="font-size:11px;color:#facc15">DISPONIBLE</span><span id="disp_bin" style="font-size:22px">$500.00</span><span id="bloq_bin" style="font-size:10px;color:#22c55e">Bloq $0</span></div>
+<div class="circle" style="border:6px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)"><span style="font-size:11px">GANANCIA</span><span id="gan_bin" style="font-size:22px">$0.00</span></div>
+<div class="circle" style="border:6px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)"><span style="font-size:11px;color:#38bdf8">TOTAL</span><span id="total_bin" style="font-size:22px">$500</span></div>
 </div>
-<div class="side right">
-<div class="header">▢ MT5 SIN MT5<div class="sub">Forex • Commodities • Indices • Live • $500 / 8 bolas</div></div>
-<div class="circle"><div class="c-cap">Capital</div><div class="c-val">$500</div><div class="c-bola">bola</div><div class="c-bola-v">$62.5</div></div>
-<a href="/dashboard_mt5.html"><div class="card"><div class="asset"><div class="icon gold">●</div><div><div class="name">XAUUSD GOLD</div><div class="name-sub">Gold Spot</div></div></div><div class="price" style="font-weight:900">$2,341.20</div><div class="pill up">+0.64% ↑</div></div></a>
-<a href="/dashboard_mt5.html"><div class="card"><div class="asset"><div class="icon silver">●</div><div><div class="name">XAGUSD SILVER</div><div class="name-sub">Silver Spot</div></div></div><div class="price" style="font-weight:900">$28.15</div><div class="pill down">-0.31% ↓</div></div></a>
-<a href="/dashboard_mt5.html"><div class="card"><div class="asset"><div class="icon oil">🛢️</div><div><div class="name">USOIL</div><div class="name-sub">Crude Oil WTI</div></div></div><div class="price" style="font-weight:900">$76.42</div><div class="pill up">+1.08% ↑</div></div></a>
-<a href="/dashboard_mt5.html"><div class="card"><div class="asset"><div class="icon spx">📊</div><div><div class="name">SPX500</div><div class="name-sub">S&P 500 Index</div></div></div></div></a>
+<div id="pos_bin" style="font-size:11px;opacity:.6;margin-top:10px">Cargando posiciones BINANCE...</div>
 </div>
-</body>
-                                                                                                         </html>
+
+<div class="card card-mt5" onclick="location.href='dashboard_mt5.html'">
+<div style="display:flex;justify-content:space-between"><b style="color:#38bdf8">💙 MT5 - 8 BOLAS ORO</b><span style="background:#38bdf8;color:#000;padding:4px 10px;border-radius:20px;font-weight:900;font-size:11px">ENTRAR →</span></div>
+<div class="top" style="margin-top:12px">
+<div class="circle" style="border:6px solid #facc15;background:radial-gradient(circle,#1a1500,#000)"><span style="font-size:11px;color:#facc15">DISPONIBLE MT5</span><span id="disp_mt5" style="font-size:22px">$500.00</span><span id="bloq_mt5" style="font-size:10px;color:#38bdf8">Bloq $0</span></div>
+<div class="circle" style="border:6px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)"><span style="font-size:11px">GANANCIA MT5</span><span id="gan_mt5" style="font-size:22px">$0.00</span></div>
+<div class="circle" style="border:6px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)"><span style="font-size:11px;color:#38bdf8">TOTAL MT5</span><span id="total_mt5" style="font-size:22px">$500</span></div>
+</div>
+<div id="pos_mt5" style="font-size:11px;opacity:.6;margin-top:10px">Cargando posiciones MT5...</div>
+</div>
+
+<div style="text-align:center;opacity:.4;font-size:11px;margin-top:10px">Portada viva - lee demo real cada 2s de localStorage<br>Si abres desde Telegram, los $500 se mueven solos si hay trades adentro</div>
+</div>
+<script>
+function lee(tipo){
+ let pos=JSON.parse(localStorage.getItem('pos_'+tipo+'_demo')||'[]');
+ let gan=parseFloat(localStorage.getItem('gan_'+tipo+'_demo')||'0');
+ let bloq=pos.reduce((s,p)=>s+p.monto,0);
+ let disp=500-bloq+gan;
+ let total=500+gan;
+ return {pos,bloq,gan,disp,total};
+}
+function render(){
+ let b=lee('binance');
+ document.getElementById('disp_bin').innerText='$'+b.disp.toFixed(2);
+ document.getElementById('bloq_bin').innerText='Bloq $'+b.bloq.toFixed(2);
+ document.getElementById('gan_bin').innerText=(b.gan>=0?'+':'')+'$'+b.gan.toFixed(2);
+ document.getElementById('gan_bin').style.color=b.gan>=0?'#22c55e':'#ef4444';
+ document.getElementById('total_bin').innerText='$'+b.total.toFixed(2);
+ document.getElementById('pos_bin').innerText=b.pos.length? '📊 '+b.pos.length+' posiciones abiertas | '+b.pos.map(p=>p.moneda+' '+p.tipo+' '+p.neta.toFixed(2)+'%').join(' | ') : 'Sin posiciones - esperando RSI';
+
+ let m=lee('mt5');
+ document.getElementById('disp_mt5').innerText='$'+m.disp.toFixed(2);
+ document.getElementById('bloq_mt5').innerText='Bloq $'+m.bloq.toFixed(2);
+ document.getElementById('gan_mt5').innerText=(m.gan>=0?'+':'')+'$'+m.gan.toFixed(2);
+ document.getElementById('gan_mt5').style.color=m.gan>=0?'#22c55e':'#ef4444';
+ document.getElementById('total_mt5').innerText='$'+m.total.toFixed(2);
+ document.getElementById('pos_mt5').innerText=m.pos.length? '📊 '+m.pos.length+' posiciones abiertas MT5 | '+m.pos.map(p=>p.moneda+' '+p.tipo+' '+p.neta.toFixed(2)+'%').join(' | ') : 'Sin posiciones MT5 - esperando RSI ORO';
+}
+setInterval(render,2000);
+render();
+</script></body></html>
