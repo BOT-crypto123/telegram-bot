@@ -1,79 +1,95 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 - $500</title>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DUAL V5 - $500 + $500</title>
 <style>
-*{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui}
-.header{text-align:center;padding:10px;font-weight:900;background:#0a0a0a;border-bottom:1px solid #222}
-.dual{display:flex;min-height:100vh;max-width:900px;margin:0 auto}
-.col{flex:1;padding:10px}
-.col-binance{background:#050505;border-right:1px solid #222}
-.col-mt5{background:#080e1d;border-left:1px solid #1a2a4a}
-.badge{font-size:13px;font-weight:900;margin:8px 0}
-.badge-binance{color:#facc15}.badge-mt5{color:#38bdf8}
-.circle{width:200px;height:200px;border-radius:50%;margin:10px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center}
-.circle-binance{border:8px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}
-.circle-mt5{border:8px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}
-.cap{opacity:.7;font-size:13px}.val{font-size:36px;font-weight:900}.bola{font-size:22px;font-weight:900;color:#facc15}.bola-mt5{color:#38bdf8}
-.market{margin-top:14px;font-weight:900;font-size:13px}
-.market-binance{color:#facc15}.market-mt5{color:#38bdf8}
-.card{background:#151515;border-radius:14px;padding:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:center;border:1px solid #222}
-.card-mt5{background:#111a2e;border-color:#1e3a5f}
-.coin{display:flex;align-items:center;gap:8px;font-weight:900}
-.icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900}
-.icon-btc{background:#f7931a}.icon-eth{background:#627eea}.icon-sol{background:#000;border:1px solid #333}
-.icon-gold{background:#d4af37}.icon-silver{background:#999}.icon-oil{background:#1e3a4a}
-.price{font-weight:900}
-.chg{font-size:11px;padding:4px 8px;border-radius:6px;font-weight:900}
-.up{background:#0a1f0a;color:#22c55e}.down{background:#1f0a0a;color:#ef4444}
-.pos{margin-top:16px;background:#1a1200;border-radius:10px;padding:8px;font-size:11px}
-.pos-mt5{background:#0a1220}
-.tab{opacity:.5;margin-right:10px;font-size:12px}
-.tab.active{opacity:1;color:#facc15;font-weight:900}
-@media(max-width:700px){.dual{flex-direction:column}.circle{width:260px;height:260px}}
-</style></head><body>
-<div class="header">DUAL V5 - $500 BOLA $62.5 - BINANCE + MT5</div>
-<div class="dual">
-<div class="col col-binance">
-<div class="badge badge-binance">◆ BINANCE - CRYPTO<br><span style="font-size:10px;opacity:.5;font-weight:400">Crypto Trading • Live</span></div>
-<div class="circle circle-binance"><div class="cap">Capital</div><div class="val" id="cap_b">$500</div><div class="cap">bola</div><div class="bola" id="bola_b">$62.5</div></div>
-<div class="market market-binance">🔥 MARKETS</div>
-<div id="markets_b"></div>
-<div class="pos"><div style="color:#facc15;font-weight:900">🧳 OPEN POSITIONS</div><div style="display:flex;justify-content:space-between;opacity:.4;margin-top:6px"><span>Asset</span><span>Size</span><span>PnL</span></div><div style="text-align:center;opacity:.4;padding:10px" id="pos_b">Sin posiciones</div></div>
+*{margin:0;padding:0;box-sizing:border-box;font-family:sans-serif}
+body{background:#000;display:flex;min-height:100vh;color:#fff}
+.col{width:50%;min-height:100vh;padding:12px 10px}
+.left{background:#0a0a0a;border-right:1px solid #222}
+.right{background:#0d1425}
+.header{font-size:14px;font-weight:900;margin-bottom:2px}
+.left .header{color:#ffcc00}
+.right .header{color:#4da3ff}
+.sub{font-size:10px;opacity:0.6;margin-bottom:14px}
+.circle-wrap{display:flex;justify-content:center;margin:12px 0 16px}
+.circle{width:160px;height:160px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#000}
+.left .circle{border:6px solid #ffcc00}
+.right .circle{border:6px solid #3b82f6}
+.circle .lab{font-size:12px;opacity:0.7}
+.circle .cap{font-size:34px;font-weight:900}
+.circle .bola{font-size:20px;font-weight:800;margin-top:2px}
+.left .bola{color:#ffcc00}
+.right .bola{color:#60a5fa}
+.info-box{background:#141414;border:1px solid #222;border-radius:12px;padding:10px 6px;margin-bottom:14px}
+.right .info-box{background:#121a2e;border-color:#1e2d50}
+.info-row{display:flex;justify-content:space-around;text-align:center}
+.green{color:#22c55e}.yellow{color:#ffcc00}
+.market-item{background:#1a1a1a;border:1px solid #252525;border-radius:10px;padding:9px 10px;margin-bottom:7px;display:flex;justify-content:space-between}
+.right .market-item{background:#162040;border-color:#1e2d50}
+.left .price{color:#ffcc00;font-weight:700}
+.right .price{color:#60a5fa;font-weight:700}
+</style>
+</head>
+<body>
+<div class="col left">
+  <div class="header">◆ BINANCE - CRYPTO</div>
+  <div style="font-size:10px;opacity:0.6;margin-bottom:14px">Crypto Trading • Live</div>
+  <div class="circle-wrap"><div class="circle">
+    <div class="lab">Capital</div>
+    <div class="cap" id="capBin">$501</div>
+    <div style="font-size:12px;opacity:0.7">bola</div>
+    <div class="bola" id="bolaBin">$62.6</div>
+  </div></div>
+  <div class="info-box">
+    <div class="info-row">
+      <div><b class="green" id="dispBin">$500</b><br><span style="font-size:8px;opacity:0.5">DISPONIBLE</span></div>
+      <div><b class="yellow" id="ganBin">+ $0.59</b><br><span style="font-size:8px;opacity:0.5">GANANCIA</span></div>
+      <div><b id="totalBin">$501</b><br><span style="font-size:8px;opacity:0.5">TOTAL REAL</span></div>
+    </div>
+  </div>
+  <div style="color:#ffcc00;font-weight:800;font-size:12px;margin:12px 0 8px">🔥 MARKETS</div>
+  <div class="market-item"><span>₿ BTC</span><span class="price" id="pBTC">$63,421</span></div>
+  <div class="market-item"><span>♦ ETH</span><span class="price" id="pETH">$3,210</span></div>
+  <div class="market-item"><span>◎ SOL</span><span class="price" id="pSOL">$145</span></div>
 </div>
-<div class="col col-mt5">
-<div class="badge badge-mt5">📊 MT5 - FOREX<br><span style="font-size:10px;opacity:.5;font-weight:400">Forex • Commodities • Indices • Live</span></div>
-<div class="circle circle-mt5"><div class="cap">Capital</div><div class="val" id="cap_m">$500</div><div class="cap">bola</div><div class="bola bola-mt5" id="bola_m">$62.5</div></div>
-<div class="market market-mt5">📈 MARKETS</div>
-<div id="markets_m"></div>
-<div class="pos pos-mt5"><div style="color:#38bdf8;font-weight:900">🧳 OPEN POSITIONS MT5</div><div style="text-align:center;opacity:.4;padding:10px" id="pos_m">Sin posiciones MT5</div></div>
-</div>
+<div class="col right">
+  <div class="header">📊 MT5 SIN MT5</div>
+  <div style="font-size:10px;opacity:0.6;margin-bottom:14px">Forex • Commodities • Indices</div>
+  <div class="circle-wrap"><div class="circle">
+    <div class="lab">Capital</div>
+    <div class="cap" id="capMT5">$500</div>
+    <div style="font-size:12px;opacity:0.7">bola</div>
+    <div class="bola" id="bolaMT5">$125.0</div>
+  </div></div>
+  <div class="info-box">
+    <div class="info-row">
+      <div><b class="green" id="dispMT5">$500</b><br><span style="font-size:8px;opacity:0.5">DISPONIBLE</span></div>
+      <div><b class="yellow" id="ganMT5">+ $0.00</b><br><span style="font-size:8px;opacity:0.5">GANANCIA</span></div>
+      <div><b id="totalMT5">$500</b><br><span style="font-size:8px;opacity:0.5">TOTAL REAL</span></div>
+    </div>
+  </div>
+  <div style="color:#60a5fa;font-weight:800;font-size:12px;margin:12px 0 8px">📈 MARKETS</div>
+  <div class="market-item"><span>🏅 XAUUSD</span><span class="price">$2,341</span></div>
+  <div class="market-item"><span>🥈 XAGUSD</span><span class="price">$28.15</span></div>
+  <div class="market-item"><span>🛢️ USOIL</span><span class="price">$76.42</span></div>
 </div>
 <script>
-const BIN=["BTC","ETH","SOL"];
-const MT5=[{s:"XAUUSD GOLD",d:"Gold Spot",p:"$2,341.20",c:"+0.64%",u:true},{s:"XAGUSD SILVER",d:"Silver Spot",p:"$28.15",c:"-0.31%",u:false},{s:"USOIL",d:"Crude Oil WTI",p:"$76.42",c:"+0.21%",u:true}];
-function render(){
-document.getElementById('markets_b').innerHTML=BIN.map(k=>{
-let price=k=='BTC'?'$63,421.50':k=='ETH'?'$3,210.88':'$145.32';
-let chg=k=='BTC'?'+1.24%':k=='ETH'?'+0.87%':'-0.52%';
-let up=chg.includes('+');
-let icon=k=='BTC'?'₿':k=='ETH'?'♦':'◎';
-let cls=k=='BTC'?'icon-btc':k=='ETH'?'icon-eth':'icon-sol';
-return `<div class=card><div><div class=coin><div class="icon ${cls}">${icon}</div><div>${k}<div style="font-size:10px;opacity:.5;font-weight:400">${k=='BTC'?'Bitcoin':k=='ETH'?'Ethereum':'Solana'}</div></div></div><div class=price style="margin-top:6px">${price}</div></div><div class="chg ${up?'up':'down'}">${chg} ${up?'↑':'↓'}</div></div>`;
-}).join('');
-document.getElementById('markets_m').innerHTML=MT5.map(k=>{
-let ic=k.s.includes('GOLD')?'•':k.s.includes('SILVER')?'•':'🛢️';
-let cls=k.s.includes('GOLD')?'icon-gold':k.s.includes('SILVER')?'icon-silver':'icon-oil';
-return `<div class="card card-mt5"><div><div class=coin><div class="icon ${cls}">${ic}</div><div>${k.s}<div style="font-size:10px;opacity:.5;font-weight:400">${k.d}</div></div></div><div class=price style="margin-top:6px">${k.p}</div></div><div class="chg ${k.u?'up':'down'}">${k.c} ${k.u?'↑':'↓'}</div></div>`;
-}).join('');
+async function loadState(){
+ const r=await fetch('/api/state'); const s=await r.json();
+ const capBin=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0);
+ document.getElementById('capBin').textContent='$'+capBin.toFixed(0);
+ document.getElementById('bolaBin').textContent='$'+(capBin/(s.max_entradas||8)).toFixed(1);
+ document.getElementById('dispBin').textContent='$'+(s.disponible_usd||0).toFixed(0);
+ document.getElementById('ganBin').textContent='+ $'+(s.gan_acum||0).toFixed(2);
+ document.getElementById('totalBin').textContent='$'+capBin.toFixed(0);
+ const capM=(s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0);
+ document.getElementById('capMT5').textContent='$'+capM.toFixed(0);
+ document.getElementById('bolaMT5').textContent='$'+(capM/(s.max_m||4)).toFixed(1);
 }
-async function loadDual(){
-try{
-let S=await fetch('/api/state').then(r=>r.json());
-let cap=(S.disponible_usd||500)+(S.bloqueado_usd||0)+(S.gan_acum||0);
-document.getElementById('cap_b').innerText='$'+cap.toFixed(0);
-document.getElementById('bola_b').innerText='$'+(cap/8).toFixed(1);
-let capM=(S.disponible_m||500)+(S.bloqueado_m||0)+(S.gan_mt5||0);
-document.getElementById('cap_m').innerText='$'+capM.toFixed(0);
-document.getElementById('bola_m').innerText='$'+(capM/8).toFixed(1);
-}catch(e){}
-}
-render(); loadDual(); setInterval(loadDual,3000);
-</script></body></html>
+loadState(); setInterval(loadState,3000);
+</script>
+</body>
+  </html>
