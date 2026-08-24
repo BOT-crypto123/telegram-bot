@@ -67,8 +67,7 @@ def save_data():
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'dashboard.html')
-
+    return send_from_directory('.', 'index.html')
 @app.route('/dashboard')
 @app.route('/dashboard.html')
 def dash():
