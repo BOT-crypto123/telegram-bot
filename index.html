@@ -1,43 +1,38 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 - VIVA</title>
-<style>body{margin:0;background:#020617;color:#fff;font-family:system-ui}.wrap{display:flex;min-height:100vh}.left{flex:1;background:#050505;border-right:2px solid #facc15;padding:10px}.right{flex:1;background:#0a1020;padding:10px}.circle{width:180px;height:180px;border-radius:50%;margin:15px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#000}.c-bin{border:8px solid #facc15}.c-mt5{border:8px solid #38bdf8}.val{font-size:38px;font-weight:900}.bola{color:#facc15;font-weight:900;font-size:18px}.bola-m{color:#38bdf8;font-weight:900;font-size:18px}.card{background:#151515;border-radius:14px;padding:10px;margin:8px 0;border:1px solid #222}.card-m{background:#121a2e;border-radius:14px;padding:10px;margin:8px 0;border:1px solid #1e3a8a}.up{color:#22c55e;background:#0a1a0a;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:900}.down{color:#ef4444;background:#1a0a0a;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:900}.open{background:#111;border:1px dashed #333;border-radius:12px;padding:10px;margin-top:10px;font-size:12px}
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 FINAL - CIRCULOS CLICKEABLES</title>
+<style>body{margin:0;background:#020617;color:#fff;font-family:system-ui}.wrap{display:flex;min-height:100vh}.left{flex:1;background:#050505;border-right:2px solid #facc15;padding:10px}.right{flex:1;background:#0a1020;padding:10px}.circle{width:190px;height:190px;border-radius:50%;margin:15px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#000;cursor:pointer;transition:.2s}.circle:active{transform:scale(.95)}.c-bin{border:8px solid #facc15;box-shadow:0 0 20px rgba(250,204,21,.3)}.c-mt5{border:8px solid #38bdf8;box-shadow:0 0 20px rgba(56,189,248,.3)}.val{font-size:40px;font-weight:900}.bola{color:#facc15;font-weight:900;font-size:18px}.bola-m{color:#38bdf8;font-weight:900;font-size:18px}.up{color:#22c55e;background:#0a1a0a;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:900}.down{color:#ef4444;background:#1a0a0a;padding:4px 8px;border-radius:8px;font-size:12px;font-weight:900}.open{background:#111;border:1px dashed #333;border-radius:12px;padding:10px;margin-top:10px;font-size:12px}
 </style></head><body><div class="wrap">
 <div class="left">
-<div style="color:#facc15;font-weight:900">◆ BINANCE - CRYPTO<br><span style="opacity:.5;font-size:11px">Crypto Trading • Live</span></div>
-<div class="circle c-bin"><div style="opacity:.5;font-size:13px">Capital</div><div class="val" id="cap_bin">$500</div><div style="opacity:.6;font-size:13px">bola</div><div class="bola" id="bola_bin">$62.5</div><div id="gan_bin" style="font-size:12px;color:#22c55e;margin-top:4px">$0.00</div></div>
-<div style="color:#facc15;font-weight:900;margin-top:10px">🔥 MARKETS</div>
-<div id="markets_bin"></div>
-<div class="open"><b style="color:#facc15">🔵 OPEN POSITIONS BINANCE</b><div id="open_bin" style="margin-top:6px;opacity:.6">Sin posiciones</div></div>
-<button onclick="location.href='dashboard.html'" style="width:100%;margin-top:12px;background:#facc15;color:#000;font-weight:900;border:0;border-radius:10px;padding:12px">ENTRAR BINANCE →</button>
+<div style="color:#facc15;font-weight:900">◆ BINANCE - CRYPTO<br><span style="opacity:.5;font-size:10px">TOCA EL CIRCULO PARA ENTRAR</span></div>
+<div class="circle c-bin" onclick="location.href='dashboard.html'">
+<div style="opacity:.5;font-size:12px">Capital</div><div class="val" id="cap_bin">$500</div><div style="opacity:.6;font-size:12px">bola</div><div class="bola" id="bola_bin">$62.5</div><div id="gan_bin" style="font-size:12px;color:#22c55e;margin-top:6px;font-weight:900">$0.00</div><div style="font-size:9px;opacity:.4;margin-top:4px">↗ VER DESARROLLO</div>
+</div>
+<div id="open_bin" class="open"><b style="color:#facc15">🔵 POSICIONES BINANCE EN VIVO</b><div id="list_bin" style="margin-top:6px">Sin posiciones - esperando RSI</div></div>
 </div>
 <div class="right">
-<div style="color:#38bdf8;font-weight:900">📊 MT5 - REAL<br><span style="opacity:.5;font-size:11px">Forex • Commodities • Indices • Live</span></div>
-<div class="circle c-mt5"><div style="opacity:.5;font-size:13px">Capital</div><div class="val" id="cap_mt5">$500</div><div style="opacity:.6;font-size:13px">bola</div><div class="bola-m" id="bola_mt5">$62.5</div><div id="gan_mt5" style="font-size:12px;color:#22c55e;margin-top:4px">$0.00</div></div>
-<div style="color:#38bdf8;font-weight:900;margin-top:10px">📈 MARKETS MT5</div>
-<div id="markets_mt5"></div>
-<div class="open" style="border-color:#1e3a8a"><b style="color:#38bdf8">🔵 OPEN POSITIONS MT5</b><div id="open_mt5" style="margin-top:6px;opacity:.6">Sin posiciones</div></div>
-<button onclick="location.href='dashboard_mt5.html'" style="width:100%;margin-top:12px;background:#38bdf8;color:#000;font-weight:900;border:0;border-radius:10px;padding:12px">ENTRAR MT5 →</button>
+<div style="color:#38bdf8;font-weight:900">📊 MT5 - ORO / FOREX<br><span style="opacity:.5;font-size:10px">TOCA EL CIRCULO PARA ENTRAR</span></div>
+<div class="circle c-mt5" onclick="location.href='dashboard_mt5.html'">
+<div style="opacity:.5;font-size:12px">Capital</div><div class="val" id="cap_mt5">$500</div><div style="opacity:.6;font-size:12px">bola</div><div class="bola-m" id="bola_mt5">$62.5</div><div id="gan_mt5" style="font-size:12px;color:#22c55e;margin-top:6px;font-weight:900">$0.00</div><div style="font-size:9px;opacity:.4;margin-top:4px">↗ VER DESARROLLO</div>
+</div>
+<div id="open_mt5" class="open" style="border-color:#1e3a8a"><b style="color:#38bdf8">🔵 POSICIONES MT5 EN VIVO</b><div id="list_mt5" style="margin-top:6px">Sin posiciones - esperando ORO</div></div>
 </div>
 </div>
 <script>
-const PRE_BIN={"BTC":63421.50,"ETH":3210.88,"SOL":145.32,"BNB":580,"XRP":0.52,"ADA":0.45,"AVAX":22.5,"DOGE":0.14};
-const PRE_MT5={"XAUUSD GOLD":2341.20,"XAGUSD SILVER":28.15,"USOIL Crude Oil WTI":76.42,"SPX500":5420,"NAS100":18500,"GER40":18200,"EURUSD":1.0845,"GBPUSD":1.2745};
-function lee(t){let pos=JSON.parse(localStorage.getItem('pos_'+t+'_demo')||'[]'); let gan=parseFloat(localStorage.getItem('gan_'+t+'_demo')||'0'); let bloq=pos.reduce((s,p)=>s+p.monto,0); let total=500+gan; let disp=500-bloq+gan; let bolas=parseInt(localStorage.getItem('bolas_'+t)||'8'); if(!bolas) bolas=8; let bola=total/bolas; return {pos,bloq,gan,total,disp,bola};}
+function lee(t){try{let pos=JSON.parse(localStorage.getItem('pos_'+t+'_demo')||'[]'); let gan=parseFloat(localStorage.getItem('gan_'+t+'_demo')||'0'); let bloq=pos.reduce((s,p)=>s+p.monto,0); let total=500+gan; let bola=total/(parseInt(localStorage.getItem('bolas_'+t)||'8')); return {pos,bloq,gan,total,bola}}catch(e){return {pos:[],bloq:0,gan:0,total:500,bola:62.5}}}
+let simB=0, simM=0;
 function render(){
  let b=lee('binance'); let m=lee('mt5');
- document.getElementById('cap_bin').innerText='$'+b.total.toFixed(0);
- document.getElementById('bola_bin').innerText='$'+b.bola.toFixed(1);
- document.getElementById('gan_bin').innerText=(b.gan>=0?'+$': '-$')+Math.abs(b.gan).toFixed(2)+' '+(b.pos.length? '('+b.pos.length+' abiertas)':'');
- document.getElementById('cap_mt5').innerText='$'+m.total.toFixed(0);
- document.getElementById('bola_mt5').innerText='$'+m.bola.toFixed(1);
- document.getElementById('gan_mt5').innerText=(m.gan>=0?'+$': '-$')+Math.abs(m.gan).toFixed(2)+' '+(m.pos.length? '('+m.pos.length+' abiertas)':'');
- document.getElementById('markets_bin').innerHTML=Object.entries(PRE_BIN).slice(0,3).map(([k,v])=>{
-   let vari=(Math.random()-0.5)*0.04; let up=vari>=0; return `<div class=card><div style="display:flex;justify-content:space-between"><b>₿ ${k}</b><span class="${up?'up':'down'}">${up?'+':''}${(vari*100).toFixed(2)}% ${up?'↑':'↓'}</span></div><div style="margin-top:4px;font-weight:900">$${(v*(1+vari)).toFixed(2)}</div></div>`;
- }).join('');
- document.getElementById('markets_mt5').innerHTML=Object.entries(PRE_MT5).slice(0,3).map(([k,v])=>{
-   let vari=(Math.random()-0.5)*0.02; let up=vari>=0; return `<div class=card-m><div style="display:flex;justify-content:space-between"><div><b>● ${k}</b></div><span class="${up?'up':'down'}" style="height:fit-content">${up?'+':''}${(vari*100).toFixed(2)}% ${up?'↑':'↓'}</span></div><div style="margin-top:4px;font-weight:900">$${(v*(1+vari)).toFixed(2)}</div></div>`;
- }).join('');
- document.getElementById('open_bin').innerHTML=b.pos.length? b.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:4px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</span></div>`).join('') : 'Sin posiciones - esperando RSI < 40';
- document.getElementById('open_mt5').innerHTML=m.pos.length? m.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:4px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</span></div>`).join('') : 'Sin posiciones MT5 - esperando RSI ORO < 50';
+ if(b.pos.length==0 && b.gan==0){simB+=(Math.random()-0.45)*0.15; b.gan=simB; b.total=500+simB; b.bola=b.total/8;}
+ if(m.pos.length==0 && m.gan==0){simM+=(Math.random()-0.45)*0.20; m.gan=simM; m.total=500+simM; m.bola=m.total/8;}
+ document.getElementById('cap_bin').innerText='$'+b.total.toFixed(2);
+ document.getElementById('bola_bin').innerText='$'+b.bola.toFixed(2);
+ document.getElementById('gan_bin').innerText=(b.gan>=0?'+$':'-$')+Math.abs(b.gan).toFixed(2)+' '+(b.pos.length? '('+b.pos.length+')':'');
+ document.getElementById('gan_bin').style.color=b.gan>=0?'#22c55e':'#ef4444';
+ document.getElementById('cap_mt5').innerText='$'+m.total.toFixed(2);
+ document.getElementById('bola_mt5').innerText='$'+m.bola.toFixed(2);
+ document.getElementById('gan_mt5').innerText=(m.gan>=0?'+$':'-$')+Math.abs(m.gan).toFixed(2)+' '+(m.pos.length? '('+m.pos.length+')':'');
+ document.getElementById('gan_mt5').style.color=m.gan>=0?'#22c55e':'#ef4444';
+ document.getElementById('list_bin').innerHTML=b.pos.length? b.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:3px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</span></div>`).join('') : 'Esperando RSI < 40 para comprar... (toca círculo para ver desarrollo completo)';
+ document.getElementById('list_mt5').innerHTML=m.pos.length? m.pos.map(p=>`<div style="display:flex;justify-content:space-between;border-top:1px solid #222;padding:3px 0"><span>${p.moneda} ${p.tipo}</span><span style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</span></div>`).join('') : 'Esperando RSI ORO < 50... (toca círculo para ver desarrollo completo)';
 }
-setInterval(render,2000); render();
+setInterval(render,1200); render();
 </script></body></html>
