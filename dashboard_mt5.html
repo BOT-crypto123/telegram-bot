@@ -52,6 +52,17 @@ table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-ali
 <div class="grid" id="grid"></div>
 <div class="box"><b style="color:#38bdf8">📈 EVOLUCIÓN CAPITAL MT5</b><canvas id="ch" height="140" style="width:100%;background:#000;border-radius:10px;margin-top:10px"></canvas></div>
 <div class="box"><div style="display:flex;justify-content:space-between;font-size:11px;opacity:.5"><span>Moneda</span><span>Tipo</span><span>Entry</span><span>Ahora</span><span>Neta</span><span>Acción</span></div><table id="pos_m"><tr><td colspan=6 style="text-align:center;opacity:.4;padding:18px">Sin posiciones MT5 - Esperando señal ORO/PLATA</td></tr></table></div>
+
+<div class="box"><b style="color:#22c55e">📋 REGISTRO COMPLETO MT5</b><table><thead><tr><th>Fecha</th><th>Moneda MT5</th><th>Monto</th><th>%</th><th>Gan</th></tr></thead><tbody id="hist_m"><tr><td colspan=5 style="text-align:center;opacity:.4">Sin historial MT5 aun</td></tr></tbody></table></div>
+
+<div style="margin:10px;border:2px dashed #38bdf8;border-radius:16px;padding:12px;text-align:center;background:#0a0a0a">
+<b style="color:#38bdf8">💾 RESPALDO PARA PLAN GRATIS DE RENDER MT5 - MISMA LOGICA BINANCE</b>
+<div style="font-size:11px;opacity:.6;margin:4px 0">En gratis se borra al hacer deploy. Usa esto:</div>
+<button style="width:100%;margin:8px 0;padding:14px;font-size:14px;background:#38bdf8;color:#000;font-weight:900;border:0;border-radius:10px" onclick="backupMT5()">💾 DESCARGAR RESPALDO MT5</button>
+<button style="width:100%;padding:14px;background:#22c55e;color:#000;font-weight:900;border:0;border-radius:10px" onclick="document.getElementById('res_m').click()">📤 RESTAURAR RESPALDO MT5</button>
+<input type="file" id="res_m" hidden onchange="restoreMT5(this)">
+</div>
+
 </div>
 
 <div id="float_mt5" onclick="toggleAutoMT5()"><span id="float_txt_m">AUTO ON 🤖 MT5</span></div>
@@ -86,9 +97,8 @@ function cambioBolasMT5(){
  guardarMT5();
 }
 function toggleAutoMT5(){
- let chk=document.getElementById('auto_m'); // el checkbox
- // si clic en flotante, toggle
- if(event.currentTarget.id==='float_mt5'){ chk.checked=!chk.checked; }
+ let chk=document.getElementById('auto_m');
+ if(event && event.currentTarget && event.currentTarget.id==='float_mt5'){ chk.checked=!chk.checked; }
  let on=chk.checked;
  document.getElementById('auto_lab_m').innerText= on? '🧠 AUTO-TUNE ON MT5' : '🧠 AUTO-TUNE OFF MT5';
  document.getElementById('auto_desc_m').innerText= on? 'ON: Robot compra/vende solo + SL -1/-2/-3 MT5' : 'OFF: Solo alerta Telegram MT5, no ejecuta';
@@ -100,27 +110,8 @@ function guardarMT5(){
  let sel=document.getElementById('bolas_m'); let total=sel.options.length?parseInt(sel.options[sel.selectedIndex].value):8;
  let data={modo_m:document.getElementById('modo_m').value, bolas_m:total, cierre_m:parseFloat(document.getElementById('cierre_m').value), sl_m:parseFloat(document.getElementById('sl_m').value), rsi_venta_m:parseInt(document.getElementById('rsiv_m').value), rsi_compra_m:parseInt(document.getElementById('rsic_m').value), ema_m:document.getElementById('ema_m').value, auto_m:document.getElementById('auto_m').checked};
  document.getElementById('cierre_txt_m').innerText=data.cierre_m+'% MT5';
- fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});
 }
 function renderGrid(){
 document.getElementById('grid').innerHTML=MT5.map(k=>{
-let price=k=='XAUUSD'?'2341.20':k=='XAGUSD'?'28.15':k=='USOIL'?'76.42':k=='SPX500'?'5420.10':k=='NAS100'?'18500.50':k=='GER40'?'18200.30':k=='EURUSD'?'1.0845':'1.2745';
-let rsi=(40+Math.random()*12).toFixed(1);
-return `<div class=card><div class=on>ON</div><div style="font-weight:900;font-size:15px">${k}</div><div class=price>$${price}</div><div class=detail>Espera RSI<br>RSI ${rsi} (lim 50 MT5)<br>P 0.22 < EMA 0.23<br>RSI > 50 MT5</div><div class=row><input class=input-rsi id="rsi_${k}" value="50"><button class=btn-y onclick="setRSI('${k}')">SET</button><button class=btn-d>RESET</button></div><div class=rob>🤖 ROBOT ON MT5</div><button class=btn-graf>GRÁFICA</button></div>`;
-}).join('');
-}
-function setRSI(k){ let v=document.getElementById('rsi_'+k).value; fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({['rsi_'+k+'_m']:parseInt(v)})}); }
-async function loadM(){ try{S=await fetch('/api/state').then(r=>r.json());}catch(e){S={}} capital_m=(S.disponible_m||500)+(S.bloqueado_m||0)+(S.gan_mt5||0);
-document.getElementById('disp_m').innerText='$'+(S.disponible_m||0).toFixed(2); document.getElementById('disp_mxn_m').innerText='$'+((S.disponible_m||0)*16.96).toFixed(0)+' MXN'; document.getElementById('bloq_m').innerText=`Bloq: $${(S.bloqueado_m||0).toFixed(2)} en ${(S.pos_m||[]).length+(S.pos_m_short||[]).length}`;
-document.getElementById('gan_m').innerText='$'+(S.gan_mt5||0).toFixed(2); document.getElementById('gan_mxn_m').innerText='$'+((S.gan_mt5||0)*16.96).toFixed(0);
-document.getElementById('total_m').innerText='$'+capital_m.toFixed(2);
-if(S.auto_m!==undefined){ document.getElementById('auto_m').checked=S.auto_m; let flo=document.getElementById('float_mt5'); let txt=document.getElementById('float_txt_m'); if(S.auto_m){ flo.classList.remove('off'); txt.innerText='AUTO ON 🤖 MT5'; } else { flo.classList.add('off'); txt.innerText='AUTO OFF 🔕 MT5'; } }
-if(S.cierre_m!==undefined) document.getElementById('cierre_m').value=S.cierre_m;
-if(S.sl_m!==undefined) document.getElementById('sl_m').value=-Math.abs(S.sl_m);
-if(S.rsi_venta_m!==undefined) document.getElementById('rsiv_m').value=S.rsi_venta_m;
-if(S.rsi_compra_m!==undefined) document.getElementById('rsic_m').value=S.rsi_compra_m;
-let txt='CAIDA FUERTE 8/8 bajo EMA MT5\nLO MEJOR HOY MT5:\n• SL: -3% MT5 o -2.5%\n• RSI Venta: 65 MT5 | Compra: 50 MT5\n• Filtro: EMA200 ORO + SHORT activo\n\nPor moneda MT5:\n'; MT5.forEach(k=>{ txt+=`${k}: Espera RSI | RSI ${(40+Math.random()*12).toFixed(1)}\n`; }); document.getElementById('cere').innerText=txt;
-}
-llenarBolasMT5(); renderGrid(); setInterval(loadM,3000); loadM();
-let c=document.getElementById('ch');let ctx=c.getContext('2d');function draw(){ctx.clearRect(0,0,c.width,c.height);ctx.strokeStyle='#38bdf8';ctx.lineWidth=2;ctx.beginPath();for(let i=0;i<80;i++){let y=70+Math.sin(i/8)*20+Math.random()*8;if(i==0)ctx.moveTo(i*4,y);else ctx.lineTo(i*4,y)}ctx.stroke()}draw();
-</script></body></html>
+let price=k=='X
