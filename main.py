@@ -5,20 +5,23 @@ from pathlib import Path
 app = Flask(__name__)
 BOT_TOKEN = os.getenv("BOT_TOKEN","")
 DATA_FILE = "bot_data.json"
+DATA_FILE_BINANCE = "bot_data_binance.json"
+DATA_FILE_MT5 = "bot_data_mt5.json"
 FEE = 0.001
-POSIBLES_RUTAS = ["/data/bot_data.json", "bot_data.json"]
+POSIBLES_RUTAS = ["/data/bot_data.json", "bot_data.json", "bot_data_binance.json", "/data/bot_data_binance.json"]
 
 default_data = {
  "capital_actual": 500.0, "capital_inicial": 500.0,
- "capital_binance": 500.0, "capital_mt5": 500.0,  # DUAL $500 + $500
+ "capital_binance": 500.0, "capital_mt5": 500.0,
  "usd_mxn": 18.5,
  "gan_acum_total": 0.0, "gan_acum_mxn": 0.0, "gan_mes": 0.0, "pct_mes": 0.0,
  "ganadas": 0, "salidas": 0, "tp": 0.3, "sl_pct": -1.5, "rsi_compra": 35, "rsi_venta": 70,
  "filtro_ema": "OFF", "max_entradas": 8, "auto": True, "auto_tune": True,
  "modo": "AMBOS",
- "pos": [], "pos_short": [], 
- "pos_binance": [], "pos_mt5": [],  # NUEVO DUAL
- "historial": [], "capital_history": [],
+ "pos": [], "pos_short": [],
+ "pos_binance": [], "pos_mt5": [],
+ "historial": [], "historial_binance": [], "historial_mt5": [],
+ "capital_history": [], "capital_history_binance": [], "capital_history_mt5": [],
  "coins_activas": {"BTC":True,"ETH":True,"SOL":True,"BNB":True,"XRP":True,"ADA":True,"AVAX":True,"DOGE":True},
  "coins_mt5_activas": {"XAUUSD":True,"XAGUSD":True,"USOIL":True,"SPX500":True},
  "rsi_por_moneda": {}, "alert_users": []
@@ -32,20 +35,38 @@ try:
     if not loaded: raise FileNotFoundError
     for k,v in default_data.items():
         if k not in data: data[k]=v
-    # Migracion si viene de V2 simple
     if "capital_binance" not in data:
         data["capital_binance"] = data.get("capital_actual",500)
         data["capital_mt5"] = 500.0
+    # Migrar historial si no existe
+    if "historial_binance" not in data: data["historial_binance"]=data.get("historial",[])
+    if "historial_mt5" not in data: data["historial_mt5"]=[]
+    if "capital_history_binance" not in data: data["capital_history_binance"]=data.get("capital_history",[])
 except: data=default_data.copy()
 
 def save():
-    for p in POSIBLES_RUTAS:
+    # Guarda TODO en todos lados para no perder
+    for p in [DATA_FILE, DATA_FILE_BINANCE, "/data/bot_data.json", "/data/bot_data_binance.json"]:
         try:
             Path(p).parent.mkdir(parents=True, exist_ok=True)
             with open(p,"w") as f: json.dump(data,f)
         except: pass
+    # Guarda separado MT5
     try:
-        with open(DATA_FILE,"w") as f: json.dump(data,f)
+        with open(DATA_FILE_MT5,"w") as f: json.dump({
+            "capital_mt5": data["capital_mt5"],
+            "pos_mt5": data.get("pos_mt5",[]),
+            "historial_mt5": data.get("historial_mt5",[]),
+            "capital_history_mt5": data.get("capital_history_mt5",[]),
+            "coins_mt5_activas": data["coins_mt5_activas"]
+        },f)
+        with open("/data/"+DATA_FILE_MT5,"w") as f: json.dump({
+            "capital_mt5": data["capital_mt5"],
+            "pos_mt5": data.get("pos_mt5",[]),
+            "historial_mt5": data.get("historial_mt5",[]),
+            "capital_history_mt5": data.get("capital_history_mt5",[]),
+            "coins_mt5_activas": data["coins_mt5_activas"]
+        },f)
     except: pass
 
 def tg(chat_id, text):
@@ -143,13 +164,13 @@ def auto_tune_logic(prices):
 @app.route("/", methods=["GET","POST"])
 @app.route("/webhook", methods=["GET","POST"])
 def webhook():
-    if request.method=="GET": return "BOT LIVE V4 DUAL - /dashboard OK",200
+    if request.method=="GET": return "BOT LIVE V5 DUAL SEPARADO - /dashboard OK",200
     d=request.get_json(force=True,silent=True) or {}
     if "message" in d and "chat" in d["message"]:
         chat=d["message"]["chat"]["id"]
         if chat not in data["alert_users"]: data["alert_users"].append(chat); save()
         base=os.getenv("RENDER_EXTERNAL_URL","https://telegram-bot-cijp.onrender.com")
-        tg(chat, f"DUAL V4\nBinance: ${data['capital_binance']:.2f} + MT5: ${data['capital_mt5']:.2f} = ${data['capital_binance']+data['capital_mt5']:.2f}\n{base}/dashboard")
+        tg(chat, f"DUAL V5 SEPARADO\nBinance: ${data['capital_binance']:.2f} + MT5: ${data['capital_mt5']:.2f} = ${data['capital_binance']+data['capital_mt5']:.2f}\n{base}/dashboard")
     return jsonify(ok=True)
 
 @app.route("/dashboard")
@@ -197,6 +218,7 @@ def api_state():
 def api_config():
     j=request.json
     if "toggle_coin" in j: data["coins_activas"][j["toggle_coin"]]=not data["coins_activas"].get(j["toggle_coin"],True)
+    if "toggle_coin_mt5" in j: data["coins_mt5_activas"][j["toggle_coin_mt5"]]=not data["coins_mt5_activas"].get(j["toggle_coin_mt5"],True)
     if "max" in j: data["max_entradas"]=int(j["max"])
     if "modo" in j: data["modo"]=j["modo"]
     if "auto_tune" in j: data["auto_tune"]=(j["auto_tune"]=="ON" or j["auto_tune"]==True)
@@ -219,19 +241,57 @@ def sell_sym(sym):
             data["capital_binance"]+=p["monto"]*gan_n/100; data["capital_actual"]=data["capital_binance"]
             data["gan_acum_total"]+=p["monto"]*gan_n/100; data["salidas"]+=1
             if gan_n>0: data["ganadas"]+=1
-            data["historial"].append({"fecha":time.strftime("%m-%d %H:%M"),"sym":sym+" LONG","monto":p["monto"],"entry":p["entry"],"exit":pr,"gan_neta_pct":gan_n,"gan_neta_mxn":gan_mxn,"capital_despues":data["capital_binance"],"bola_despues":data["capital_binance"]/data["max_entradas"]})
+            h={"fecha":time.strftime("%m-%d %H:%M"),"sym":sym+" LONG","monto":p["monto"],"entry":p["entry"],"exit":pr,"gan_neta_pct":gan_n,"gan_neta_mxn":gan_mxn,"capital_despues":data["capital_binance"],"bola_despues":data["capital_binance"]/data["max_entradas"]}
+            data["historial"].append(h); data["historial_binance"].append(h)
             data["capital_history"].append({"t":int(time.time()*1000),"cap":data["capital_binance"]})
+            data["capital_history_binance"].append({"t":int(time.time()*1000),"cap":data["capital_binance"]})
             data["pos"].remove(p); save(); return jsonify(ok=True)
     return jsonify(ok=True)
 
 @app.route("/api/toggle", methods=["POST"])
 def toggle(): data["auto"]=not data["auto"]; save(); return jsonify(ok=True)
+
+# === RESPALDO SEPARADO - LO QUE PEDISTE ===
 @app.route("/api/backup")
-def api_backup(): return jsonify(data)
+def api_backup():
+    tipo=request.args.get("tipo","all")
+    if tipo=="binance":
+        return jsonify({"tipo":"binance","capital_binance":data["capital_binance"],"pos_binance":data["pos"],"historial_binance":data.get("historial_binance",data["historial"]),"capital_history_binance":data.get("capital_history_binance",data["capital_history"]),"coins_activas":data["coins_activas"],"usd_mxn":data["usd_mxn"]})
+    if tipo=="mt5":
+        return jsonify({"tipo":"mt5","capital_mt5":data["capital_mt5"],"pos_mt5":data.get("pos_mt5",[]),"historial_mt5":data.get("historial_mt5",[]),"capital_history_mt5":data.get("capital_history_mt5",[]),"coins_mt5_activas":data["coins_mt5_activas"],"usd_mxn":data["usd_mxn"]})
+    return jsonify(data)
+
+@app.route("/api/backup/binance")
+def api_backup_binance():
+    return jsonify({"tipo":"binance","capital_binance":data["capital_binance"],"pos_binance":data["pos"],"historial_binance":data.get("historial_binance",data["historial"]),"capital_history_binance":data.get("capital_history_binance",data["capital_history"]),"coins_activas":data["coins_activas"],"usd_mxn":data["usd_mxn"],"timestamp":int(time.time())})
+
+@app.route("/api/backup/mt5")
+def api_backup_mt5():
+    return jsonify({"tipo":"mt5","capital_mt5":data["capital_mt5"],"pos_mt5":data.get("pos_mt5",[]),"historial_mt5":data.get("historial_mt5",[]),"capital_history_mt5":data.get("capital_history_mt5",[]),"coins_mt5_activas":data["coins_mt5_activas"],"usd_mxn":data["usd_mxn"],"timestamp":int(time.time())})
+
 @app.route("/api/restore", methods=["POST"])
 def api_restore():
     try:
-        nuevo=request.get_json(force=True); global data; data=nuevo; save(); return jsonify(ok=True)
+        nuevo=request.get_json(force=True)
+        tipo=nuevo.get("tipo","all")
+        if tipo=="binance":
+            if "capital_binance" in nuevo: data["capital_binance"]=nuevo["capital_binance"]
+            if "pos_binance" in nuevo: data["pos"]=nuevo["pos_binance"]
+            if "historial_binance" in nuevo: data["historial_binance"]=nuevo["historial_binance"]; data["historial"]=nuevo["historial_binance"]
+            if "capital_history_binance" in nuevo: data["capital_history_binance"]=nuevo["capital_history_binance"]
+            save(); return jsonify(ok=True, msg="BINANCE restaurado")
+        if tipo=="mt5":
+            if "capital_mt5" in nuevo: data["capital_mt5"]=nuevo["capital_mt5"]
+            if "pos_mt5" in nuevo: data["pos_mt5"]=nuevo["pos_mt5"]
+            if "historial_mt5" in nuevo: data["historial_mt5"]=nuevo["historial_mt5"]
+            if "capital_history_mt5" in nuevo: data["capital_history_mt5"]=nuevo["capital_history_mt5"]
+            save(); return jsonify(ok=True, msg="MT5 restaurado")
+        # restore total
+        global data
+        data=nuevo
+        for k,v in default_data.items():
+            if k not in data: data[k]=v
+        save(); return jsonify(ok=True, msg="TODO restaurado")
     except Exception as e: return jsonify(ok=False, error=str(e))
 
 def auto_loop():
