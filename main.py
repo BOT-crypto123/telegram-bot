@@ -2,100 +2,121 @@ import os, json
 from flask import Flask, request, send_from_directory, jsonify
 import telegram
 from telegram import Update
+from datetime import datetime
 
 app = Flask(__name__)
-
 FILE='state.json'
+
 DEFAULT={
- "disponible":500,"bloqueado":0,"gan_mes":0,
- "modo":"CONSERVADOR","rsi_compra_m":35,
- "disponible_m":500,"bloqueado_m":0,
- "gan_mes_m":0,"modo_m":"MEDIO","max_m":5
+ "disponible":500,"bloqueado":0,"gan_mes":0,"ganadas":0,"winrate":0,"tp":0.8,"sl":-1.2,"rsi_venta":70,"filtro_ema":"ON","rsi_compra":35,"modo":"CONSERVADOR","max":4,
+ "disponible_m":500,"bloqueado_m":0,"gan_mes_m":0,"gan_mt5":0,"ganadas_m":0,"winrate_m":0,"tp_m":0.8,"sl_m":-1.2,"rsi_venta_m":70,"filtro_ema_m":"ON","rsi_compra_m":30,"rsi_compra_m":30,"modo_m":"AMBOS","max_m":4,"usd_mxn":16.961,"pct_mes_m":0,"auto_m":True,"auto_tune_m":False,"tp":0.8,"fee_total":0.2,
+ "coins_mt5_activas":{"XAUUSD":True,"XAGUSD":True,"USOIL":True,"SPX500":True},
+ "pos_m":[],"pos_m_short":[],"historial_m":[],"capital_history_m":[{"t":datetime.now().isoformat(),"cap":500}],
+ "pos":[],"historial":[],"capital_history":[]
 }
 
 def load_state():
  try:
   if os.path.exists(FILE):
    with open(FILE) as f:
-    data = json.load(f)
-    # junta default con lo guardado para que no falte nada
-    merged = DEFAULT.copy()
-    merged.update(data)
-    return merged
- except Exception as e:
-  print("Error load_state", e)
+    data=json.load(f)
+    m=DEFAULT.copy()
+    m.update(data)
+    return m
+ except: pass
  return DEFAULT.copy()
 
-def save_state(state):
- with open(FILE, 'w') as f:
-  json.dump(state, f)
+def save_state(s):
+ with open(FILE,'w') as f: json.dump(s,f)
 
 @app.route('/')
-def index():
- return send_from_directory('.','index.html')
-
+def index(): return send_from_directory('.','index.html')
 @app.route('/dashboard')
-def dash():
- return send_from_directory('.','dashboard.html')
-
+def dash(): return send_from_directory('.','dashboard.html')
 @app.route('/dashboard_mt5.html')
-def dashm():
- return send_from_directory('.','dashboard_mt5.html')
+def dashm(): return send_from_directory('.','dashboard_mt5.html')
+@app.route('/dashboard.html')
+def dash_html(): return send_from_directory('.','dashboard.html')
 
 @app.route('/api/state')
-def api_state():
- return jsonify(load_state())
-
-@app.route('/api/state', methods=['POST'])
-def api_state_save():
- data = request.get_json(force=True)
- save_state(data)
- return jsonify({"ok": True})
-
-@app.route('/api/upload', methods=['POST'])
-def api_upload():
- # para restaurar respaldo
- try:
-  data = request.get_json(force=True)
-  # si viene con formato de respaldo viejo, lo normalizamos
-  if isinstance(data, dict):
-   save_state(data)
-   return jsonify({"ok": True})
-  return jsonify({"ok": False, "error": "formato invalido"})
- except Exception as e:
-  return jsonify({"ok": False, "error": str(e)}), 400
+def api_state(): return jsonify(load_state())
 
 @app.route('/api/prices')
 def api_prices():
- # Agregué RSI para que no salga undefined en los 3 circulos
- return jsonify({
-  "BTC": 77355.93, "BTC_RSI": 62,
-  "ETH": 2439.75, "ETH_RSI": 58,
-  "SOL": 94.26, "SOL_RSI": 55
- })
+ return jsonify({"BTC":77355.93,"BTC_RSI":62,"ETH":2439.75,"ETH_RSI":58,"SOL":94.26,"SOL_RSI":55,"BTC":{"price":77355,"rsi":62},"ETH":{"price":2439,"rsi":58}})
+
+@app.route('/api/prices_mt5')
+def api_prices_mt5():
+ # mock para que carguen los 3 circulos y las 4 monedas
+ base={"XAUUSD":2630,"XAGUSD":31.2,"USOIL":76.5,"SPX500":5950}
+ out={}
+ for k,v in base.items():
+  out[k]={"price":v,"rsi":58,"limite":30,"change":1.2,"ema":v*0.99,"sug":"ESPERAR MT5","motivo":"MT5 estrategia propia - esperando RSI"}
+ return jsonify(out)
+
+@app.route('/api/config', methods=['POST'])
+def api_config():
+ st=load_state()
+ data=request.get_json(force=True)
+ for k,v in data.items():
+  if k=='max_m': st['max_m']=int(v)
+  elif k=='modo_m': st['modo_m']=v
+  elif k=='toggle_coin_mt5':
+   st['coins_mt5_activas'][v]=not st['coins_mt5_activas'].get(v,True)
+  elif k in st: st[k]=v
+  else: st[k]=v
+ save_state(st)
+ return jsonify({"ok":True})
+
+@app.route('/api/toggle', methods=['POST'])
+def api_toggle():
+ st=load_state()
+ st['auto_m']=not st.get('auto_m',True)
+ save_state(st)
+ return jsonify({"ok":True})
+
+@app.route('/api/sell_mt5/<sym>', methods=['POST'])
+def api_sell(sym):
+ st=load_state()
+ st['pos_m']=[p for p in st.get('pos_m',[]) if p.get('sym')!=sym]
+ st['pos_m_short']=[p for p in st.get('pos_m_short',[]) if p.get('sym')!=sym]
+ save_state(st)
+ return jsonify({"ok":True})
+
+@app.route('/api/backup')
+def api_backup(): return jsonify(load_state())
+
+@app.route('/api/restore', methods=['POST'])
+def api_restore():
+ try:
+  data=request.get_json(force=True)
+  save_state(data)
+  return jsonify({"ok":True})
+ except Exception as e:
+  return jsonify({"ok":False,"error":str(e)}),400
+
+@app.route('/api/upload', methods=['POST'])
+def api_upload(): return api_restore()
 
 BOT_TOKEN=os.environ.get("BOT_TOKEN","")
 bot=telegram.Bot(token=BOT_TOKEN) if BOT_TOKEN else None
 
 @app.route('/telegram',methods=['POST'])
 def tg():
- if not bot:
-  return 'no bot'
+ if not bot: return 'no bot'
  data=request.get_json(force=True)
  up=Update.de_json(data,bot)
- if not up.message:
-  return 'ok'
+ if not up.message: return 'ok'
  txt=(up.message.text or '').upper()
  cid=up.message.chat.id
  if 'DASHBOARD' in txt or '/START' in txt or 'DUAL' in txt or 'HOLA' in txt:
-  # AQUI ESTA EL CAMBIO: Solo AMBAS, ya no MT5
-  bot.send_message(chat_id=cid,text="DUAL V5 AMBAS $1000\n\nPORTADA:\nhttps://telegram-bot-cijp.onrender.com/\n\nDASHBOARD AMBAS (BINANCE + MT5):\nhttps://telegram-bot-cijp.onrender.com/dashboard")
+  # CAMBIO 1: Solo AMBAS, ya no mando MT5
+  bot.send_message(chat_id=cid,text="DUAL V5 AMBAS $1000\n\nDASHBOARD AMBAS (BINANCE $500 + MT5 $500):\nhttps://telegram-bot-cijp.onrender.com/dashboard")
  return 'ok'
 
 @app.route('/set_webhook')
 def sethook():
- if not bot:
-  return 'Falta BOT_TOKEN en Render'
+ if not bot: return 'Falta BOT_TOKEN'
  bot.set_webhook(url='https://telegram-bot-cijp.onrender.com/telegram')
  return 'WEBHOOK PUESTO!'
 
