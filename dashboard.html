@@ -1,76 +1,14 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 - $500 + $500</title>
-<style>
-*{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;justify-content:center}
-.phone{width:100%;max-width:500px;min-height:100vh;background:#050505;display:flex;border-radius:20px;overflow:hidden}
-.p{flex:1;padding:8px;cursor:pointer}.p.bin{background:#0a0a0a}.p.mt5{background:#081122;border-left:1px solid #222}
-.circle{width:120px;height:120px;border-radius:50%;margin:10px auto;display:flex;flex-direction:column;justify-content:center;align-items:center;border:6px solid}
-.bin.circle{border-color:#facc15;background:#1a1500}.mt5.circle{border-color:#3b82f6;background:#0e1a2e}
-.full{display:none;margin-top:10px}.full.show{display:block}
-.tri{display:flex;gap:5px}.mini{flex:1;height:60px;border-radius:50%;border:2px solid;display:flex;flex-direction:column;justify-content:center;align-items:center;font-size:11px;font-weight:900}
-.bin.mini{border-color:#facc15}.mt5.mini{border-color:#3b82f6}
-.coins{display:grid;grid-template-columns:1fr 1fr;gap:5px;margin:8px 0}.coin{padding:8px;border-radius:8px;background:#1a1a1a;font-size:11px;display:flex;justify-content:space-between;cursor:pointer;border:1px solid #333}.coin.on{border-color:#22c55e;background:#102010}
-.btn{width:100%;padding:10px;border:0;border-radius:10px;font-weight:900;margin:5px 0;cursor:pointer}.btn-y{background:#facc15;color:#000}.btn-b{background:#3b82f6;color:#fff}.btn-d{background:#222;color:#fff}
-table{width:100%;font-size:10px;border-collapse:collapse}th{opacity:.5;text-align:left;padding:4px}td{padding:4px;border-top:1px solid #222}
-input,select{width:100%;padding:6px;background:#111;border:1px solid #333;color:#fff;border-radius:6px;margin:3px 0;font-size:11px}
-</style></head><body>
-<div class="phone">
-<!-- BINANCE -->
-<div class="p bin" onclick="if(event.target.closest('.full')==null) document.getElementById('full_b').classList.toggle('show')">
-<div style="color:#facc15;font-weight:900;font-size:11px">◆ BINANCE - CRYPTO</div>
-<div class="circle"><div style="font-size:9px">Capital</div><div id="cap_b" style="font-size:24px;font-weight:900">$500</div><div style="font-size:9px">bola</div><div id="bola_b" style="color:#facc15;font-weight:900">$62.5</div></div>
-<div id="full_b" class="full" onclick="event.stopPropagation()">
-<div class="tri"><div class="mini"><span id="b_disp">$500</span><span style="font-size:6px">DISPONIBLE</span></div><div class="mini"><span id="b_gan">+$0</span><span style="font-size:6px">GANANCIA</span></div><div class="mini"><span id="b_tot">$500</span><span style="font-size:6px">TOTAL REAL</span></div></div>
-<div style="font-size:9px;margin:8px 0;font-weight:900;color:#facc15">MONEDAS ON/OFF</div><div id="coins_b" class="coins"></div>
-<div style="display:flex;gap:5px"><button class="btn btn-d" onclick="toggleAuto('bin')">🤖 AUTO: <span id="auto_b">ON</span></button><select id="modo_b" onchange="setConfig('modo',this.value)"><option value="AMBOS">AMBOS</option><option value="LONG">SOLO LONG</option><option value="SHORT">SOLO SHORT</option></select></div>
-<div style="display:flex;gap:5px"><input id="tp_b" placeholder="TP %"><input id="sl_b" placeholder="SL %"><input id="max_b" placeholder="MAX 8"></div>
-<button class="btn btn-y" onclick="saveConfig('bin')">💾 GUARDAR BINANCE</button>
-<div style="font-size:9px;margin-top:8px">OPEN POSITIONS</div><table id="pos_b"><tr><th>Asset</th><th>PnL</th><th></th></tr></table>
-<div style="font-size:9px;margin-top:8px">HISTORIAL</div><table id="hist_b"><tr><th>Fecha</th><th>Gan</th></tr></table>
-</div>
-</div>
-<!-- MT5 -->
-<div class="p mt5" onclick="if(event.target.closest('.full')==null) document.getElementById('full_m').classList.toggle('show')">
-<div style="color:#60a5fa;font-weight:900;font-size:11px">📊 MT5 SIN MT5</div>
-<div class="circle"><div style="font-size:9px">Capital</div><div id="cap_m" style="font-size:24px;font-weight:900">$500</div><div style="font-size:9px">bola</div><div id="bola_m" style="color:#60a5fa;font-weight:900">$62.5</div></div>
-<div id="full_m" class="full" onclick="event.stopPropagation()">
-<div class="tri"><div class="mini"><span id="m_disp">$500</span><span style="font-size:6px">DISPONIBLE</span></div><div class="mini"><span id="m_gan">+$0</span><span style="font-size:6px">GANANCIA</span></div><div class="mini"><span id="m_tot">$500</span><span style="font-size:6px">TOTAL REAL</span></div></div>
-<div style="font-size:9px;margin:8px 0;font-weight:900;color:#60a5fa">ACTIVOS MT5 ON/OFF</div><div id="coins_m" class="coins"></div>
-<div style="display:flex;gap:5px"><button class="btn btn-d" onclick="toggleAuto('mt5')">🤖 AUTO: <span id="auto_m">ON</span></button><select id="modo_m" onchange="setConfigM('modo_m',this.value)"><option value="AMBOS">AMBOS</option><option value="LONG">LONG</option><option value="SHORT">SHORT</option></select></div>
-<button class="btn btn-b" onclick="saveConfig('mt5')">💾 GUARDAR MT5</button>
-<div style="font-size:9px;margin-top:8px">OPEN MT5</div><table id="pos_m"><tr><th>Asset</th><th>PnL</th><th></th></tr></table>
-<div style="font-size:9px;margin-top:8px">HISTORIAL MT5</div><table id="hist_m"><tr><th>Fecha</th><th>Gan</th></tr></table>
-</div>
-</div>
-</div>
-</div>
-<div style="position:fixed;bottom:0;left:0;right:0;background:#000;padding:8px;display:flex;gap:8px;max-width:500px;margin:0 auto">
-<button class="btn btn-y" style="flex:1" onclick="backup()">💾 BACKUP</button>
-<label class="btn btn-d" style="flex:1;text-align:center">📂 RESTAURAR<input type="file" id="restore" hidden onchange="restore(this)"></label>
-</div>
-<script>
-let ST={}
-async function load(){ST=await fetch('/api/state').then(r=>r.json());let tb=(ST.disponible_usd||0)+(ST.bloqueado_usd||0)+(ST.gan_acum||0);let tm=(ST.disponible_m||0)+(ST.bloqueado_m||0)+(ST.gan_mt5||0);
-document.getElementById('cap_b').innerText='$'+tb.toFixed(0);document.getElementById('bola_b').innerText='$'+(tb/(ST.max_entradas||8)).toFixed(1);
-document.getElementById('cap_m').innerText='$'+tm.toFixed(0);document.getElementById('bola_m').innerText='$'+(tm/(ST.max_m||8)).toFixed(1);
-document.getElementById('b_disp').innerText='$'+(ST.disponible_usd||0).toFixed(0);document.getElementById('b_gan').innerText='+ $'+(ST.gan_acum||0).toFixed(2);document.getElementById('b_tot').innerText='$'+tb.toFixed(0);
-document.getElementById('m_disp').innerText='$'+(ST.disponible_m||0).toFixed(0);document.getElementById('m_gan').innerText='+ $'+(ST.gan_mt5||0).toFixed(2);document.getElementById('m_tot').innerText='$'+tm.toFixed(0);
-document.getElementById('auto_b').innerText=ST.auto?'ON':'OFF';document.getElementById('auto_m').innerText=ST.auto_m?'ON':'OFF';
-document.getElementById('coins_b').innerHTML=Object.entries(ST.coins_activas||{}).map(([k,v])=>`<div class="coin ${v?'on':''}" onclick="setToggle('${k}')">${k} ${v?'🟢':'🔴'}</div>`).join('');
-document.getElementById('coins_m').innerHTML=Object.entries(ST.coins_mt5_activas||{}).map(([k,v])=>`<div class="coin ${v?'on':''}" onclick="setToggleM('${k}')">${k} ${v?'🟢':'🔴'}</div>`).join('');
-document.getElementById('pos_b').innerHTML='<tr><th>Asset</th><th>PnL</th><th></th></tr>'+(ST.pos||[]).map(p=>`<tr><td>${p.sym}</td><td>$${p.gan||0}</td><td><button onclick="sell('${p.sym}')">X</button></td></tr>`).join('')||'<tr><td colspan=3>Sin posiciones</td></tr>';
-document.getElementById('pos_m').innerHTML='<tr><th>Asset</th><th>PnL</th><th></th></tr>'+[...(ST.pos_m||[]),...(ST.pos_m_short||[])].map(p=>`<tr><td>${p.sym}</td><td>$${p.gan||0}</td><td><button onclick="sellM('${p.sym}')">X</button></td></tr>`).join('')||'<tr><td colspan=3>Sin posiciones</td></tr>';
-document.getElementById('hist_b').innerHTML='<tr><th>Fecha</th><th>Gan</th></tr>'+(ST.historial||[]).slice(-5).reverse().map(h=>`<tr><td>${(h.fecha||'').slice(5,16)}</td><td>$${h.gan||0}</td></tr>`).join('');
-document.getElementById('hist_m').innerHTML='<tr><th>Fecha</th><th>Gan</th></tr>'+(ST.historial_m||[]).slice(-5).reverse().map(h=>`<tr><td>${(h.fecha||'').slice(5,16)}</td><td>$${h.gan||0}</td></tr>`).join('');
-}
-function setToggle(k){fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin:k})}).then(load)}
-function setToggleM(k){fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({toggle_coin_mt5:k})}).then(load)}
-function toggleAuto(side){fetch('/api/toggle',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({side:side=='mt5'?'mt5':'bin'})}).then(load)}
-function setConfig(k,v){fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[k]:v})}).then(load)}
-function setConfigM(k,v){fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({[k]:v})}).then(load)}
-function saveConfig(t){let d={};if(t=='bin'){d.tp=parseFloat(document.getElementById('tp_b').value)||ST.tp;d.sl_pct=parseFloat(document.getElementById('sl_b').value)||ST.sl_pct;d.max_entradas=parseInt(document.getElementById('max_b').value)||ST.max_entradas;}else{d.max_m=8}fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(()=>alert('Guardado '+t))}
-function sell(s){fetch('/api/sell/'+s,{method:'POST'}).then(load)}function sellM(s){fetch('/api/sell_mt5/'+s,{method:'POST'}).then(load)}
-function backup(){fetch('/api/backup').then(r=>r.blob()).then(b=>{let a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='backup_dual.json';a.click()})}
-function restore(inp){let f=inp.files[0];if(!f)return;let r=new FileReader();r.onload=e=>{fetch('/api/restore',{method:'POST',headers:{'Content-Type':'application/json'},body:e.target.result}).then(load)};r.readAsText(f)}
-setInterval(load,3000);load();
-</script>
-</body></html>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>BINANCE $500</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui} .top{padding:12px;text-align:center;background:#0a0a0a} .circles{display:flex;justify-content:center;gap:10px;margin:12px 0} .c{width:95px;height:95px;border-radius:50%;border:3px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1a1500} .c b{font-size:16px} .c small{font-size:7px;opacity:.7;text-align:center} .panel{max-width:480px;margin:0 auto;padding:10px} .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px} .coin{padding:10px;border-radius:10px;background:#151515;border:1px solid #333;display:flex;justify-content:space-between;cursor:pointer;font-size:13px} .coin.on{border-color:#22c55e;background:#122010} .row{display:flex;gap:6px;margin:8px 0} input,select{flex:1;padding:8px;background:#111;border:1px solid #333;color:#fff;border-radius:8px} .btn{width:100%;padding:12px;border:0;border-radius:12px;font-weight:900;margin:6px 0} .y{background:#facc15;color:#000} .d{background:#222;color:#fff} table{width:100%;font-size:11px;border-collapse:collapse;margin-top:8px} th{opacity:.5;text-align:left;padding:4px} td{padding:6px;border-top:1px solid #222}</style></head><body>
+<div class="top"><div style="color:#facc15;font-weight:900">◆ BINANCE - CRYPTO • $500 BASE</div>
+<div class="circles">
+<div class="c"><b id="d1">$500</b><small>DISPONIBLE<br>se descuenta</small></div>
+<div class="c" style="border-color:#22c55e"><b id="d2">+$0</b><small>GANANCIA<br>ACUM</small></div>
+<div class="c" style="border-color:#fff"><b id="d3">$500</b><small>TOTAL REAL<br>Base+Gan</small><small id="bola" style="color:#facc15;font-size:9px;font-weight:900;margin-top:2px">bola $62.5</small></div>
+</div></div>
+<div class="panel">
+<div style="font-size:11px;font-weight:900;color:#facc15;margin:8px 0">MONEDAS ON/OFF</div><div id="coins" class="grid"></div>
+<div class="row"><button class="btn d" style="flex:1" onclick="tog()">🤖 AUTO: <span id="auto">ON</span></button><select id="modo"><option value="AMBOS">AMBOS</option><option value="LONG">SOLO LONG</option><option value="SHORT">SOLO SHORT</option></select></div>
+<div class="row"><input id="tp" placeholder="TP %"><input id="sl" placeholder="SL %"><input id="max" placeholder="MAX 8"></div>
+<button class="btn y" onclick="save()">💾 GUARDAR BINANCE</button>
+<button class="btn d" onclick="location.href='
