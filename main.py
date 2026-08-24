@@ -1,113 +1,68 @@
-import os, json, time, threading, requests, random
+import os, json, time, threading, requests
 from flask import Flask, request, jsonify, send_from_directory
 from pathlib import Path
 
 app = Flask(__name__)
-BOT_TOKEN = os.getenv("BOT_TOKEN","")
-DATA_FILE = "bot_data.json"
-FEE = 0.001
-POSIBLES_RUTAS = ["/data/bot_data.json", "bot_data.json", "bot_data_binance.json"]
+DATA_FILE="bot_data.json"
+FEE=0.001
+default_data={"capital_binance":500.0,"capital_mt5":500.0,"usd_mxn":18.5,"gan_acum_total":0.0,"ganadas":0,"salidas":0,"max_entradas":8,"auto":True,"pos":[],"pos_short":[],"historial":[],"coins_activas":{"BTC":True,"ETH":True,"SOL":True,"BNB":True,"XRP":True,"ADA":True,"AVAX":True,"DOGE":True},"alert_users":[]}
 
-default_data = {
- "capital_actual": 500.0, "capital_inicial": 500.0,
- "capital_binance": 500.0, "capital_mt5": 500.0,
- "usd_mxn": 18.5,
- "gan_acum_total": 0.0, "gan_mes": 0.0, "pct_mes": 0.0,
- "ganadas": 0, "salidas": 0, "tp": 0.3, "sl_pct": -1.5,
- "rsi_compra": 35, "rsi_venta": 70, "filtro_ema": "OFF",
- "max_entradas": 8, "auto": True, "auto_tune": True,
- "modo": "AMBOS", "pos": [], "pos_short": [],
- "historial": [], "coins"
- @app.route("/api/state")
-def api_state():
-    usd_live = get_usd_mxn_live()
-    max_ent = data.get("max_entradas",8)
-    bola_base = data.get("capital_binance",500.0)/max(1,max_ent)
-    prices = get_prices_data()
-    for p in data.get("pos",[]):
-        pr=prices.get(p["sym"],{}).get("price",p["entry"])
-        p["ahora"]=pr
-        p["gan_neta_pct"]=(pr-p["entry"])/p["entry"]*100 - (FEE*2*100)
-        p["tipo"]="LONG"
-    for p in data.get("pos_short",[]):
-        pr=prices.get(p["sym"],{}).get("price",p["entry"])
-        p["ahora"]=pr
-        p["gan_neta_pct"]=(p["entry"]-pr)/p["entry"]*100 - (FEE*2*100)
-        p["tipo"]="SHORT"
-    bloqueado=sum([x.get("monto", bola_base) for x in data.get("pos",[])]) + sum([x.get("monto", bola_base) for x in data.get("pos_short",[])])
-    gan_total=data.get("gan_acum_total",0.0)
-    capital_bin=data.get("capital_binance",500.0)
-    if bloqueado==0:
-        disponible=capital_bin
-        total_real=capital_bin + gan_total
-    else:
-        disponible=capital_bin - bloqueado
-        total_real=disponible + bloqueado + gan_total
-    bola_real=total_real/max(1,max_ent)
-    winrate=(data.get("ganadas",0)/data.get("salidas",1)*100) if data.get("salidas",0)>0 else 0
-    return jsonify({
-        "capital_binance": capital_bin,
-        "capital": total_real,
-        "total_real_usd": total_real,
-        "bola": bola_real,
-        "bola_binance": bola_base,
-        "bola_mxn": bola_real*usd_live,
-        "gan_acum": gan_total,
-        "usd_mxn": round(usd_live,4),
-        "disponible_usd": disponible,
-        "bloqueado_usd": bloqueado,
-        "pos": data.get("pos",[])+data.get("pos_short",[]),
-        "pos_long": data.get("pos",[]),
-        "pos_short": data.get("pos_short",[]),
-        "historial": data.get("historial",[])[-50:],
-        "max_entradas": max_ent,
-        "auto": data.get("auto",True),
-        "coins_activas": data.get("coins_activas",{})
-    })
+try:
+    data=json.load(open("/data/bot_data.json")) if os.path.exists("/data/bot_data.json") else json.load(open("bot_data.json"))
+    for k,v in default_data.items():
+        if k not in data: data[k]=v
+except: data=default_data.copy()
 
-@app.route("/api/config", methods=["POST"])
-def api_config():
-    j=request.json
-    if "toggle_coin" in j:
-        data["coins_activas"][j["toggle_coin"]]=not data["coins_activas"].get(j["toggle_coin"],True)
-    if "max" in j:
-        data["max_entradas"]=int(j["max"])
-    save()
-    return jsonify(ok=True)
+def save():
+    try:
+        with open(DATA_FILE,"w") as f: json.dump(data,f)
+        with open("/data/bot_data.json","w") as f: json.dump(data,f)
+    except: pass
 
-@app.route("/api/toggle", methods=["POST"])
-def toggle():
-    data["auto"]=not data["auto"]
-    save()
-    return jsonify(ok=True)
+def get_usd_mxn_live():
+    try:
+        r=requests.get("https://open.er-api.com/v6/latest/USD",timeout=5).json()
+        return float(r["rates"]["MXN"])
+    except: return data.get("usd_mxn",18.5)
 
-def auto_loop():
-    last_tune=0
-    last_usd=0
-    while True:
+def get_prices_data():
+    out={}
+    for sym in ["BTC/USDT","ETH/USDT","SOL/USDT","BNB/USDT","XRP/USDT","ADA/USDT","AVAX/USDT","DOGE/USDT"]:
+        coin=sym.replace("/USDT","")
         try:
-            if time.time()-last_usd>60:
-                get_usd_mxn_live(force=True)
-                last_usd=time.time()
-            if data["auto"]:
-                prices=get_prices_data()
-                if time.time()-last_tune>900:
-                    auto_tune_logic(prices)
-                    last_tune=time.time()
-                total_max=data["max_entradas"]
-                max_long=(total_max+1)//2
-                if len(data["pos"]) < max_long:
-                    for sym,info in prices.items():
-                        if info["price"]>0 and info["ok"] and data["coins_activas"].get(sym,True) and not any(x["sym"]==sym for x in data["pos"]):
-                            monto=data["capital_binance"]/total_max
-                            data["pos"].append({"sym":sym,"entry":info["price"],"monto":monto})
-                            save()
-                            break
-        except Exception as e:
-            print("AUTO ERROR",e)
-        time.sleep(60)
+            r=requests.get(f"https://data-api.binance.vision/api/v3/klines?symbol={sym.replace('/','')}&interval=1h&limit=50",timeout=5).json()
+            closes=[float(k[4]) for k in r]
+            out[coin]={"price":closes[-1],"rsi":35,"ema":closes[-1],"ok":True,"ok_short":False}
+        except: out[coin]={"price":0,"rsi":50,"ema":0,"ok":False,"ok_short":False}
+    return out
 
-threading.Thread(target=auto_loop,daemon=True).start()
+@app.route("/")
+def home(): return "BOT LIVE - /dashboard OK",200
+
+@app.route("/dashboard")
+def dashboard():
+    if os.path.exists("dashboard.html"): return send_from_directory(".","dashboard.html")
+    return "dashboard no existe",404
+
+@app.route("/api/prices")
+def api_prices(): return jsonify(get_prices_data())
+
+@app.route("/api/state")
+def api_state():
+    usd=get_usd_mxn_live()
+    bola_base=data["capital_binance"]/data["max_entradas"]
+    prices=get_prices_data()
+    for p in data["pos"]:
+        pr=prices.get(p["sym"],{}).get("price",p["entry"])
+        p["ahora"]=pr
+        p["gan_neta_pct"]=(pr-p["entry"])/p["entry"]*100
+    bloqueado=sum([x.get("monto",bola_base) for x in data["pos"]])
+    gan=data.get("gan_acum_total",0.0)
+    cap_bin=data["capital_binance"]
+    disponible=cap_bin-bloqueado if bloqueado>0 else cap_bin
+    total_real=disponible+bloqueado+gan if bloqueado>0 else cap_bin+gan
+    bola_real=total_real/data["max_entradas"]
+    return jsonify({"capital_binance":cap_bin,"capital":total_real,"total_real_usd":total_real,"bola":bola_real,"bola_mxn":bola_real*usd,"usd_mxn":usd,"gan_acum":gan,"disponible_usd":disponible,"bloqueado_usd":bloqueado,"pos":data["pos"],"historial":data["historial"][-20:]})
 
 if __name__=="__main__":
     app.run(host="0.0.0.0",port=int(os.environ.get("PORT",10000)))
