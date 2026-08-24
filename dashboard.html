@@ -1,6 +1,6 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MÁQUINA BOLA DE NIEVE - V2</title>
+<title>MÁQUINA BOLA DE NIEVE - V2 - FIX TOTAL REAL</title>
 <style>body{background:#0a0a0a;color:#fff;font-family:system-ui;margin:0;padding:8px}.top-box{border:2px solid #facc15;border-radius:20px;padding:15px;background:#111}.circle-wrap{display:flex;justify-content:center;gap:15px;flex-wrap:wrap;margin:15px 0;align-items:center}.circle{border:8px solid #222;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;text-align:center}.circle.c1{width:140px;height:140px;border-color:#facc15;background:#1a1600}.circle.c2{width:180px;height:180px;border-color:#22c55e;background:#0f1a0f}.circle.c3{width:230px;height:230px;border-color:#38bdf8;background:#0a1620}.dot{position:absolute;top:10px;width:12px;height:12px;border-radius:50%;left:50%;transform:translateX(-50%)}.yellow.dot{background:#facc15}.green.dot{background:#22c55e}.blue.dot{background:#38bdf8}.big{font-size:28px;font-weight:900}.small{color:#888;font-size:11px}.blue{color:#38bdf8}.bola-line{border:1px solid #22c55e;border-radius:12px;padding:8px;margin:8px 0;font-size:13px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}.controls{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 0;background:#111;padding:10px;border-radius:12px}.controls select,.controls input{background:#000;color:#fff;border:1px solid #333;border-radius:6px;padding:4px}.cerebro{border:2px solid #22c55e;border-radius:15px;padding:12px;background:#111a0f;margin:12px 0;font-size:13px}.coins{display:grid;grid-template-columns:1fr 1fr;gap:10px}.coin{background:#1a1a1a;border-radius:16px;padding:12px;border:1px solid #222}.coin h3{margin:0;display:flex;justify-content:space-between;align-items:center}.onoff{background:#22c55e;color:#000;padding:4px 12px;border-radius:20px;font-size:12px;font-weight:900;border:0}.rsi{margin:6px 0;font-size:13px}.yellow-text{color:#facc15;font-size:11px}.set-row{display:flex;gap:4px;margin:6px 0}.set-row input{width:40px;background:#000;color:#fff;border:1px solid #333}.set{background:#facc15;color:#000;border:0;border-radius:6px;padding:3px 8px;font-weight:900;font-size:11px}.reset{background:#333;color:#fff;border:0;border-radius:6px;padding:3px 8px;font-size:11px}.grafica{width:100%;background:#fff;color:#000;border:0;border-radius:10px;padding:10px;font-weight:900;margin-top:8px}.robot{color:#22c55e;text-align:center;font-weight:900;margin:6px 0}.evol{border:1px solid #222;border-radius:12px;padding:10px;margin:12px 0;background:#111}table{width:100%;font-size:12px;border-collapse:collapse}th{color:#aaa;font-size:11px;padding:6px}td{padding:6px;text-align:center;border-top:1px solid #222}.btn-auto{position:fixed;bottom:15px;right:15px;background:#fff;color:#000;border:0;border-radius:12px;padding:12px 18px;font-weight:900;z-index:99}.backup-box{border:2px dashed #facc15;border-radius:15px;padding:15px;margin:20px 0;background:#1a1a00;text-align:center}</style>
 </head><body>
 <div class="top-box">
@@ -35,31 +35,35 @@
 let ch;
 let LIVE_USDMXN = null;
 async function fetchLiveUsdMxn(){
-  try{
-    let r = await fetch('https://open.er-api.com/v6/latest/USD');
-    let j = await r.json();
-    if(j && j.rates && j.rates.MXN){
-      LIVE_USDMXN = parseFloat(j.rates.MXN);
-      document.getElementById('usdmxn').innerText = LIVE_USDMXN.toFixed(4);
-      document.getElementById('usdmxn_time').innerText = '• VIVO ' + new Date().toLocaleTimeString() + ' (cada 5m)';
-      if(window.lastState) recalcWithLiveMxn(window.lastState);
-      return;
-    }
-  }catch(e){}
-  try{
-    let r2 = await fetch('https://api.frankfurter.app/latest?from=USD&to=MXN');
-    let j2 = await r2.json();
-    if(j2.rates.MXN){ LIVE_USDMXN = parseFloat(j2.rates.MXN); document.getElementById('usdmxn').innerText = LIVE_USDMXN.toFixed(4); }
-  }catch(e2){}
+  const srcs = [
+    async()=>{ let r=await fetch('https://api.exchangerate-api.com/v4/latest/USD'); let j=await r.json(); return j.rates?.MXN; },
+    async()=>{ let r=await fetch('https://open.er-api.com/v6/latest/USD'); let j=await r.json(); return j.rates?.MXN; },
+    async()=>{ let r=await fetch('https://api.frankfurter.app/latest?from=USD&to=MXN'); let j=await r.json(); return j.rates?.MXN; }
+  ];
+  for(let f of srcs){
+    try{
+      let v = await f();
+      if(v && v>10 && v<30){
+        LIVE_USDMXN = parseFloat(v);
+        document.getElementById('usdmxn').innerText = LIVE_USDMXN.toFixed(4);
+        document.getElementById('usdmxn').style.color = '#22c55e';
+        document.getElementById('usdmxn_time').innerText = '• VIVO '+new Date().toLocaleTimeString()+' LIVE';
+        if(window.lastState) recalcWithLiveMxn(window.lastState);
+        return;
+      }
+    }catch(e){}
+  }
 }
 function recalcWithLiveMxn(st){
   if(!LIVE_USDMXN) return;
   try{
     let u = LIVE_USDMXN;
+    let total_real = (st.disponible_usd||0)+(st.bloqueado_usd||0)+(st.gan_acum||0);
+    let bola_real = total_real/(st.max_entradas||1);
     document.getElementById('disp_mxn').innerText='$'+(st.disponible_usd * u).toFixed(0)+' MXN';
-    document.getElementById('total_mxn').innerText='$'+(st.capital * u).toFixed(0)+' MXN';
+    document.getElementById('total_mxn').innerText='$'+(total_real * u).toFixed(0)+' MXN';
     document.getElementById('acum_mxn').innerText='$'+(st.gan_acum * u).toFixed(0);
-    document.getElementById('bola_line').innerText='$'+st.bola.toFixed(2)+' USD / $'+(st.bola * u).toFixed(0)+' MXN ('+st.max_entradas+' bolas) = $'+st.capital.toFixed(2)+' / '+st.max_entradas;
+    document.getElementById('bola_line').innerText='$'+bola_real.toFixed(2)+' USD / $'+(bola_real * u).toFixed(0)+' MXN ('+st.max_entradas+' bolas) = $'+total_real.toFixed(2)+' / '+st.max_entradas;
   }catch(e){}
 }
 function updateMaxOptions(){
@@ -88,20 +92,25 @@ async function load(){
  window.lastState = st;
  let usd_mxn_to_use = LIVE_USDMXN || st.usd_mxn;
  if(!LIVE_USDMXN){
-   document.getElementById('usdmxn').innerText=st.usd_mxn;
+   document.getElementById('usdmxn').innerText=(st.usd_mxn||0).toFixed(4);
    document.getElementById('usdmxn_time').innerText='• backend';
+   document.getElementById('usdmxn').style.color='#888';
  }
- document.getElementById('disp_usd').innerText='$'+st.disponible_usd.toFixed(2);
- document.getElementById('disp_mxn').innerText='$'+(st.disponible_usd * usd_mxn_to_use).toFixed(0)+' MXN';
- document.getElementById('bloq_info').innerText='Bloq: $'+st.bloqueado_usd.toFixed(2)+' en '+(st.pos_long.length+st.pos_short.length);
- document.getElementById('total_usd').innerText='$'+st.capital.toFixed(2);
- document.getElementById('total_mxn').innerText='$'+(st.capital*usd_mxn_to_use).toFixed(0)+' MXN';
- document.getElementById('pct_top').innerText=st.pct_mes.toFixed(1)+'% - $'+st.gan_mes.toFixed(2)+' USD';
- document.getElementById('acum_usd').innerText='$'+st.gan_acum.toFixed(2);
- document.getElementById('acum_mxn').innerText='$'+(st.gan_acum * usd_mxn_to_use).toFixed(0);
- document.getElementById('bola_line').innerText='$'+st.bola.toFixed(2)+' USD / $'+(st.bola * usd_mxn_to_use).toFixed(0)+' MXN ('+st.max_entradas+' bolas) = $'+st.capital.toFixed(2)+' / '+st.max_entradas;
- let neto = (st.tp - st.fee_total).toFixed(1);
- document.getElementById('winline').innerText=st.ganadas+'Win '+st.winrate.toFixed(0)+'% NETO '+neto+'% ('+st.tp+'% bruto)';
+ // FIX TOTAL REAL - SUMA DE LOS 2 ANTERIORES
+ let total_real = (st.disponible_usd||0) + (st.bloqueado_usd||0) + (st.gan_acum||0);
+ let bola_real = total_real / (st.max_entradas||1);
+
+ document.getElementById('disp_usd').innerText='$'+(st.disponible_usd||0).toFixed(2);
+ document.getElementById('disp_mxn').innerText='$'+((st.disponible_usd||0) * usd_mxn_to_use).toFixed(0)+' MXN';
+ document.getElementById('bloq_info').innerText='Bloq: $'+(st.bloqueado_usd||0).toFixed(2)+' en '+((st.pos_long?.length||0)+(st.pos_short?.length||0));
+ document.getElementById('total_usd').innerText='$'+total_real.toFixed(2);
+ document.getElementById('total_mxn').innerText='$'+(total_real*usd_mxn_to_use).toFixed(0)+' MXN';
+ document.getElementById('pct_top').innerText=(st.pct_mes||0).toFixed(1)+'% - $'+(st.gan_mes||0).toFixed(2)+' USD';
+ document.getElementById('acum_usd').innerText='$'+(st.gan_acum||0).toFixed(2);
+ document.getElementById('acum_mxn').innerText='$'+((st.gan_acum||0) * usd_mxn_to_use).toFixed(0);
+ document.getElementById('bola_line').innerText='$'+bola_real.toFixed(2)+' USD / $'+(bola_real * usd_mxn_to_use).toFixed(0)+' MXN ('+st.max_entradas+' bolas) = $'+total_real.toFixed(2)+' / '+st.max_entradas;
+ let neto = ((st.tp||0) - (st.fee_total||0)).toFixed(1);
+ document.getElementById('winline').innerText=(st.ganadas||0)+'Win '+(st.winrate||0).toFixed(0)+'% NETO '+neto+'% ('+(st.tp||0)+'% bruto)';
  document.getElementById('tp').value=st.tp; document.getElementById('sl').value=st.sl_pct; document.getElementById('rsi_v').value=st.rsi_venta; document.getElementById('ema').value=st.filtro_ema; document.getElementById('rsi_c').value=st.rsi_compra;
  document.getElementById('modo').value=st.modo||'AMBOS';
  document.getElementById('modo_line').innerText= 'MODO: '+(st.modo||'AMBOS');
@@ -128,16 +137,16 @@ async function load(){
  <div class="set-row"><input id="rsi_${c}" value="${p.limite}"><button class="set" onclick="setRsi('${c}')">SET</button><button class="reset" onclick="resetRsi('${c}')">RESET</button></div>
  <div class="robot">🤖 ROBOT ${st.auto?'ON':'OFF'}</div><button class="grafica" onclick="window.open('/chart/${c}','_blank')">GRÁFICA</button></div>`; }
  document.getElementById('coins').innerHTML=h;
- let pt=''; if(st.pos.length==0) pt='<tr><td colspan="6">Sin posiciones</td></tr>';
+ let pt=''; if(!st.pos || st.pos.length==0) pt='<tr><td colspan="6">Sin posiciones</td></tr>';
  else st.pos.forEach(p=>{
    let tipo = p.tipo|| (p.sym.includes('SHORT')? 'SHORT' : 'LONG');
    let colTipo = tipo==='SHORT'? '#f87171' : '#22c55e';
    pt+=`<tr><td>${p.sym.replace(' SHORT','').replace(' LONG','')}</td><td style="color:${colTipo};font-weight:900">${tipo}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td style="color:${p.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${p.gan_neta_pct.toFixed(2)}%</td><td><button onclick="sell('${p.sym.replace(' LONG','').replace(' SHORT','')}')" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">Vender</button></td></tr>`;
  });
  document.getElementById('pos_table').innerHTML=pt;
- let ht=''; st.historial.slice(-30).reverse().forEach(x=>{ ht+=`<tr><td>${x.fecha}</td><td>${x.sym}</td><td>$${x.monto.toFixed(2)}</td><td>${x.entry.toFixed(2)}->${x.exit.toFixed(2)}</td><td style="color:${x.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${x.gan_neta_pct.toFixed(2)}%</td><td style="color:#22c55e">$${x.gan_neta_mxn.toFixed(2)}</td><td>$${x.capital_despues.toFixed(2)}</td><td>$${x.bola_despues.toFixed(2)}</td></tr>`; });
+ let ht=''; (st.historial||[]).slice(-30).reverse().forEach(x=>{ ht+=`<tr><td>${x.fecha}</td><td>${x.sym}</td><td>$${x.monto.toFixed(2)}</td><td>${x.entry.toFixed(2)}->${x.exit.toFixed(2)}</td><td style="color:${x.gan_neta_pct>=0?'#22c55e':'#ef4444'}">${x.gan_neta_pct.toFixed(2)}%</td><td style="color:#22c55e">$${x.gan_neta_mxn.toFixed(2)}</td><td>$${x.capital_despues.toFixed(2)}</td><td>$${x.bola_despues.toFixed(2)}</td></tr>`; });
  document.getElementById('hist_table').innerHTML=ht;
- let labels=st.capital_history.map(x=>new Date(x.t).toLocaleTimeString()); let caps=st.capital_history.map(x=>x.cap); let bolas=st.capital_history.map(x=>x.cap/st.max_entradas);
+ let labels=(st.capital_history||[]).map(x=>new Date(x.t).toLocaleTimeString()); let caps=(st.capital_history||[]).map(x=>x.cap); let bolas=(st.capital_history||[]).map(x=>x.cap/(st.max_entradas||1));
  if(ch) ch.destroy();
  ch=new Chart(document.getElementById('chart'),{type:'line',data:{labels:labels,datasets:[{label:'Capital USD',data:caps,borderColor:'#22c55e',backgroundColor:'#22c55e22',fill:true},{label:'Bola USD',data:bolas,borderColor:'#facc15',borderDash:[5][5]}]},options:{plugins:{legend:{labels:{color:'#fff'}}},scales:{x:{ticks:{color:'#666'}},y:{ticks:{color:'#666'}}}}});
 }
@@ -171,6 +180,6 @@ async function restoreFile(input){
 }
 setInterval(load,3000); load();
 fetchLiveUsdMxn();
-setInterval(fetchLiveUsdMxn, 5*60*1000);
+setInterval(fetchLiveUsdMxn, 60*1000);
 </script>
 </body></html>
