@@ -202,7 +202,7 @@ def es_horario_mt5():
  except:
   return True
  @app.route('/',methods=['GET','POST'])
-@app.route('/webhook',methods=['GET','POST'])
+ @app.route('/webhook',methods=['GET','POST'])
 def webhook():
  if request.method=='GET':
   return 'BOT V7 DOBLE CEREBRO 500+500 OK',200
