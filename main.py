@@ -46,24 +46,34 @@ def tg_send(text):
  try: requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": text}, timeout=5)
  except: pass
 
+def safe_html(filename):
+    # Si no existe, regresa index.html para no crashear
+    try:
+        if os.path.exists(filename):
+            with open(filename,"r", encoding="utf-8") as f: return HTMLResponse(f.read())
+    except: pass
+    with open("index.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
+
 @app.get("/")
 async def index():
- try:
-  with open("dual_v5.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
- except:
-  with open("index.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
+ return safe_html("index.html")
 
 @app.get("/dual_v5.html")
 async def dual_v5_page():
- with open("dual_v5.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
+ # YA NO TRUENA SI LO BORRASTE, REDIRIGE A INDEX VIVA
+ return safe_html("index.html")
 
 @app.get("/dashboard")
 async def dash():
- with open("dashboard.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
+ return safe_html("dashboard.html")
+
+@app.get("/dashboard.html")
+async def dash_html():
+ return safe_html("dashboard.html")
 
 @app.get("/dashboard_mt5.html")
 async def dash_mt5():
- with open("dashboard_mt5.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
+ return safe_html("dashboard_mt5.html")
 
 @app.get("/api/state")
 async def state(): return load()
@@ -153,8 +163,7 @@ async def buy_mt5(sym:str, req:Request):
 
 @app.post("/api/sell/{sym}")
 async def sell(sym:str, req:Request=None):
- s=load()
- data={}
+ s=load(); data={}
  try:
   if req: data=await req.json()
  except: pass
@@ -173,8 +182,7 @@ async def sell(sym:str, req:Request=None):
 
 @app.post("/api/sell_mt5/{sym}")
 async def sell_mt5(sym:str, req:Request=None):
- s=load()
- data={}
+ s=load(); data={}
  try:
   if req: data=await req.json()
  except: pass
@@ -207,12 +215,11 @@ async def telegram_webhook(req: Request):
   chat_id = msg.get("chat", {}).get("id")
   if not chat_id: return {"ok": True}
   s=load(); s["last_chat_id"]=chat_id; save(s)
-  # --- SOLO 1 LINK DUAL V5 ---
   if "DASHBOARD" in text:
-   reply = f"{RENDER_URL}/dual_v5.html"
+   # AHORA APUNTA A INDEX VIVA, NO A DUAL_V5.HTML QUE BORRASTE
+   reply = f"{RENDER_URL}/"
   else:
    reply = "Comandos: DASHBOARD"
-  # ---------------------------
   if BOT_TOKEN:
    requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": reply}, timeout=5)
   return {"ok": True}
