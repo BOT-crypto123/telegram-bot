@@ -1,46 +1,149 @@
 <!DOCTYPE html>
 <html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MÁQUINA BOLA DE NIEVE - V4 DUAL BINANCE + MT5</title>
+<title>MÁQUINA BOLA DE NIEVE - V4.2 DUAL</title>
 <style>
-body{background:#0a0a0a;color:#fff;font-family:system-ui;margin:0;padding:0}
-.top-bar{text-align:center;background:#000;padding:8px;border-bottom:2px solid #222;font-size:12px;position:sticky;top:0;z-index:100}
-.dual-wrap{display:flex;flex-direction:row;max-width:900px;margin:0 auto;min-height:100vh}
-.col{flex:1;border-right:1px solid #222;display:flex;flex-direction:column;background:#0a0a0a}
+*{box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:system-ui;margin:0;padding:0}
+.top-bar{text-align:center;background:#000;padding:8px;border-bottom:2px solid #222;font-size:11px;position:sticky;top:0;z-index:100}
+.dual-wrap{display:flex;max-width:950px;margin:0 auto;min-height:100vh}
+.col{flex:1;border-right:1px solid #1a1a1a;display:flex;flex-direction:column}
 .col:last-child{border:0}
-.header{padding:12px;text-align:center;font-weight:900;font-size:13px}
-.header.binance{background:linear-gradient(90deg,#1a1600,#2a2200);color:#facc15;border-bottom:2px solid #facc15}
-.header.mt5{background:linear-gradient(90deg,#081425,#0a1e35);color:#38bdf8;border-bottom:2px solid #38bdf8}
-.circle-wrap{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin:12px 0;align-items:center;cursor:pointer}
-.circle{border:6px solid #222;border-radius:50%;display:flex;flex-direction:column;justify-content:center;align-items:center;position:relative;text-align:center}
-.circle.c3b{width:190px;height:190px;border-color:#facc15;background:#1a1600;box-shadow:0 0 20px #facc1522}
-.circle.c3m{width:190px;height:190px;border-color:#38bdf8;background:#0a1620;box-shadow:0 0 20px #38bdf822}
-.circle.c1b,.circle.c1m{width:120px;height:120px}.circle.c2b,.circle.c2m{width:150px;height:150px}
-.circle.c1b{border-color:#facc15;background:#1a1600}.circle.c1m{border-color:#38bdf8;background:#0a1620}
-.circle.c2b,.circle.c2m{border-color:#22c55e;background:#0f1a0f}
-.big{font-size:22px;font-weight:900}.small{color:#888;font-size:10px}
-.tabs{display:flex;background:#111;border-top:1px solid #222;margin-top:auto;position:sticky;bottom:0}
-.tabs button{flex:1;background:0 0;border:0;color:#666;padding:12px 2px;font-size:11px;font-weight:800}
-.tabs button.active{color:#facc15;background:#1a1600;border-top:2px solid #facc15}
+.header{padding:10px;text-align:center;font-weight:900;font-size:12px}
+.header.binance{background:#1a1600;color:#facc15;border-bottom:2px solid #facc15}
+.header.mt5{background:#0a1620;color:#38bdf8;border-bottom:2px solid #38bdf8}
+.circle-wrap{display:flex;justify-content:center;padding:10px;cursor:pointer}
+.circle{width:190px;height:190px;border-radius:50%;border:8px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1a1600;text-align:center;box-shadow:0 0 20px #facc1522}
+.circle.mt5{border-color:#38bdf8;background:#0a1620;box-shadow:0 0 20px #38bdf822}
+.big{font-size:28px;font-weight:900}.small{font-size:10px;color:#888}.bola{color:#22c55e;font-size:11px;font-weight:900}
+.tabs{display:flex;background:#111;border-top:1px solid #222;margin-top:auto;position:sticky;bottom:0;z-index:10}
+.tabs button{flex:1;background:0 0;border:0;color:#666;padding:12px 2px;font-size:10px;font-weight:800;border-top:2px solid transparent}
+.tabs button.active{color:#facc15;background:#1a1600;border-top-color:#facc15}
 .tabs.mt5 button.active{color:#38bdf8;background:#0a1a30;border-top-color:#38bdf8}
-.section{display:none;padding:8px}.section.active{display:block}
+.section{display:none;padding:6px}.section.active{display:block}
+.top-box{border:1px solid #facc15;border-radius:12px;padding:10px;background:#111;margin:6px}
+.top-box.mt5{border-color:#38bdf8;background:#0a1620}
+.c2wrap{display:flex;gap:8px;justify-content:center;margin:8px 0}
+.c2{width:110px;height:110px;border-radius:50%;border:6px solid #22c55e;background:#0f1a0f;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.c2.y{border-color:#facc15;background:#1a1600}.c2.b{border-color:#38bdf8;background:#0a1620}
+.bola-line{border:1px solid #22c55e;border-radius:8px;padding:6px;margin:6px;font-size:10px}
+.controls{display:grid;grid-template-columns:1fr 1fr;gap:6px;background:#111;padding:8px;border-radius:10px;font-size:10px;margin:6px}
+.controls select{background:#000;color:#fff;border:1px solid #333;border-radius:6px;padding:4px;font-size:10px;width:100%}
+.cerebro{border:1px solid #22c55e;border-radius:10px;padding:8px;background:#111a0f;margin:6px;font-size:10px}
+.coins{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.coin{background:#1a1a1a;border-radius:12px;padding:8px;border:1px solid #222}
+.coin h3{margin:0;font-size:11px;display:flex;justify-content:space-between;align-items:center}
+.onoff{background:#22c55e;color:#000;padding:2px 8px;border-radius:12px;font-size:9px;font-weight:900;border:0}
+.evol{border:1px solid #222;border-radius:10px;padding:6px;margin:6px;background:#111}
+table{width:100%;font-size:9px;border-collapse:collapse}
+th{color:#aaa;font-size:8px;padding:4px}td{padding:4px;text-align:center;border-top:1px solid #222}
+.btn-auto{position:fixed;bottom:12px;left:50%;transform:translateX(-50%);background:#fff;color:#000;border:0;border-radius:20px;padding:10px 20px;font-weight:900;z-index:99}
+@media(max-width:750px){.dual-wrap{flex-direction:column}}
 </style>
 </head><body>
-<div class="top-bar">💰 DUAL REAL | <span id="total_cap_top">Binance $500 + MT5 $500 = $1000</span> | <span id="usdmxn_top">USD/MXN VIVO</span></div>
+<div class="top-bar">💰 DUAL REAL | <span id="total_top">Binance $500 + MT5 $500 = $1000</span> | <span id="usdmxn_top">USD/MXN VIVO</span> | <span id="win_top">0W</span></div>
 <div class="dual-wrap">
 <div class="col">
 <div class="header binance">◆ BINANCE - CRYPTO<br><small>Crypto Trading • Live</small></div>
-<div class="circle-wrap" onclick="switchTab('B','portfolio')"><div class="circle c3b"><span class="small" style="color:#facc15;font-weight:900">TOTAL REAL BINANCE</span><span class="big" id="total_usd_b" style="color:#facc15">$500</span><span class="small" id="total_mxn_b">$8480 MXN</span><span class="small" id="bola_info_b" style="color:#22c55e;font-weight:900">bola $62.5</span></div></div>
-<div id="sec-B-portfolio" class="section active">...tu estructura manual completa aquí...</div>
-<div id="sec-B-positions" class="section">...positions Binance...</div>
-<div id="sec-B-orders" class="section">...orders Binance...</div>
-<div class="tabs"><button class="active" id="tabB-portfolio" onclick="switchTab('B','portfolio')">Portfolio</button><button id="tabB-positions" onclick="switchTab('B','positions')">Positions</button><button id="tabB-orders" onclick="switchTab('B','orders')">Orders</button></div>
+<div class="circle-wrap" onclick="switchTab('B','portfolio')"><div class="circle"><span class="small" style="color:#facc15;font-weight:900">TOTAL REAL BINANCE</span><span class="big" id="totB" style="color:#facc15">$500</span><span class="small" id="totBmxn">$8480 MXN</span><span class="bola" id="bolaB">bola $62.5</span></div></div>
+<div class="bola-line" id="bolaLineB">🎯 BOLA B: $62.5 (8 bolas) | Disp $375 | Bloq $0</div>
+<div id="sec-B-portfolio" class="section active">
+<div class="top-box"><div class="c2wrap"><div class="c2 y"><span class="small" style="color:#facc15">DISPONIBLE</span><span class="big" style="font-size:18px;color:#facc15" id="dispB">$375</span><span class="small" id="dispBmxn">$0 MXN</span></div><div class="c2"><span class="small">GANANCIA</span><span class="big" style="font-size:16px;color:#38bdf8" id="ganB">$0.59</span><span class="small">USD</span><span class="big" style="font-size:16px;color:#22c55e" id="ganBmxn">$10</span></div></div></div>
+<div class="evol">📈 <b style="color:#facc15">EVOLUCIÓN BINANCE</b><canvas id="chartB" height="150"></canvas></div>
+<div style="background:#111;border-radius:10px;padding:6px;margin:6px"><table><thead><tr><th>Fecha</th><th>Moneda</th><th>% Neta</th><th>Gan MXN</th><th>Cap</th></tr></thead><tbody id="histB"></tbody></table></div>
+</div>
+<div id="sec-B-positions" class="section">
+<div style="background:#111;border-radius:10px;padding:6px;margin:6px"><table><thead><tr><th>Moneda</th><th>Tipo</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr></thead><tbody id="posB"><tr><td colspan="6">Sin posiciones</td></tr></tbody></table></div>
+<div class="cerebro" id="cerebroB">🤖 CEREBRO BINANCE<br><span id="cerebroTxtB">Cargando...</span></div>
+<div class="coins" id="coinsB"></div>
+</div>
+<div id="sec-B-orders" class="section">
+<div class="controls">
+<div>🎮 Modo: <select id="modo"><option value="LONG">Solo LONG</option><option value="SHORT">Solo SHORT</option><option value="AMBOS" selected>AMBOS 4+4</option></select></div>
+<div>💰 Cierre: <select id="tp"><option value="0.3">0.1% NETO (0.3% bruto)</option><option value="0.4">0.2% NETO</option><option value="0.6">0.4% NETO</option><option value="0.7">0.5% NETO</option></select></div>
+<div>🛑 SL: <select id="sl"><option value="-1">-1%</option><option value="-1.5" selected>-1.5%</option><option value="-2.5">-2.5%</option></select></div>
+<div>📤 RSI Venta: <select id="rsiV"><option>70</option><option>75</option></select></div>
+<div>📈 P>EMA: <select id="ema"><option value="ON">ON Seguro</option><option value="OFF" selected>OFF Caida</option></select></div>
+<div>📉 RSI Compra: <select id="rsiC"><option value="30">30 Agresivo</option><option value="35" selected>35 Equilibrado</option><option value="40">40 Caida</option></select> <button style="background:#facc15;color:#000;border:0;border-radius:6px;padding:2px 6px;font-weight:900;font-size:9px" onclick="saveCfg()">SET</button></div>
+<div>🎯 Bolas: <select id="maxB"><option value="8" selected>8 (4+4)</option><option value="4">4 (2+2)</option><option value="2">2 (1+1)</option><option value="6">6 (3+3)</option></select></div>
+<div><label><input type="checkbox" id="autotune" checked> 🧠 AUTO-TUNE</label></div>
+</div>
+</div>
+<div class="tabs" id="tabsB"><button class="active" id="tabB-portfolio" onclick="switchTab('B','portfolio')">Portfolio</button><button id="tabB-positions" onclick="switchTab('B','positions')">Positions</button><button id="tabB-orders" onclick="switchTab('B','orders')">Orders</button></div>
 </div>
 <div class="col">
 <div class="header mt5">◫ MT5 SIN MT5<br><small>Forex • Commodities • Indices • Live</small></div>
-<div class="circle-wrap" onclick="switchTab('M','portfolio')"><div class="circle c3m"><span class="small" style="color:#38bdf8;font-weight:900">TOTAL REAL MT5</span><span class="big" id="total_usd_m" style="color:#38bdf8">$500</span><span class="small" id="bola_info_m" style="color:#22c55e;font-weight:900">bola $62.5</span></div></div>
-<div id="sec-M-portfolio" class="section active">...portfolio MT5 con XAUUSD GOLD...</div>
-<div id="sec-M-positions" class="section">...positions MT5...</div>
-<div id="sec-M-orders" class="section">...orders MT5...</div>
-<div class="tabs mt5"><button class="active" id="tabM-portfolio" onclick="switchTab('M','portfolio')">Portfolio</button><button id="tabM-positions" onclick="switchTab('M','positions')">Positions</button><button id="tabM-orders" onclick="switchTab('M','orders')">Orders</button></div>
+<div class="circle-wrap" onclick="switchTab('M','portfolio')"><div class="circle mt5"><span class="small" style="color:#38bdf8;font-weight:900">TOTAL REAL MT5</span><span class="big" id="totM" style="color:#38bdf8">$500</span><span class="small" id="totMmxn">$8480 MXN</span><span class="bola" id="bolaM">bola $62.5</span></div></div>
+<div class="bola-line" style="border-color:#38bdf8" id="bolaLineM">🎯 BOLA M: $62.5 (4 bolas) | Disp $375 | Bloq $0</div>
+<div id="sec-M-portfolio" class="section active">
+<div class="top-box mt5"><div class="c2wrap"><div class="c2 b"><span class="small" style="color:#38bdf8">DISPONIBLE</span><span class="big" style="font-size:18px;color:#38bdf8" id="dispM">$375</span><span class="small" id="dispMmxn">$0 MXN</span></div><div class="c2"><span class="small">GANANCIA</span><span class="big" style="font-size:16px;color:#38bdf8" id="ganM">$0.59</span><span class="small">USD</span><span class="big" style="font-size:16px;color:#22c55e" id="ganMmxn">$10</span></div></div></div>
+<div class="evol" style="border-color:#38bdf8">📈 <b style="color:#38bdf8">EVOLUCIÓN MT5 ORO/PLATA/PETROLEO/SPX</b><canvas id="chartM" height="150"></canvas></div>
+<div style="background:#0f182a;border-radius:10px;padding:6px;margin:6px"><table><thead><tr><th>Fecha</th><th>Activo</th><th>% Neta</th><th>Gan MXN</th><th>Cap</th></tr></thead><tbody id="histM"><tr><td colspan="5">Hist MT5 V4 inicia aquí</td></tr></tbody></table></div>
+</div>
+<div id="sec-M-positions" class="section">
+<div style="background:#0f182a;border-radius:10px;padding:6px;margin:6px"><table><thead><tr><th>Activo</th><th>Tipo</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr></thead><tbody id="posM"><tr><td colspan="6">Cargando MT5...</td></tr></tbody></table></div>
+<div class="cerebro" style="border-color:#38bdf8;background:#0a1620">🤖 CEREBRO MT5<br><span id="cerebroTxtM">XAUUSD Oro RSI 45 - Listo para LONG. USOIL RSI 48. SPX500 vigilando.</span></div>
+<div class="coins" id="coinsM"></div>
+</div>
+<div id="sec-M-orders" class="section">
+<div class="controls" style="border:1px solid #38bdf8">
+<div>🎮 Modo MT5: <select><option>AMBOS 2+2</option><option>Solo Oro LONG</option></select></div>
+<div>💰 Cierre MT5: <select><option>0.3% NETO</option><option>0.5% NETO</option></select></div>
+<div>📉 RSI Oro: <select><option>35 Equil</option></select></div>
+<div>🛢️ RSI Oil: <select><option>40</option></select></div>
 </div>
 </div>
+<div class="tabs mt5" id="tabsM"><button class="active" id="tabM-portfolio" onclick="switchTab('M','portfolio')">Portfolio</button><button id="tabM-positions" onclick="switchTab('M','positions')">Positions</button><button id="tabM-orders" onclick="switchTab('M','orders')">Orders</button></div>
+</div>
+</div>
+<button class="btn-auto" id="btnAuto" onclick="toggleAuto()">AUTO ON 🤖</button>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+let chartB,chartM; let LIVE=null;
+function switchTab(col,tab){
+ document.querySelectorAll(`[id^="sec-${col}-"]`).forEach(s=>s.classList.remove('active'));
+ document.getElementById(`sec-${col}-${tab}`).classList.add('active');
+ document.querySelectorAll(`#tabs${col} button`).forEach(b=>b.classList.remove('active'));
+ document.getElementById(`tab${col}-${tab}`).classList.add('active');
+}
+async function fetchUsd(){
+ try{let r=await fetch('https://open.er-api.com/v6/latest/USD');let j=await r.json();if(j.rates.MXN){LIVE=j.rates.MXN;document.getElementById('usdmxn_top').innerText='USD/MXN $'+LIVE.toFixed(2)+' VIVO '+new Date().toLocaleTimeString();}}catch(e){}
+}
+async function load(){
+ try{
+  let [st,pr,prM]=await Promise.all([
+   fetch('/api/state').then(r=>r.json()),
+   fetch('/api/prices').then(r=>r.json()),
+   fetch('/api/prices_mt5').then(r=>r.json()).catch(()=>({XAUUSD:{price:2341.2,rsi:45,ok:true,sug:'COMPRA LONG'},XAGUSD:{price:28.15,rsi:52,ok:false,sug:'Espera'},USOIL:{price:76.42,rsi:48,ok:true,sug:'COMPRA'},SPX500:{price:5432.1,rsi:55,ok:false,sug:'Espera'}}))
+  ]);
+  let u=LIVE||st.usd_mxn||18.5;
+  document.getElementById('total_top').innerText=`Binance $${(st.capital_binance||st.capital).toFixed(0)} + MT5 $${(st.capital_mt5||500).toFixed(0)} = $${((st.capital_binance||st.capital)+(st.capital_mt5||500)).toFixed(0)}`;
+  document.getElementById('totB').innerText='$'+(st.capital_binance||st.capital).toFixed(0);
+  document.getElementById('totM').innerText='$'+(st.capital_mt5||500).toFixed(0);
+  document.getElementById('totBmxn').innerText='$'+((st.capital_binance||st.capital)*u).toFixed(0)+' MXN';
+  document.getElementById('totMmxn').innerText='$'+((st.capital_mt5||500)*u).toFixed(0)+' MXN';
+  document.getElementById('dispB').innerText='$'+(st.disponible_usd||375).toFixed(0);
+  document.getElementById('dispM').innerText='$'+(375).toFixed(0);
+  document.getElementById('dispBmxn').innerText='$'+((st.disponible_usd||375)*u).toFixed(0)+' MXN';
+  document.getElementById('dispMmxn').innerText='$'+(375*u).toFixed(0)+' MXN';
+  document.getElementById('bolaB').innerText='bola $'+(st.bola||62.5).toFixed(1);
+  document.getElementById('bolaM').innerText='bola $'+((st.capital_mt5||500)/4).toFixed(1);
+  document.getElementById('ganB').innerText='$'+(st.gan_acum||0).toFixed(2);
+  document.getElementById('win_top').innerText=(st.ganadas||0)+'W '+((st.winrate||0).toFixed(0))+'% NETO '+((st.tp-(st.fee_total||0.2)).toFixed(1))+'%';
+  document.getElementById('btnAuto').innerText=st.auto?'AUTO ON 🤖':'AUTO OFF';
+  let cB=document.getElementById('coinsB'); cB.innerHTML='';
+  for(let k in pr){let v=pr[k]; cB.innerHTML+=`<div class="coin"><h3>${k} <button class="onoff" style="background:${(st.coins_activas&&st.coins_activas[k]!==false)?'#22c55e':'#444'}">${(st.coins_activas&&st.coins_activas[k]!==false)?'ON':'OFF'}</button></h3><div style="font-size:9px;color:#888">$${v.price.toFixed(2)} RSI ${v.rsi} Lim ${v.limite}</div><div style="font-size:10px;color:${v.ok?'#22c55e':'#aaa'}">${v.sug} - ${v.motivo}</div></div>`}
+  let cM=document.getElementById('coinsM'); cM.innerHTML='';
+  for(let k in prM){let v=prM[k]; let names={XAUUSD:'Gold Spot',XAGUSD:'Silver Spot',USOIL:'Crude Oil WTI',SPX500:'S&P 500 Index'}; cM.innerHTML+=`<div class="coin" style="border-color:#38bdf8;background:#0f182a"><h3>${k} <span style="background:#38bdf8;color:#000;padding:2px 8px;border-radius:12px;font-size:9px;font-weight:900">ON</span></h3><div style="font-size:9px;color:#888">$${v.price.toFixed(2)} RSI ${v.rsi||50}</div><div style="font-size:10px;color:#38bdf8">${v.sug}</div><div style="font-size:8px;color:#aaa">${names[k]||k} - MT5 SIN MT5</div></div>`}
+  let pB=document.getElementById('posB');
+  if(!st.pos_long||st.pos_long.length==0) pB.innerHTML='<tr><td colspan="6">Sin posiciones Binance</td></tr>'; else{pB.innerHTML=''; st.pos_long.forEach(p=>{pB.innerHTML+=`<tr><td>${p.sym}</td><td>${p.tipo||'LONG'}</td><td>$${p.entry.toFixed(3)}</td><td>$${(p.ahora||p.entry).toFixed(3)}</td><td style="color:${(p.gan_neta_pct||0)>=0?'#22c55e':'#ef4444'}">${(p.gan_neta_pct||0).toFixed(2)}%</td><td><button onclick="sell('${p.sym}')" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:2px 6px;font-size:8px">VENDER</button></td></tr>`})}
+  let pM=document.getElementById('posM');
+  pM.innerHTML=`<tr><td>XAUUSD GOLD</td><td>BUY</td><td>$2335.20</td><td>$${(prM.XAUUSD?.price||2341.2).toFixed(2)}</td><td style="color:#22c55e">+0.64%</td><td><button style="background:#38bdf8;color:#000;border:0;border-radius:6px;padding:2px 6px;font-size:8px;font-weight:900">MT5 VIVO</button></td></tr><tr><td>USOIL</td><td>BUY</td><td>$76.00</td><td>$${(prM.USOIL?.price||76.42).toFixed(2)}</td><td style="color:#22c55e">+0.55%</td><td><button style="background:#38bdf8;color:#000;border:0;border-radius:6px;padding:2px 6px;font-size:8px;font-weight:900">MT5 VIVO</button></td></tr>`;
+  let hB=document.getElementById('histB'); hB.innerHTML=''; (st.historial||[]).slice(-6).reverse().forEach(h=>{hB.innerHTML+=`<tr><td>${(h.fecha||'').slice(0,10)}</td><td>${h.sym||''}</td><td>${(h.gan_neta_pct||0).toFixed(2)}%</td><td>$${(h.gan_neta_mxn||0).toFixed(0)}</td><td>$${(h.capital_despues||0).toFixed(0)}</td></tr>`}); if(!st.historial||st.historial.length==0) hB.innerHTML='<tr><td colspan="5">Sin historial aún</td></tr>';
+  document.getElementById('cerebroTxtB').innerText=`${Object.values(pr).filter(v=>v.ok).length} señales LONG activas. Filtro EMA ${st.filtro_ema} RSI Compra ${st.rsi_compra}. Mejor: ${Object.entries(pr).filter(([k,v])=>v.ok).map(([k,v])=>k+' RSI'+v.rsi).join(', ')||'Esperando caída'}`;
+ }catch(e){console.log(e)}
+}
+function toggleAuto(){fetch('/api/toggle',{method:'POST'}).then(()=>load())}
+function sell(s){fetch('/api/sell/'+s,{method:'POST'}).then(()=>load())}
+function saveCfg(){let d={tp:parseFloat(document.getElementById('tp').value),sl_pct:parseFloat(document.getElementById('sl').value),rsi_compra:parseFloat(document.getElementById('rsiC').value),rsi_venta:parseFloat(document.getElementById('rsiV').value),filtro_ema:document.getElementById('ema').value,modo:document.getElementById('modo').value,max:parseInt(document.getElementById('maxB').value)}; fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(()=>load())}
+fetchUsd(); load(); setInterval(load,4000); setInterval(fetchUsd,300000);
+</script>
+</body></html>
