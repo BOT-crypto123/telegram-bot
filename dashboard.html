@@ -5,19 +5,9 @@
 <div class="circle c1"><div class="lab" style="color:#facc15">DISPONIBLE<br>Arriba Chico</div><div class="val" id="disp">$500</div><div class="sub" id="disp_mxn">$8483 MXN</div><div class="subb" id="bloq">Bloq: $0 en 0</div></div>
 <div class="circle c2"><div class="lab">GANANCIA<br>Medio</div><div class="val" id="gan">$0</div><div class="sub">USD</div><div class="val" style="font-size:22px;color:#22c55e" id="gan_mxn">$0</div><div class="sub">MXN</div></div>
 <div class="circle c3"><div class="lab" style="color:#38bdf8">TOTAL REAL<br>Abajo Grande</div><div class="val" id="total">$500.17</div><div class="sub" id="total_mxn">$8483 MXN</div><div class="sub" id="total_pct">0.0% - $0.00 USD</div></div>
-<div class="box"><div>🎯 BOLA:</div><b id="bola_info">$62.50 USD / $1060 MXN (8 bolas) = $500.00 / 8</b><div style="color:#facc15;font-size:11px" id="bola_det">(4 LONG + 4 SHORT)</div><div style="margin-top:6px;font-size:11px">USD/MXN $16.96 / 0Win 0% NETO 0.1% (0.3% bruto) / <span style="color:#38bdf8" id="modo_txt">MODO: AMBOS</span></div></div>
-<div class="box2"><div style="display:flex;gap:8px"><div style="flex:1">🎮 Modo:<select id="modo" onchange="cambioModo()"><option value="AMBOS" selected>AMBOS 4+4</option><option value="LONG">SOLO LONG</option><option value="SHORT">SOLO SHORT</option></select></div><div style="flex:1">💰 Cierre:<select id="cierre"><option>0.1% NETO (0.3% bruto)</option><option>0.3% NETO</option><option>0.5% NETO</option></select></div></div><div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">🛑 SL:<select id="sl"><option>-2.5%</option><option>-5%</option><option>-10%</option></select></div><div style="flex:1">📤 RSI Venta:<select><option>70</option></select></div></div><div style="margin-top:8px">📈 P>EMA:<select><option>OFF Caida</option><option>ON</option></select></div><div style="margin-top:8px">📉 RSI Compra Global: <select id="rsi"><option>40 Caida</option></select> <button class="y" style="width:60px">SET</button></div>
-<div style="margin-top:12px;background:#0a1a0a;border:1px solid #22c55e;border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div style="color:#22c55e;font-weight:900" id="auto_lab">🧠 AUTO-TUNE ON</div><div style="font-size:11px;opacity:.6" id="auto_desc">ON: Robot hace solo los ajustes</div></div><input type="checkbox" id="auto_tune" checked onchange="toggleAuto()" style="width:22px;height:22px"></div>
-<div style="margin-top:8px">🎯 Bolas Totales: <select id="bolas" onchange="cambioBolas()"></select></div></div>
-<div class="box" style="border-color:#22c55e"><div>🤖 CEREBRO DEL ROBOT - QUÉ ES LO MEJOR HOY</div><div id="cerebro" style="font-size:11px;white-space:pre-line">CAIDA FUERTE 8/8 bajo EMA
-LO MEJOR HOY:
-• SL: -2% o -3%
-• RSI Venta: 70 | Compra: 40
-• Filtro P>EMA: OFF + SHORT activo
-Si lo dejas ON no va a comprar LONG, pero SHORT sí.
-
-Por moneda:
-Cargando RSI...</div></div>
+<div class="box"><div>🎯 BOLA:</div><b id="bola_info">$62.50 USD / $1060 MXN (8 bolas) = $500.00 / 8</b><div style="color:#facc15;font-size:11px" id="bola_det">(4 LONG + 4 SHORT)</div><div style="margin-top:6px;font-size:11px">USD/MXN $16.96 / <span id="cierre_txt">0.1% NETO</span> / <span style="color:#38bdf8" id="modo_txt">MODO: AMBOS</span></div></div>
+<div class="box2"><div style="display:flex;gap:8px"><div style="flex:1">🎮 Modo:<select id="modo" onchange="cambioModo()"><option value="AMBOS" selected>AMBOS 4+4</option><option value="LONG">SOLO LONG</option><option value="SHORT">SOLO SHORT</option></select></div><div style="flex:1">💰 Cierre %:<div style="display:flex;gap:4px"><input type="number" id="cierre" value="0.1" step="0.05"><button class="y" style="width:45px;margin:0" onclick="guardar()">SET</button></div></div></div><div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">🛑 SL %:<div style="display:flex;gap:4px"><input type="number" id="sl" value="-2.5" step="0.1"><button class="y" style="width:45px;margin:0" onclick="guardar()">SET</button></div></div><div style="flex:1">📤 RSI Venta:<div style="display:flex;gap:4px"><input type="number" id="rsi_v" value="70" step="1"><button class="y" style="width:45px;margin:0" onclick="guardar()">SET</button></div></div></div><div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">📈 P>EMA:<select id="ema" onchange="guardar()"><option>OFF Caida</option><option>ON</option></select></div><div style="flex:1">📉 RSI Compra:<div style="display:flex;gap:4px"><input type="number" id="rsi_c" value="40" step="1"><button class="y" style="width:45px;margin:0" onclick="guardar()">SET</button></div></div></div><div style="margin-top:12px;background:#0a1a0a;border:1px solid #22c55e;border-radius:10px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div style="color:#22c55e;font-weight:900" id="auto_lab">🧠 AUTO-TUNE ON</div><div style="font-size:11px;opacity:.6" id="auto_desc">ON: Robot mueve SL -1/-2/-3 y RSI 40/45/50 solo</div></div><input type="checkbox" id="auto_tune" checked onchange="toggleAuto()" style="width:22px;height:22px"></div><div style="margin-top:8px">🎯 Bolas Totales: <select id="bolas" onchange="cambioBolas()"></select></div></div>
+<div class="box" style="border-color:#22c55e"><div>🤖 CEREBRO DEL ROBOT</div><div id="cerebro" style="font-size:11px;white-space:pre-line">Cargando RSI...</div></div>
 <div id="coins" class="grid"></div>
 <div class="box2"><div style="color:#facc15;font-weight:900">📈 EVOLUCIÓN CAPITAL</div><canvas id="chart" height="120"></canvas></div>
 <div class="box2"><table id="pos"><tr><th>Moneda</th><th>Tipo</th><th>Entry</th><th>Ahora</th><th>Neta</th><th>Acción</th></tr><tr><td colspan=6 style="text-align:center;opacity:.4">Sin posiciones</td></tr></table></div>
@@ -40,7 +30,7 @@ function llenarBolas(){
   for(let i=1;i<=8;i++){ let o=document.createElement('option'); o.value=i; o.text=`${i} SHORT`; if(i==8) o.selected=true; sel.appendChild(o); }
  }
 }
-function cambioModo(){ llenarBolas(); cambioBolas(); }
+function cambioModo(){ llenarBolas(); cambioBolas(); guardar(); }
 function cambioBolas(){
  let sel=document.getElementById('bolas'); if(!sel.options.length) return;
  let opt=sel.options[sel.selectedIndex]; let total=parseInt(opt.value);
@@ -49,15 +39,21 @@ function cambioBolas(){
  document.getElementById('bola_info').innerText=`$${bola} USD / $${bolaMXN} MXN (${total} bolas) = $${capital.toFixed(2)} / ${total}`;
  if(modo==="AMBOS"){ document.getElementById('bola_det').innerText=`(${opt.dataset.l} LONG + ${opt.dataset.s} SHORT)`; document.getElementById('modo_txt').innerText=`MODO: AMBOS ${opt.dataset.l}+${opt.dataset.s}`; }
  else { document.getElementById('bola_det').innerText=`(${total} ${modo})`; document.getElementById('modo_txt').innerText=`MODO: SOLO ${modo} ${total}`; }
- fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({modo:modo, bolas:total})});
+ guardar();
 }
 function toggleAuto(){
  let on=document.getElementById('auto_tune').checked;
  document.getElementById('auto_lab').innerText= on? '🧠 AUTO-TUNE ON' : '🧠 AUTO-TUNE OFF';
- document.getElementById('auto_desc').innerText= on? 'ON: Robot hace solo los ajustes que recomienda' : 'OFF: Solo recomienda en CEREBRO, tú ajustas manual';
- fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({auto_tune:on})});
+ document.getElementById('auto_desc').innerText= on? 'ON: Robot mueve SL -1/-2/-3 y RSI 40/45/50 solo' : 'OFF: Solo recomienda en CEREBRO, tú ajustas manual';
+ guardar();
 }
-async function load(){S=await fetch('/api/state').then(r=>r.json()); capital=(S.disponible_usd||500)+(S.bloqueado_usd||0)+(S.gan_acum||0);
+function guardar(){
+ let sel=document.getElementById('bolas'); let total=sel.options.length?parseInt(sel.options[sel.selectedIndex].value):8;
+ let data={modo:document.getElementById('modo').value,bolas:total,cierre:parseFloat(document.getElementById('cierre').value),sl:parseFloat(document.getElementById('sl').value),rsi_venta:parseInt(document.getElementById('rsi_v').value),rsi_compra:parseInt(document.getElementById('rsi_c').value),ema:document.getElementById('ema').value,auto_tune:document.getElementById('auto_tune').checked};
+ document.getElementById('cierre_txt').innerText=data.cierre+'% NETO';
+ fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+}
+async function load(){try{S=await fetch('/api/state').then(r=>r.json());}catch(e){S={}} capital=(S.disponible_usd||500)+(S.bloqueado_usd||0)+(S.gan_acum||0);
 let total=capital; let bloq=(S.bloqueado_usd||0);
 document.getElementById('disp').innerText='$'+(S.disponible_usd||0).toFixed(2);document.getElementById('disp_mxn').innerText='$'+((S.disponible_usd||0)*16.96).toFixed(0)+' MXN';document.getElementById('bloq').innerText='Bloq: $'+bloq.toFixed(2)+' en '+(S.pos||[]).length;
 document.getElementById('gan').innerText='$'+(S.gan_acum||0).toFixed(2);document.getElementById('gan_mxn').innerText='$'+((S.gan_acum||0)*16.96).toFixed(0);
