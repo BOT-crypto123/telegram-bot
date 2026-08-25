@@ -1,7 +1,60 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V6 REAL</title>
-<style>body{background:#000;color:#fff;font-family:system-ui;display:flex;min-height:100vh;margin:0}.col{flex:1;padding:15px;text-align:center}.b{border-right:1px solid #222}.cap{font-size:42px;font-weight:900}.bola{color:#facc15;font-weight:900}.bola2{color:#3b82f6;font-weight:900}.box{border:1px solid #222;border-radius:16px;padding:20px;margin-top:20px;background:#111}</style>
-</head><body>
-<div class="col b"><h3 style="color:#facc15">◆ BINANCE V6 REAL</h3><div class="box"><div style="color:#888">Capital</div><div class="cap" id="capB">$500.00</div><div>bola <span class="bola" id="bolaB">$62.50</span></div><div id="ganB" style="color:#22c55e;margin-top:10px">+$0.00</div></div><p style="color:#666;font-size:12px;margin-top:20px">Solo BTC + ETH - Sin merma</p></div>
-<div class="col"><h3 style="color:#3b82f6">📊 MT5 V6 REAL</h3><div class="box"><div style="color:#888">Capital</div><div class="cap" id="capM">$500.00</div><div>bola <span class="bola2" id="bolaM">$62.50</span></div><div id="ganM" style="color:#22c55e;margin-top:10px">+$0.00</div></div></div>
-<script>async function load(){try{let s=await fetch('/api/state').then(r=>r.json());let tb=(s.disponible_usd||500)+(s.bloqueado_usd||0)+(s.gan_acum||0);let tm=(s.disponible_m||500)+(s.bloqueado_m||0)+(s.gan_mt5||0);document.getElementById('capB').innerText='$'+tb.toFixed(2);document.getElementById('bolaB').innerText='$'+(tb/8).toFixed(2);document.getElementById('ganB').innerText='+$'+(s.gan_acum||0).toFixed(2);document.getElementById('capM').innerText='$'+tm.toFixed(2);document.getElementById('bolaM').innerText='$'+(tm/8).toFixed(2);document.getElementById('ganM').innerText='+$'+(s.gan_mt5||0).toFixed(2);}catch(e){}}load();setInterval(load,3000);</script>
-</body></html>
+import os, json, requests
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
+
+app = FastAPI()
+FILE = "state.json"
+TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or ""
+URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage" if TOKEN else ""
+
+def load():
+    try:
+        with open(FILE,"r") as f:
+            return json.load(f)
+    except:
+        return {"disponible_usd":500.0,"bloqueado_usd":0.0,"gan_acum":0.0,"disponible_m":500.0,"bloqueado_m":0.0,"gan_mt5":0.0}
+
+def save(s):
+    with open(FILE,"w") as f:
+        json.dump(s,f)
+
+def send(cid,txt):
+    if not TOKEN:
+        return
+    try:
+        requests.post(URL, json={"chat_id":cid,"text":txt,"parse_mode":"Markdown"}, timeout=5)
+    except:
+        pass
+
+@app.get("/", response_class=HTMLResponse)
+async def root():
+    try:
+        with open("index.html","r",encoding="utf-8") as f:
+            return f.read()
+    except Exception as e:
+        return HTMLResponse(f"no index.html found: {e}", status_code=404)
+
+@app.get("/api/state")
+async def get_state():
+    return load()
+
+@app.post("/telegram")
+@app.post("/telegram/")
+async def telegram_route(req:Request):
+    s=load()
+    tb=s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"]
+    tm=s["disponible_m"]+s["bloqueado_m"]+s["gan_mt5"]
+    try:
+        data=await req.json()
+        msg=data.get("message",{}) or {}
+        cid=msg.get("chat",{}).get("id")
+        txt=(msg.get("text","") or "").upper()
+        if cid and ("DASHBOARD" in txt or "START" in txt):
+            send(cid,f"DUAL V6 REAL LIVE\nBINANCE: ${tb:.2f} BOLA ${tb/8:.2f}\nMT5: ${tm:.2f} BOLA ${tm/8:.2f}\n\nD:BINANCE ${s['disponible_usd']:.2f} B:${s['bloqueado_usd']:.2f} G:${s['gan_acum']:.2f}\nD:MT5 ${s['disponible_m']:.2f} B:${s['bloqueado_m']:.2f} G:${s['gan_mt5']:.2f}\n\nEntra: https://telegram-bot-cijp.onrender.com/")
+    except Exception as e:
+        print(f"tg error {e}")
+    return JSONResponse({"ok":True})
+
+@app.get("/health")
+async def health():
+    return {"ok":True}
