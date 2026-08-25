@@ -12,13 +12,12 @@
 <script>
 const MXN=16.95;
 async function load(){try{let s=await fetch('/api/state').then(r=>r.json());
-let capB = s.capital_binance || ( (s.disponible_binance||500) + (s.bloqueado_binance||0) );
-let capM = s.capital_mt5 || ( (s.disponible_mt5||500) + (s.bloqueado_mt5||0) );
-let ganB = s.ganancia_binance || s.gan_acum || 0;
-let ganM = s.ganancia_mt5 || 0;
-document.getElementById('capB').innerText='$'+capB.toFixed(2); document.getElementById('mxnB').innerText='$'+(capB*MXN).toFixed(2)+' MXN';
-document.getElementById('capM').innerText='$'+capM.toFixed(2); document.getElementById('mxnM').innerText='$'+(capM*MXN).toFixed(2)+' MXN';
-document.getElementById('ganB').innerText='+$'+(ganB*MXN).toFixed(2)+' MXN'; document.getElementById('ganUsdB').innerText='+$'+ganB.toFixed(2)+' USD';
-document.getElementById('ganM').innerText='+$'+(ganM*MXN).toFixed(2)+' MXN'; document.getElementById('ganUsdM').innerText='+$'+ganM.toFixed(2)+' USD';
-}catch(e){}}load(); setInterval(load,3000);
+let capB=s.capital_binance||((s.disponible_binance||s.disponible_usd||500)+(s.bloqueado_binance||s.bloqueado_usd||0));
+let capM=s.capital_mt5||((s.disponible_mt5||500)+(s.bloqueado_mt5||0));
+let ganB=s.ganancia_binance||s.gan_acum||0; let ganM=s.ganancia_mt5||0;
+document.getElementById('capB').innerText='$'+capB.toFixed(2);document.getElementById('mxnB').innerText='$'+(capB*MXN).toFixed(2)+' MXN';
+document.getElementById('capM').innerText='$'+capM.toFixed(2);document.getElementById('mxnM').innerText='$'+(capM*MXN).toFixed(2)+' MXN';
+document.getElementById('ganB').innerText='+$'+(ganB*MXN).toFixed(2)+' MXN';document.getElementById('ganUsdB').innerText='+$'+ganB.toFixed(2)+' USD';
+document.getElementById('ganM').innerText='+$'+(ganM*MXN).toFixed(2)+' MXN';document.getElementById('ganUsdM').innerText='+$'+ganM.toFixed(2)+' USD';
+}catch(e){}}load();setInterval(load,3000);
 </script></body></html>
