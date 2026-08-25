@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MÁQUINA BOLA MT5</title>
-<style>body{margin:0;background:#000;color:#fff;font-family:system-ui}.wrap{max-width:520px;margin:0 auto;border-left:3px solid #38bdf8;border-right:3px solid #38bdf8;min-height:100vh;background:#050505;padding-bottom:90px}.circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center}.c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}.c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)}.c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}.val{font-size:48px;font-weight:900}.box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}.box-bola{background:#0a1a0a;border:1.5px solid #38bdf8}.sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.inp{width:100%;background:#000;color:#fff;border:1px solid #38bdf8;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}.card{background:#111;border:1.5px solid #38bdf8;border-radius:16px;padding:12px;position:relative;cursor:pointer}.on{position:absolute;top:10px;right:10px;background:#38bdf8;color:#000;font-weight:900;padding:4px 14px;border-radius:20px}.off_b{background:#222!important;color:#666!important}.price{font-size:20px;font-weight:900;margin:6px 0}.detail{font-size:11px;opacity:.7}#float_mt5{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:12px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #38bdf8;cursor:pointer}#float_mt5.off{border-color:#ef4444;background:#1a0a0a;color:#fff} table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:6px} td{padding:6px;border-top:1px solid #222}
+<style>body{margin:0;background:#000;color:#fff;font-family:system-ui}.wrap{max-width:520px;margin:0 auto;border-left:3px solid #38bdf8;border-right:3px solid #38bdf8;min-height:100vh;background:#050505;padding-bottom:90px}.circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center}.c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}.c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)}.c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}.val{font-size:48px;font-weight:900}.box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}.box-bola{background:#0a1a0a;border:1.5px solid #38bdf8}.sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0}.inp{width:100%;background:#000;color:#fff;border:1px solid #38bdf8;border-radius:12px;padding:14px;margin:6px 0}.btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}.card{background:#111;border:1.5px solid #38bdf8;border-radius:16px;padding:12px;position:relative;cursor:pointer}.on{position:absolute;top:10px;right:10px;background:#38bdf8;color:#000;font-weight:900;padding:4px 14px;border-radius:20px}.off_b{background:#222!important;color:#666!important}.price{font-size:20px;font-weight:900;margin:6px 0}.detail{font-size:11px;opacity:.7}#float_mt5{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:12px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #38bdf8;cursor:pointer}#float_mt5.off{border-color:#ef4444;background:#1a0a0a;color:#fff} table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:6px} td{padding:6px;border-top:1px solid #222}
 </style></head><body><div class="wrap">
-<div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💙 MÁQUINA BOLA MT5<br><span style="font-size:12px;opacity:.5">BOLA NIEVE REAL + NETO FIX</span></div>
+<div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💙 MÁQUINA BOLA MT5<br><span style="font-size:12px;opacity:.5">CEREBRO COMPLETO FIX</span></div>
 <div class="circle c1"><div style="color:#facc15;font-weight:900">DISPONIBLE MT5</div><div class="val" id="disp">$500.00</div><div id="bloq" style="color:#38bdf8;font-size:13px">Bloq: $0 MT5</div></div>
 <div class="circle c2"><div style="font-weight:900">GANANCIA MT5</div><div class="val" id="gan">$0.00</div></div>
 <div class="circle c3"><div style="color:#38bdf8;font-weight:900">TOTAL REAL MT5</div><div class="val" id="total">$500.00</div></div>
@@ -12,7 +12,7 @@
 <div style="margin-top:10px;background:#08111f;border:1.5px solid #facc15;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div id="auto_lab" style="color:#facc15;font-weight:900">✅ AUTO-TUNE ON MT5</div></div><input type="checkbox" id="auto_tune" checked onchange="toggleAutoTune()" style="width:22px;height:22px"></div>
 <div style="margin-top:8px">🎯 Bolas Totales MT5:<select id="bolas" class="sel" onchange="cambioBolas()"><option value="8" selected>4+4 = 8</option><option value="6">3+3 = 6</option><option value="4">2+2 = 4</option><option value="2">1+1 = 2</option></select></div>
 </div>
-<div class="box" style="border-color:#38bdf8"><b>🤖 CEREBRO MT5 - NETO REAL</b><div id="cerebro" style="font-size:13px;white-space:pre-line;margin-top:8px">Iniciando cerebro...</div></div>
+<div class="box" style="border-color:#38bdf8"><b>🤖 CEREBRO MT5 - NETO REAL</b><div id="cerebro" style="font-size:13px;white-space:pre-line;margin-top:8px">Iniciando...</div></div>
 <div class="grid" id="grid"></div>
 <div class="box"><b style="color:#38bdf8">📊 POSICIONES ABIERTAS MT5</b><table><thead><tr><th>Moneda</th><th>Tipo</th><th>Entry</th><th>Ahora</th><th>Bruto</th><th>Neto</th><th></th></tr></thead><tbody id="pos"></tbody></table></div>
 <div class="box"><b style="color:#38bdf8">📋 REGISTRO COMPLETO MT5</b><table><thead><tr><th>Hora</th><th>Moneda</th><th>Monto</th><th>Bruto</th><th>Neto</th><th>Gan</th></tr></thead><tbody id="hist"></tbody></table></div>
@@ -28,10 +28,9 @@ let autoTune=localStorage.getItem('autoTune_mt5')!=='false';
 let pos=JSON.parse(localStorage.getItem('pos_mt5_demo')||'[]');
 let hist=JSON.parse(localStorage.getItem('hist_mt5_demo')||'[]');
 let ganAcum=parseFloat(localStorage.getItem('gan_mt5_demo')||'0');
-
+let rsiPorMoneda={};
 function getTotalReal(){ return 500 + ganAcum; }
 function getBolasTotal(){ let sel=document.getElementById('bolas'); return sel.options.length? parseInt(sel.options[sel.selectedIndex].value):8; }
-
 function llenarBolas(){
   let modo=document.getElementById('modo').value;
   let sel=document.getElementById('bolas');
@@ -43,7 +42,6 @@ function llenarBolas(){
   document.getElementById('cierre').value=cierreActual;
   if(!sel.value) sel.value="8";
 }
-
 function cambioModo(){llenarBolas(); cambioBolas();}
 function cambioBolas(){
   let total=getBolasTotal(); let totalReal=getTotalReal(); let bola=totalReal/total;
@@ -52,86 +50,41 @@ function cambioBolas(){
   document.getElementById('cierre_txt').innerText=`${cierreNeto.toFixed(2)}% NETO (${cierreBruto.toFixed(2)}% bruto)`;
   guardar();
 }
-
 function guardar(){
   let total=getBolasTotal();
   let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.5;
-  let cierreBruto=cierreNeto+FEE_MT5;
   localStorage.setItem('cierre_mt5_neto', cierreNeto.toString());
   localStorage.setItem('sl_mt5_cfg', document.getElementById('sl').value);
   localStorage.setItem('rsi_v_mt5_cfg', document.getElementById('rsi_v').value);
   localStorage.setItem('rsi_c_mt5_cfg', document.getElementById('rsi_c').value);
-  document.getElementById('cierre_txt').innerText=`${cierreNeto.toFixed(2)}% NETO (${cierreBruto.toFixed(2)}% bruto)`;
   try{fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({modo_m:document.getElementById('modo').value,bolas_m:total,cierre_m:cierreNeto})}).catch(()=>{});}catch(e){}
 }
-
 function toggleCoin(k){S.coins_mt5_activas[k]=!S.coins_mt5_activas[k]; renderAll();}
 function toggleAutoTrade(){autoTrade=!autoTrade; localStorage.setItem('autoTrade_mt5',autoTrade); renderAll();}
 function toggleAutoTune(){autoTune=document.getElementById('auto_tune').checked; localStorage.setItem('autoTune_mt5',autoTune);}
 function cerrarPos(i){let p=pos[i]; let neto=p.neta-FEE_MT5; let g=p.monto*neto/100; if(p.neta<0) g=p.monto*p.neta/100; ganAcum+=g; hist.unshift({hora:new Date().toLocaleTimeString(), moneda:p.moneda, monto:p.monto.toFixed(2), bruto:p.neta.toFixed(2), porc:neto.toFixed(2), gan:g.toFixed(2), tipo:p.tipo}); pos.splice(i,1); localStorage.setItem('pos_mt5_demo',JSON.stringify(pos)); localStorage.setItem('hist_mt5_demo',JSON.stringify(hist)); localStorage.setItem('gan_mt5_demo',ganAcum.toString()); renderAll();}
-
 function renderAll(){
-  try{
-  document.getElementById('auto_tune').checked=autoTune;
-  let flo=document.getElementById('float_mt5'); let txt=document.getElementById('float_txt'); if(autoTrade){flo.classList.remove('off'); txt.innerText='AUTO ON 🤖 MT5';} else {flo.classList.add('off'); txt.innerText='AUTO OFF 🔕 MT5';}
-  let act=S.coins_mt5_activas||{}; if(Object.keys(act).length==0){ COINS.forEach(k=>act[k]=true); S.coins_mt5_activas=act; }
+  let rsiC=parseFloat(document.getElementById('rsi_c').value)||50;
+  let rsiV=parseFloat(document.getElementById('rsi_v').value)||65;
+  let slV=parseFloat(document.getElementById('sl').value)||-3;
+  let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.5; let cierreBruto=cierreNeto+FEE_MT5;
+  COINS.forEach(k=>{if(!rsiPorMoneda[k]) rsiPorMoneda[k]=30+Math.random()*30; else rsiPorMoneda[k]+=(Math.random()-0.5)*2;});
+  let caida=COINS.filter(k=>rsiPorMoneda[k]<rsiC).length;
   document.getElementById('grid').innerHTML=COINS.map(k=>{
-    let v=act[k]!==false; let rsi=(30+Math.random()*30).toFixed(1);
+    let v=S.coins_mt5_activas[k]!==false; let rsi=rsiPorMoneda[k].toFixed(1);
     let precio=(PRECIOS_BASE[k]*(0.999+Math.random()*0.002)).toFixed(2);
-    return `<div class=card onclick="toggleCoin('${k}')" style="${!v?'opacity:.4':''}"><div class="on ${!v?'off_b':''}">${v?'ON':'OFF'}</div><div style="font-weight:900">${k}</div><div class=price>$${precio}</div><div class=detail>RSI ${rsi}<br>${rsi<45?'COMPRA':'ESPERA'}</div></div>`;
+    return `<div class=card onclick="toggleCoin('${k}')" style="${!v?'opacity:.4':''}"><div class="on ${!v?'off_b':''}">${v?'ON':'OFF'}</div><div style="font-weight:900">${k}</div><div class=price>$${precio}</div><div class=detail>RSI ${rsi} (lim ${rsiC})<br>${parseFloat(rsi)<rsiC?'CAIDA - COMPRA':'ESPERA'}</div></div>`;
   }).join('');
   let totalReal=getTotalReal(); let totalBolas=getBolasTotal(); let bolaReal=totalReal/totalBolas;
-  let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.5; let cierreBruto=cierreNeto+FEE_MT5;
-  if(autoTrade){
-    COINS.forEach(k=>{
-      if(S.coins_mt5_activas[k]===false) return;
-      if(pos.filter(p=>p.moneda===k).length>=1) return;
-      if(pos.length>= totalBolas) return;
-      if(Math.random()>0.65){
-        let rsi=30+Math.random()*25;
-        if(rsi < parseFloat(document.getElementById('rsi_c').value)){
-          let modo=document.getElementById('modo').value; let tipo=modo.includes("AMBOS")? (Math.random()>0.5?'LONG':'SHORT'):modo.replace(' MT5','');
-          let entry=PRECIOS_BASE[k]*(0.999+Math.random()*0.002);
-          pos.push({moneda:k, tipo:tipo, entry:entry, ahora:entry, monto:bolaReal, neta:0});
-        }
-      }
-    });
-  }
-  pos.forEach(p=>{let vari=(Math.random()-0.48)*0.008; if(p.tipo==='SHORT') vari*=-1; p.ahora*=1+vari; p.neta=p.tipo==='LONG'? (p.ahora-p.entry)/p.entry*100 : (p.entry-p.ahora)/p.entry*100;});
-  let quedan=[]; pos.forEach(p=>{
-    let sl=parseFloat(document.getElementById('sl').value);
-    if(p.neta>=cierreBruto || p.neta<=sl){
-      let neto=p.neta-FEE_MT5; let g=p.monto*neto/100;
-      if(p.neta<=sl) g=p.monto*p.neta/100;
-      if(p.neta>=cierreBruto) g=p.monto*cierreNeto/100;
-      ganAcum+=g; hist.unshift({hora:new Date().toLocaleTimeString(), moneda:p.moneda, monto:p.monto.toFixed(2), bruto:p.neta.toFixed(2), porc:neto.toFixed(2), gan:g.toFixed(2), tipo:p.tipo}); if(hist.length>50) hist.pop();
-    } else quedan.push(p);
-  }); pos=quedan;
-  localStorage.setItem('pos_mt5_demo',JSON.stringify(pos)); localStorage.setItem('hist_mt5_demo',JSON.stringify(hist)); localStorage.setItem('gan_mt5_demo',ganAcum.toString());
-  totalReal=getTotalReal(); bolaReal=totalReal/totalBolas; let bloqueado=pos.reduce((s,p)=>s+p.monto,0); let disp_val = totalReal - bloqueado;
-  document.getElementById('disp').innerText='$'+disp_val.toFixed(2);
-  document.getElementById('bloq').innerText=`Bloq: $${bloqueado.toFixed(2)} MT5`;
-  document.getElementById('gan').innerText='$'+ganAcum.toFixed(2);
-  document.getElementById('total').innerText='$'+totalReal.toFixed(2);
-  document.getElementById('bola_info').innerText=`$${bolaReal.toFixed(2)} (${totalBolas} bolas) = $${totalReal.toFixed(2)} / ${totalBolas}`;
+  let total=getBolasTotal(); document.getElementById('bola_info').innerText=`$${bolaReal.toFixed(2)} (${total} bolas) = $${totalReal.toFixed(2)} / ${total}`;
   document.getElementById('cierre_txt').innerText=`${cierreNeto.toFixed(2)}% NETO (${cierreBruto.toFixed(2)}% bruto)`;
-  document.getElementById('pos').innerHTML=pos.length? pos.map((p,i)=>`<tr><td>${p.moneda}</td><td>${p.tipo}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</td><td style="color:#facc15">${(p.neta-FEE_MT5).toFixed(2)}%</td><td><button onclick="cerrarPos(${i})" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">X</button></td></tr>`).join('') : `<tr><td colspan=7 style="text-align:center;opacity:.4">Sin posiciones MT5 - buscando entrada</td></tr>`;
-  document.getElementById('hist').innerHTML=hist.length? hist.map(h=>`<tr><td>${h.hora}</td><td>${h.moneda} ${h.tipo}</td><td>$${h.monto}</td><td>${h.bruto}%</td><td style="color:${parseFloat(h.porc)>=0?'#22c55e':'#ef4444'}">${h.porc}%</td><td style="color:#22c55e">$${h.gan}</td></tr>`).join('') : `<tr><td colspan=6 style="text-align:center;opacity:.4">Sin historial MT5</td></tr>`;
-  let cerebro=`🔍 ANALISIS MT5 - ${new Date().toLocaleTimeString()}\nBOLA REAL: $${bolaReal.toFixed(2)} = $${totalReal.toFixed(2)}/${totalBolas}\nCIERRE: ${cierreNeto.toFixed(2)}% NETO = ${cierreBruto.toFixed(2)}% BRUTO\nSPREAD: ${FEE_MT5}%\n${autoTrade?'🤖 AUTO ON - Buscando entradas RSI < '+document.getElementById('rsi_c').value:'🔕 AUTO OFF'}`;
-  document.getElementById('cerebro').innerText=cerebro;
-  }catch(err){document.getElementById('cerebro').innerText='Error: '+err.message;}
+  let filtro=document.getElementById('ema').value;
+  let porMoneda=COINS.map(k=>{let r=rsiPorMoneda[k].toFixed(1); let est=parseFloat(r)<rsiC?`Caida RSI | RSI ${r}`:`Espera RSI | RSI ${r}`; return `${k}: ${est}`;}).join('\n');
+  document.getElementById('cerebro').innerText=`CAIDA FUERTE ${caida}/8 bajo EMA\nLO MEJOR HOY:\n- SL: ${slV}%\n- RSI Venta: ${rsiV} | Compra: ${rsiC}\n- Filtro P>EMA: ${filtro} + SHORT activo\n- CIERRE: ${cierreNeto.toFixed(2)}% NETO = ${cierreBruto.toFixed(2)}% BRUTO\n- BOLA: $${bolaReal.toFixed(2)} = $${totalReal.toFixed(2)}/${totalBolas}\n\nPor moneda:\n${porMoneda}`;
 }
-
 async function load(){
   let cG=localStorage.getItem('cierre_mt5_neto'); if(cG) document.getElementById('cierre').value=cG;
-  let slG=localStorage.getItem('sl_mt5_cfg'); if(slG) document.getElementById('sl').value=slG;
-  llenarBolas();
-  renderAll(); // RENDER INMEDIATO SIN ESPERAR FETCH
-  try{
-    let r=await fetch('/api/state'); if(r.ok){let j=await r.json(); if(j.gan_mt5) ganAcum=j.gan_mt5; localStorage.setItem('gan_mt5_demo',ganAcum.toString()); renderAll();}
-  }catch(e){ console.log('Render sin API'); }
+  llenarBolas(); renderAll();
 }
-
-load();
-setInterval(renderAll,2500);
+load(); setInterval(renderAll,2500);
 </script></body></html>
