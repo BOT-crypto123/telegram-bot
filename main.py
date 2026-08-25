@@ -54,28 +54,22 @@ def safe_html(filename):
     with open("index.html","r", encoding="utf-8") as f: return HTMLResponse(f.read())
 
 @app.get("/")
-async def index():
- return safe_html("index.html")
+async def index(): return safe_html("index.html")
 @app.get("/dual_v5.html")
-async def dual_v5_page():
- return safe_html("index.html")
+async def dual_v5_page(): return safe_html("index.html")
 @app.get("/dashboard")
-async def dash():
- return safe_html("dashboard.html")
+async def dash(): return safe_html("dashboard.html")
 @app.get("/dashboard.html")
-async def dash_html():
- return safe_html("dashboard.html")
+async def dash_html(): return safe_html("dashboard.html")
 @app.get("/dashboard_mt5.html")
-async def dash_mt5():
- return safe_html("dashboard_mt5.html")
+async def dash_mt5(): return safe_html("dashboard_mt5.html")
 
 @app.get("/api/state")
 async def state():
     s = load()
-    # CALCULADO VIVO - ESTO ES LO QUE LE FALTABA
-    s["total_b"] = (s.get("disponible_usd",0) + s.get("bloqueado_usd",0) + s.get("gan_acum",0))
-    s["total_m"] = (s.get("disponible_m",0) + s.get("bloqueado_m",0) + s.get("gan_mt5",0))
-    # Si es primera vez sin trades, asegura 500
+    # TOTAL REAL VIVO - FIX DEL BUG DE $500 FIJO
+    s["total_b"] = float(s.get("disponible_usd",0) + s.get("bloqueado_usd",0) + s.get("gan_acum",0))
+    s["total_m"] = float(s.get("disponible_m",0) + s.get("bloqueado_m",0) + s.get("gan_mt5",0))
     if s["total_b"] == 0: s["total_b"] = 500
     if s["total_m"] == 0: s["total_m"] = 500
     s["bola_b"] = s["total_b"] / s.get("max_entradas",8)
@@ -135,15 +129,14 @@ async def buy(sym:str, req:Request):
  try: data=await req.json()
  except: pass
  if not s.get("auto",True):
-  tg_send(f"🔔 ALERTA ENTRADA BINANCE OFF: {sym} {data.get('tipo','LONG')} RSI {data.get('rsi','?')} Precio {data.get('price',0)}")
-  return {"ok":True,"alerta":"AUTO OFF BINANCE"}
+  tg_send(f"🔔 ALERTA ENTRADA BINANCE OFF: {sym}")
+  return {"ok":True}
  total = s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"]
  bola = total / s.get("max_entradas",8) if total>0 else 62.5
  if s["disponible_usd"]>=bola:
   s["disponible_usd"]-=bola; s["bloqueado_usd"]+=bola
   s["pos"].append({"sym":sym,"size":bola,"entry":data.get("price",0),"tipo":data.get("tipo","LONG"),"fecha":datetime.now().isoformat()})
   save(s)
-  tg_send(f"🤖 AUTO ON BINANCE COMPRÓ: {sym} {data.get('tipo','LONG')} ${bola:.2f} Entry {data.get('price',0)}")
  return s
 
 @app.post("/api/buy_mt5/{sym}")
@@ -151,9 +144,7 @@ async def buy_mt5(sym:str, req:Request):
  s=load(); data={}
  try: data=await req.json()
  except: pass
- if not s.get("auto_m",True):
-  tg_send(f"🔔 ALERTA ENTRADA MT5 OFF: {sym} {data.get('tipo','LONG')} RSI {data.get('rsi','?')} Precio {data.get('price',0)}")
-  return {"ok":True,"alerta":"AUTO OFF MT5"}
+ if not s.get("auto_m",True): return {"ok":True}
  total = s["disponible_m"]+s["bloqueado_m"]+s["gan_mt5"]
  bola = total / s.get("max_m",8) if total>0 else 62.5
  if s["disponible_m"]>=bola:
@@ -162,7 +153,6 @@ async def buy_mt5(sym:str, req:Request):
   if tipo=="SHORT": s["pos_m_short"].append({"sym":sym,"size":bola,"entry":data.get("price",0),"tipo":tipo,"fecha":datetime.now().isoformat()})
   else: s["pos_m"].append({"sym":sym,"size":bola,"entry":data.get("price",0),"tipo":tipo,"fecha":datetime.now().isoformat()})
   save(s)
-  tg_send(f"🤖 AUTO ON MT5 COMPRÓ: {sym} {tipo} ${bola:.2f} Entry {data.get('price',0)}")
  return s
 
 @app.post("/api/sell/{sym}")
@@ -171,18 +161,13 @@ async def sell(sym:str, req:Request=None):
  try:
   if req: data=await req.json()
  except: pass
- if not s.get("auto",True):
-  tg_send(f"🔔 ALERTA SALIDA BINANCE OFF: {sym} - Gan estimada {data.get('gan',0)}")
-  return {"ok":True,"alerta":"AUTO OFF BINANCE"}
  for p in s["pos"]:
   if p["sym"]==sym:
    gan = p["size"]*(s.get("tp",0.3)/100)
    s["bloqueado_usd"]-=p["size"]; s["disponible_usd"]+=p["size"]+gan; s["gan_acum"]+=gan
-   s["historial"].append({"fecha":datetime.now().isoformat(),"moneda":sym,"gan":round(gan,4),"gan_mxn":round(gan*16.96,2),"cap":round(s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"],2)})
+   s["historial"].append({"fecha":datetime.now().isoformat(),"moneda":sym,"gan":round(gan,4)})
    s["pos"]=[x for x in s["pos"] if x["sym"]!=sym]; break
- save(s)
- tg_send(f"💰 AUTO ON BINANCE VENDIÓ: {sym} Gan ${gan:.4f}")
- return s
+ save(s); return s
 
 @app.post("/api/sell_mt5/{sym}")
 async def sell_mt5(sym:str, req:Request=None):
@@ -190,18 +175,13 @@ async def sell_mt5(sym:str, req:Request=None):
  try:
   if req: data=await req.json()
  except: pass
- if not s.get("auto_m",True):
-  tg_send(f"🔔 ALERTA SALIDA MT5 OFF: {sym}")
-  return {"ok":True,"alerta":"AUTO OFF MT5"}
  for p in s["pos_m"]+s["pos_m_short"]:
   if p["sym"]==sym:
    gan = p["size"]*(s.get("tp_m",0.5)/100)
    s["bloqueado_m"]-=p["size"]; s["disponible_m"]+=p["size"]+gan; s["gan_mt5"]+=gan
    s["historial_m"].append({"fecha":datetime.now().isoformat(),"moneda":sym,"gan":round(gan,4)})
    s["pos_m"]=[x for x in s["pos_m"] if x["sym"]!=sym]; s["pos_m_short"]=[x for x in s["pos_m_short"] if x["sym"]!=sym]; break
- save(s)
- tg_send(f"💰 AUTO ON MT5 VENDIÓ: {sym} Gan ${gan:.4f}")
- return s
+ save(s); return s
 
 @app.get("/api/backup")
 async def backup(): return JSONResponse(load())
@@ -214,17 +194,10 @@ async def telegram_webhook(req: Request):
  try:
   data = await req.json()
   msg = data.get("message", {})
-  text = (msg.get("text") or "").strip().upper()
   chat_id = msg.get("chat", {}).get("id")
   if not chat_id: return {"ok": True}
   s=load(); s["last_chat_id"]=chat_id; save(s)
-  if "DASHBOARD" in text:
-   reply = f"{RENDER_URL}/"
-  else:
-   reply = "Comandos: DASHBOARD"
   if BOT_TOKEN:
-   requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": reply}, timeout=5)
+   requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": f"{RENDER_URL}/"}, timeout=5)
   return {"ok": True}
- except Exception as e:
-  print("telegram error:", e)
-  return {"ok": True}
+ except: return {"ok": True}
