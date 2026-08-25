@@ -88,10 +88,17 @@ function renderAll(){
   localStorage.setItem('pos_binance_demo',JSON.stringify(pos)); localStorage.setItem('hist_binance_demo',JSON.stringify(hist)); localStorage.setItem('gan_binance_demo',ganAcum.toString());
 
   let bloqueado=pos.reduce((s,p)=>s+p.monto,0);
-  document.getElementById('disp').innerText='$'+(500-bloqueado+ganAcum).toFixed(2);
+  let disp_val = 500 - bloqueado + ganAcum;
+  document.getElementById('disp').innerText='$'+disp_val.toFixed(2);
   document.getElementById('bloq').innerText=`Bloq: $${bloqueado.toFixed(2)}`;
   document.getElementById('gan').innerText='$'+ganAcum.toFixed(2);
   document.getElementById('total').innerText='$'+(500+ganAcum).toFixed(2);
+
+  // *** ESTO ES LO NUEVO QUE FALTABA: AVISAR AL SERVIDOR PARA LA PORTADA ***
+  try{
+    fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disponible_usd:disp_val,bloqueado_usd:bloqueado,gan_acum:ganAcum})}).catch(()=>{});
+  }catch(e){}
+
   document.getElementById('pos').innerHTML=pos.length? pos.map((p,i)=>`<tr><td>${p.moneda}</td><td>${p.tipo}</td><td>${p.entry.toFixed(4)}</td><td>${p.ahora.toFixed(4)}</td><td style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</td><td><button onclick="cerrarPos(${i})" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">X</button></td></tr>`).join('') : `<tr><td colspan=6 style="text-align:center;opacity:.4">Sin posiciones BINANCE - ${autoTrade?'buscando entrada RSI < '+document.getElementById('rsi_c').value:'Trade OFF - solo avisos'}</td></tr>`;
   document.getElementById('hist').innerHTML=hist.length? hist.map(h=>`<tr><td>${h.hora}</td><td>${h.moneda} ${h.tipo}</td><td>$${h.monto}</td><td style="color:${parseFloat(h.porc)>=0?'#22c55e':'#ef4444'}">${h.porc}%</td><td style="color:#22c55e">$${h.gan}</td></tr>`).join('') : `<tr><td colspan=5 style="text-align:center;opacity:.4">Sin historial aun - activa AUTO TRADE ON</td></tr>`;
 
