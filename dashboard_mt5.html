@@ -4,8 +4,8 @@
 <div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💙 MÁQUINA BOLA MT5<br><span style="font-size:12px;opacity:.5">$500 / 8 BOLAS MT5 - EMA200 ORO</span></div>
 <div class="circle c1"><div style="color:#facc15;font-weight:900">DISPONIBLE MT5</div><div class="val" id="disp">$500.00</div><div id="bloq" style="color:#38bdf8;font-size:13px">Bloq: $0 MT5</div></div>
 <div class="circle c2"><div style="font-weight:900">GANANCIA MT5</div><div class="val" id="gan">$0.00</div></div>
-<div class="circle c3"><div style="color:#38bdf8;font-weight:900">TOTAL REAL MT5</div><div class="val" id="total">$500</div></div>
-<div class="box box-bola"><div>🎯 BOLA MT5:</div><b id="bola_info">$62.50 (8 bolas) = $500 / 8</b><div id="bola_det" style="color:#38bdf8;font-size:13px">(4 LONG + 4 SHORT) MT5</div></div>
+<div class="circle c3"><div style="color:#38bdf8;font-weight:900">TOTAL REAL MT5</div><div class="val" id="total">$500.00</div></div>
+<div class="box box-bola"><div>🎯 BOLA MT5:</div><b id="bola_info">$62.50 (8 bolas) = $500.00 / 8</b><div id="bola_det" style="color:#38bdf8;font-size:13px">(4 LONG + 4 SHORT) MT5</div></div>
 <div class="box"><div style="display:flex;gap:8px"><div style="flex:1">🎮 Modo MT5:<select id="modo" class="sel" onchange="cambioModo()"><option value="AMBOS" selected>AMBOS 4+4 MT5</option><option value="LONG">SOLO LONG MT5</option><option value="SHORT">SOLO SHORT MT5</option></select></div><div style="flex:1">💰 Cierre MT5:<div style="display:flex;gap:4px"><input type="number" id="cierre" class="inp" style="margin:0" value="0.5" step="0.05"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">🛑 SL MT5:<div style="display:flex;gap:4px"><input type="number" id="sl" class="inp" style="margin:0" value="-3" step="0.1"><button class="btn-set" onclick="guardar()">SET</button></div></div><div style="flex:1">📤 RSI Venta MT5:<div style="display:flex;gap:4px"><input type="number" id="rsi_v" class="inp" style="margin:0" value="65" step="1"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">📈 P>EMA MT5:<select id="ema" class="sel" onchange="guardar()"><option selected>EMA200 ORO</option><option>EMA100 ORO</option></select></div><div style="flex:1">📉 RSI Compra MT5:<div style="display:flex;gap:4px"><input type="number" id="rsi_c" class="inp" style="margin:0" value="50" step="1"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
@@ -23,13 +23,26 @@ const COINS=["XAUUSD","XAGUSD","USOIL","SPX500","NAS100","GER40","EURUSD","GBPUS
 const PRECIOS_BASE={"XAUUSD":3382.50,"XAGUSD":31.15,"USOIL":78.42,"SPX500":5420,"NAS100":18500,"GER40":18200,"EURUSD":1.0845,"GBPUSD":1.2745};
 let capital=500; let S={}; let autoTrade=localStorage.getItem('autoTrade_mt5')!=='false'; let autoTune=localStorage.getItem('autoTune_mt5')!=='false';
 let pos=JSON.parse(localStorage.getItem('pos_mt5_demo')||'[]'); let hist=JSON.parse(localStorage.getItem('hist_mt5_demo')||'[]'); let ganAcum=parseFloat(localStorage.getItem('gan_mt5_demo')||'0');
-function llenarBolas(){let modo=document.getElementById('modo').value; let sel=document.getElementById('bolas'); sel.innerHTML=""; if(modo==="AMBOS"){[[4,4],[3,3],[2,2],[1,1]].forEach(p=>{let t=p[0]+p[1]; let o=document.createElement('option'); o.value=t; o.dataset.l=p[0]; o.dataset.s=p[1]; o.text=`${p[0]}+${p[1]} = ${t}`; if(t==8) o.selected=true; sel.appendChild(o);});} else {for(let i=1;i<=8;i++){let o=document.createElement('option'); o.value=i; o.text=`${i} ${modo} MT5`; if(i==8) o.selected=true; sel.appendChild(o);}}}
-function cambioModo(){llenarBolas();cambioBolas();} function cambioBolas(){let sel=document.getElementById('bolas'); if(!sel.options.length) return; let total=parseInt(sel.options[sel.selectedIndex].value); let bola=(capital/total).toFixed(2); document.getElementById('bola_info').innerText=`$${bola} (${total} bolas MT5)`; guardar();}
-function guardar(){let sel=document.getElementById('bolas'); let total=sel.options.length?parseInt(sel.options[sel.selectedIndex].value):8; let data={modo_m:document.getElementById('modo').value,bolas_m:total,cierre_m:parseFloat(document.getElementById('cierre').value),sl_m:parseFloat(document.getElementById('sl').value),rsi_venta_m:parseInt(document.getElementById('rsi_v').value),rsi_compra_m:parseInt(document.getElementById('rsi_c').value),ema_m:document.getElementById('ema').value,auto_m:autoTrade}; fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});}
+
+function getTotalReal(){ return 500 + ganAcum; }
+function getBolasTotal(){ let sel=document.getElementById('bolas'); return sel.options.length? parseInt(sel.options[sel.selectedIndex].value):8; }
+
+function llenarBolas(){let modo=document.getElementById('modo').value; let sel=document.getElementById('bolas'); let actual=sel.value; sel.innerHTML=""; if(modo==="AMBOS"){[[4,4],[3,3],[2,2],[1,1]].forEach(p=>{let t=p[0]+p[1]; let o=document.createElement('option'); o.value=t; o.dataset.l=p[0]; o.dataset.s=p[1]; o.text=`${p[0]}+${p[1]} = ${t}`; if(t==8) o.selected=true; sel.appendChild(o);});} else {for(let i=1;i<=8;i++){let o=document.createElement('option'); o.value=i; o.text=`${i} ${modo} MT5`; if(i==8) o.selected=true; sel.appendChild(o);}} if(actual) sel.value=actual; cambioBolas();}
+
+function cambioModo(){llenarBolas();}
+function cambioBolas(){
+  let total=getBolasTotal();
+  let totalReal=getTotalReal();
+  let bola=(totalReal/total);
+  document.getElementById('bola_info').innerText=`$${bola.toFixed(2)} (${total} bolas) = $${totalReal.toFixed(2)} / ${total}`;
+  guardar();
+}
+function guardar(){let total=getBolasTotal(); let data={modo_m:document.getElementById('modo').value,bolas_m:total,cierre_m:parseFloat(document.getElementById('cierre').value),sl_m:parseFloat(document.getElementById('sl').value),rsi_venta_m:parseInt(document.getElementById('rsi_v').value),rsi_compra_m:parseInt(document.getElementById('rsi_c').value),ema_m:document.getElementById('ema').value,auto_m:autoTrade}; fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});}
 function toggleCoin(k){S.coins_mt5_activas=S.coins_mt5_activas||{}; S.coins_mt5_activas[k]=!S.coins_mt5_activas[k]; renderAll(); guardar();}
 function toggleAutoTrade(){autoTrade=!autoTrade; localStorage.setItem('autoTrade_mt5',autoTrade); renderAll(); guardar();}
 function toggleAutoTune(){autoTune=document.getElementById('auto_tune').checked; localStorage.setItem('autoTune_mt5',autoTune);}
 function cerrarPos(i){let p=pos[i]; let g=p.monto*(p.neta/100); ganAcum+=g; hist.unshift({hora:new Date().toLocaleTimeString(), moneda:p.moneda, monto:p.monto.toFixed(2), porc:p.neta.toFixed(2), gan:g.toFixed(2), tipo:p.tipo}); pos.splice(i,1); localStorage.setItem('pos_mt5_demo',JSON.stringify(pos)); localStorage.setItem('hist_mt5_demo',JSON.stringify(hist)); localStorage.setItem('gan_mt5_demo',ganAcum.toString()); renderAll();}
+
 function renderAll(){
   document.getElementById('auto_tune').checked=autoTune;
   let flo=document.getElementById('float_mt5'); let txt=document.getElementById('float_txt'); if(autoTrade){flo.classList.remove('off'); txt.innerText='AUTO ON 🤖 MT5 - COMPRANDO';} else {flo.classList.add('off'); txt.innerText='AUTO OFF 🔕 MT5';}
@@ -37,17 +50,34 @@ function renderAll(){
   if(autoTune){ document.getElementById('sl').value=sugiereSL; document.getElementById('rsi_c').value=sugiereRsiC; document.getElementById('rsi_v').value=sugiereRsiV; }
   let act=S.coins_mt5_activas||{}; if(Object.keys(act).length==0){ COINS.forEach(k=>act[k]=true); S.coins_mt5_activas=act; }
   document.getElementById('grid').innerHTML=COINS.map(k=>{let v=act[k]!==false; let rsi=(30+Math.random()*30).toFixed(1); let precio=(PRECIOS_BASE[k]*(0.999+Math.random()*0.002)).toFixed(2); return `<div class=card onclick="toggleCoin('${k}')" style="${!v?'opacity:.4':''}"><div class="on ${!v?'off_b':''}">${v?'ON':'OFF'}</div><div style="font-weight:900">${k}</div><div class=price>$${precio}</div><div class=detail>RSI ${rsi}<br>${rsi<40?'COMPRA':'ESPERA'}</div><div style="color:#38bdf8;font-weight:900">🤖 ${v?'ON':'OFF'} MT5</div></div>`;}).join('');
-  if(autoTrade){COINS.forEach(k=>{if(S.coins_mt5_activas && S.coins_mt5_activas[k]===false) return; if(pos.filter(p=>p.moneda===k).length>=1) return; if(pos.length>= (parseInt(document.getElementById('bolas').value)||8)) return; if(Math.random()>0.65){let rsi=30+Math.random()*25; if(rsi < parseFloat(document.getElementById('rsi_c').value)){let modo=document.getElementById('modo').value; let tipo=modo.includes("AMBOS")? (Math.random()>0.5?'LONG':'SHORT'):modo.replace(' MT5',''); let bola=capital/(parseInt(document.getElementById('bolas').value)||8); let entry=PRECIOS_BASE[k]*(0.999+Math.random()*0.002); pos.push({moneda:k, tipo:tipo, entry:entry, ahora:entry, monto:bola, neta:0});}}});}
+
+  let totalReal=getTotalReal();
+  let totalBolas=getBolasTotal();
+  let bolaReal=totalReal/totalBolas;
+  document.getElementById('bola_info').innerText=`$${bolaReal.toFixed(2)} (${totalBolas} bolas) = $${totalReal.toFixed(2)} / ${totalBolas}`;
+
+  if(autoTrade){COINS.forEach(k=>{if(S.coins_mt5_activas && S.coins_mt5_activas[k]===false) return; if(pos.filter(p=>p.moneda===k).length>=1) return; if(pos.length>= totalBolas) return; if(Math.random()>0.65){let rsi=30+Math.random()*25; if(rsi < parseFloat(document.getElementById('rsi_c').value)){let modo=document.getElementById('modo').value; let tipo=modo.includes("AMBOS")? (Math.random()>0.5?'LONG':'SHORT'):modo.replace(' MT5',''); let entry=PRECIOS_BASE[k]*(0.999+Math.random()*0.002); pos.push({moneda:k, tipo:tipo, entry:entry, ahora:entry, monto:bolaReal, neta:0});}}});}
+
   pos.forEach(p=>{let vari=(Math.random()-0.48)*0.008; if(p.tipo==='SHORT') vari*=-1; p.ahora*=1+vari; p.neta=p.tipo==='LONG'? (p.ahora-p.entry)/p.entry*100 : (p.entry-p.ahora)/p.entry*100;});
   let quedan=[]; pos.forEach(p=>{ if(p.neta>=parseFloat(document.getElementById('cierre').value) || p.neta<=parseFloat(document.getElementById('sl').value)){ let g=p.monto*p.neta/100; ganAcum+=g; hist.unshift({hora:new Date().toLocaleTimeString(), moneda:p.moneda, monto:p.monto.toFixed(2), porc:p.neta.toFixed(2), gan:g.toFixed(2), tipo:p.tipo}); if(hist.length>50) hist.pop(); } else quedan.push(p); }); pos=quedan;
   localStorage.setItem('pos_mt5_demo',JSON.stringify(pos)); localStorage.setItem('hist_mt5_demo',JSON.stringify(hist)); localStorage.setItem('gan_mt5_demo',ganAcum.toString());
-  let bloqueado=pos.reduce((s,p)=>s+p.monto,0); let disp_val = 500 - bloqueado + ganAcum;
-  document.getElementById('disp').innerText='$'+disp_val.toFixed(2); document.getElementById('bloq').innerText=`Bloq: $${bloqueado.toFixed(2)} MT5`; document.getElementById('gan').innerText='$'+ganAcum.toFixed(2); document.getElementById('total').innerText='$'+(500+ganAcum).toFixed(2);
-  try{fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disponible_m:disp_val,bloqueado_m:bloqueado,gan_mt5:ganAcum})}).catch(()=>{});}catch(e){}
+
+  totalReal=getTotalReal();
+  bolaReal=totalReal/totalBolas;
+  let bloqueado=pos.reduce((s,p)=>s+p.monto,0);
+  let disp_val = totalReal - bloqueado;
+
+  document.getElementById('disp').innerText='$'+disp_val.toFixed(2);
+  document.getElementById('bloq').innerText=`Bloq: $${bloqueado.toFixed(2)} MT5`;
+  document.getElementById('gan').innerText='$'+ganAcum.toFixed(2);
+  document.getElementById('total').innerText='$'+totalReal.toFixed(2);
+  document.getElementById('bola_info').innerText=`$${bolaReal.toFixed(2)} (${totalBolas} bolas) = $${totalReal.toFixed(2)} / ${totalBolas}`;
+
+  try{fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disponible_m:disp_val,bloqueado_m:bloqueado,gan_mt5:ganAcum, capital_mt5: totalReal})}).catch(()=>{});}catch(e){}
   document.getElementById('pos').innerHTML=pos.length? pos.map((p,i)=>`<tr><td>${p.moneda}</td><td>${p.tipo}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</td><td><button onclick="cerrarPos(${i})" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">X</button></td></tr>`).join('') : `<tr><td colspan=6 style="text-align:center;opacity:.4">Sin posiciones MT5 - buscando entrada</td></tr>`;
   document.getElementById('hist').innerHTML=hist.length? hist.map(h=>`<tr><td>${h.hora}</td><td>${h.moneda} ${h.tipo}</td><td>$${h.monto}</td><td style="color:${parseFloat(h.porc)>=0?'#22c55e':'#ef4444'}">${h.porc}%</td><td style="color:#22c55e">$${h.gan}</td></tr>`).join('') : `<tr><td colspan=5 style="text-align:center;opacity:.4">Sin historial MT5</td></tr>`;
-  let cerebro=`🔍 ANALISIS MT5 - ${new Date().toLocaleTimeString()}\nCAIDA ${caida}/8 bajo EMA200 ORO - RSI ${rsiProm.toFixed(1)}\n\n💡 SUGERENCIA:\n• SL: ${sugiereSL}%\n• RSI Venta: ${sugiereRsiV}\n• RSI Compra: ${sugiereRsiC}\n${autoTrade?'🤖 AUTO ON':'🔕 OFF'}\n`; document.getElementById('cerebro').innerText=cerebro;
+  let cerebro=`🔍 ANALISIS MT5 - ${new Date().toLocaleTimeString()}\nCAIDA ${caida}/8 bajo EMA200 ORO - RSI ${rsiProm.toFixed(1)}\n\n💡 SUGERENCIA:\n• SL: ${sugiereSL}%\n• RSI Venta: ${sugiereRsiV}\n• RSI Compra: ${sugiereRsiC}\n${autoTrade?'🤖 AUTO ON':'🔕 OFF'}\nBOLA REAL: $${bolaReal.toFixed(2)} = $${totalReal.toFixed(2)}/${totalBolas}`; document.getElementById('cerebro').innerText=cerebro;
 }
-async function load(){try{S=await fetch('/api/state').then(r=>r.json()); capital=(S.disponible_m||500)+(S.bloqueado_m||0)+(S.gan_mt5||0);}catch(e){S.coins_mt5_activas={}; COINS.forEach(k=>S.coins_mt5_activas[k]=true); capital=500;} renderAll();}
+async function load(){try{S=await fetch('/api/state').then(r=>r.json()); ganAcum=S.gan_mt5||parseFloat(localStorage.getItem('gan_mt5_demo')||'0'); capital=getTotalReal();}catch(e){S.coins_mt5_activas={}; COINS.forEach(k=>S.coins_mt5_activas[k]=true); capital=500;} renderAll();}
 llenarBolas(); load(); setInterval(renderAll,2500);
 </script></body></html>
