@@ -1,7 +1,7 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MÁQUINA BOLA</title>
 <style>body{margin:0;background:#000;color:#fff;font-family:system-ui}.wrap{max-width:520px;margin:0 auto;border-left:3px solid #facc15;border-right:3px solid #facc15;min-height:100vh;background:#050505;padding-bottom:90px}.circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center}.c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}.c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)}.c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}.val{font-size:48px;font-weight:900}.box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}.box-bola{background:#0a1a0a;border:1.5px solid #22c55e}.sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.inp{width:100%;background:#000;color:#fff;border:1px solid #facc15;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}.card{background:#111;border:1.5px solid #22c55e;border-radius:16px;padding:12px;position:relative;cursor:pointer}.on{position:absolute;top:10px;right:10px;background:#22c55e;color:#000;font-weight:900;padding:4px 14px;border-radius:20px}.off_b{background:#222!important;color:#666!important}.price{font-size:20px;font-weight:900;margin:6px 0}.detail{font-size:11px;opacity:.7}#float_bin{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:12px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #22c55e;box-shadow:0 0 15px #22c55e80;cursor:pointer}#float_bin.off{border-color:#ef4444;background:#1a0a0a;color:#fff;box-shadow:0 0 15px #ef444480} table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:6px} td{padding:6px;border-top:1px solid #222}
 </style></head><body><div class="wrap">
-<div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💰 MÁQUINA BOLA DE NIEVE - BINANCE<br><span style="font-size:12px;opacity:.5">BOLA NIEVE REAL + NETO - FIX CIERRE</span></div>
+<div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💰 MÁQUINA BOLA DE NIEVE - BINANCE<br><span style="font-size:12px;opacity:.5">BOLA NIEVE REAL + NETO - FIX CEREBRO</span></div>
 <div class="circle c1"><div style="color:#facc15;font-weight:900">DISPONIBLE</div><div class="val" id="disp">$500.00</div><div id="bloq" style="color:#22c55e;font-size:13px">Bloq: $0</div></div>
 <div class="circle c2"><div style="font-weight:900">GANANCIA</div><div class="val" id="gan">$0.00</div></div>
 <div class="circle c3"><div style="color:#38bdf8;font-weight:900">TOTAL REAL</div><div class="val" id="total">$500</div></div>
@@ -121,14 +121,19 @@ function renderAll(){
   let cerebro=`CAIDA FUERTE ${caida}/8 bajo EMA\nLO MEJOR HOY:\n- SL: ${slV}%\n- RSI Venta: ${rsiV} | Compra: ${rsiC}\n- Filtro P>EMA: ${filtro} + SHORT activo\n- CIERRE: ${cierreNeto.toFixed(2)}% NETO = ${cierreBruto.toFixed(2)}% BRUTO\n- BOLA: $${bolaReal.toFixed(2)} = $${totalReal.toFixed(2)}/${totalBolas}\n\nPor moneda:\n${porMoneda}\n\n${autoTrade?'🤖 AUTO ON':'🔕 OFF'}`;
   document.getElementById('cerebro').innerText=cerebro;
 }
-async function load(){
+// --- FIX SOLO CEREBRO: NO ESPERAR AL FETCH ---
+function load(){
   let cierreGuardado = localStorage.getItem('cierre_binance_neto');
   if(cierreGuardado) document.getElementById('cierre').value = cierreGuardado;
   let slG = localStorage.getItem('sl_binance_cfg'); if(slG) document.getElementById('sl').value=slG;
   let rsiVG = localStorage.getItem('rsi_v_binance_cfg'); if(rsiVG) document.getElementById('rsi_v').value=rsiVG;
   let rsiCG = localStorage.getItem('rsi_c_binance_cfg'); if(rsiCG) document.getElementById('rsi_c').value=rsiCG;
-  try{S=await fetch('/api/state').then(r=>r.json()); ganAcum=S.ganancia_binance||parseFloat(localStorage.getItem('gan_binance_demo')||'0');}catch(e){S={};}
-  renderAll();
+  let modoG = localStorage.getItem('modo_binance_cfg'); if(modoG) document.getElementById('modo').value=modoG;
+  llenarBolas();
+  renderAll(); // PINTA YA EL CEREBRO
+  fetch('/api/state').then(r=>r.json()).then(s=>{
+    if(s.ganancia_binance){ganAcum=s.ganancia_binance; renderAll();}
+  }).catch(()=>{});
 }
-llenarBolas(); load(); setInterval(renderAll,2500);
+load(); setInterval(renderAll,2500);
 </script></body></html>
