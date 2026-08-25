@@ -1,7 +1,7 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MÁQUINA BOLA MT5 - FIX CEREBRO</title>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MÁQUINA BOLA MT5 - AUTO-TUNE REAL</title>
 <style>body{margin:0;background:#000;color:#fff;font-family:system-ui}.wrap{max-width:520px;margin:0 auto;border-left:3px solid #38bdf8;border-right:3px solid #38bdf8;min-height:100vh;background:#050505;padding-bottom:90px}.circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center}.c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}.c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)}.c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}.val{font-size:48px;font-weight:900}.box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}.box-bola{background:#0a1a0a;border:1.5px solid #38bdf8}.sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.inp{width:100%;background:#000;color:#fff;border:1px solid #38bdf8;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}.card{background:#111;border:1.5px solid #38bdf8;border-radius:16px;padding:12px;position:relative;cursor:pointer}.on{position:absolute;top:10px;right:10px;background:#38bdf8;color:#000;font-weight:900;padding:4px 14px;border-radius:20px}.off_b{background:#222!important;color:#666!important}.price{font-size:20px;font-weight:900;margin:6px 0}.detail{font-size:11px;opacity:.7}#float_bin{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:12px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #38bdf8;box-shadow:0 0 15px #38bdf880;cursor:pointer}#float_bin.off{border-color:#ef4444;background:#1a0a0a;color:#fff;box-shadow:0 0 15px #ef444480} table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:6px} td{padding:6px;border-top:1px solid #222}
 </style></head><body><div class="wrap">
-<div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💙 MÁQUINA BOLA MT5 - ORO/FOREX<br><span style="font-size:12px;opacity:.5">FIX CEREBRO - PINTA YA</span></div>
+<div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💙 MÁQUINA BOLA MT5 - ORO/FOREX<br><span style="font-size:12px;opacity:.5">AUTO-TUNE REAL - IGUAL QUE BINANCE</span></div>
 <div class="circle c1"><div style="color:#facc15;font-weight:900">DISPONIBLE MT5</div><div class="val" id="disp">$500.00</div><div id="bloq" style="color:#38bdf8;font-size:13px">Bloq: $0 MT5</div></div>
 <div class="circle c2"><div style="font-weight:900">GANANCIA MT5</div><div class="val" id="gan">$0.00</div></div>
 <div class="circle c3"><div style="color:#38bdf8;font-weight:900">TOTAL REAL MT5</div><div class="val" id="total">$500</div></div>
@@ -9,10 +9,10 @@
 <div class="box"><div style="display:flex;gap:8px"><div style="flex:1">🎮 Modo MT5:<select id="modo" class="sel" onchange="cambioModo()"><option value="AMBOS" selected>AMBOS 4+4</option><option value="LONG">SOLO LONG</option><option value="SHORT">SOLO SHORT</option></select></div><div style="flex:1">💰 Cierre NETO MT5:<div style="display:flex;gap:4px"><input type="number" id="cierre" class="inp" style="margin:0" value="0.5" step="0.05"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">🛑 SL MT5:<div style="display:flex;gap:4px"><input type="number" id="sl" class="inp" style="margin:0" value="-3" step="0.1"><button class="btn-set" onclick="guardar()">SET</button></div></div><div style="flex:1">📤 RSI Venta MT5:<div style="display:flex;gap:4px"><input type="number" id="rsi_v" class="inp" style="margin:0" value="65" step="1"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">📈 P>EMA MT5:<select id="ema" class="sel" onchange="guardar()"><option selected>EMA200 ORO</option><option>OFF Caida</option></select></div><div style="flex:1">📉 RSI Compra MT5:<div style="display:flex;gap:4px"><input type="number" id="rsi_c" class="inp" style="margin:0" value="50" step="1"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
-<div style="margin-top:10px;background:#08111f;border:1.5px solid #facc15;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div id="auto_lab" style="color:#facc15;font-weight:900">✅ AUTO-TUNE ON MT5</div></div><input type="checkbox" id="auto_tune" checked onchange="toggleAutoTune()" style="width:22px;height:22px"></div>
+<div style="margin-top:10px;background:#08111f;border:1.5px solid #facc15;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div id="auto_lab" style="color:#facc15;font-weight:900">✅ AUTO-TUNE ON MT5: Ajusta SL/RSI solo</div><div id="auto_det" style="font-size:11px;opacity:.7"></div></div><input type="checkbox" id="auto_tune" checked onchange="toggleAutoTune()" style="width:22px;height:22px"></div>
 <div style="margin-top:8px">🎯 Bolas Totales MT5:<select id="bolas" class="sel" onchange="cambioBolas()"><option value="8" selected>4+4 = 8</option><option value="6">3+3 = 6</option><option value="4">2+2 = 4</option><option value="2">1+1 = 2</option></select></div>
 </div>
-<div class="box" style="border-color:#38bdf8"><b>🤖 CEREBRO MT5 - NETO REAL</b><div id="cerebro" style="font-size:13px;white-space:pre-line;margin-top:8px">Iniciando cerebro...</div></div>
+<div class="box" style="border-color:#38bdf8"><b>🤖 CEREBRO MT5 - AUTO-TUNE REAL</b><div id="cerebro" style="font-size:13px;white-space:pre-line;margin-top:8px">Iniciando cerebro...</div></div>
 <div class="grid" id="grid"></div>
 <div class="box"><b style="color:#38bdf8">📊 POSICIONES ABIERTAS MT5</b><table><thead><tr><th>Moneda</th><th>Tipo</th><th>Entry</th><th>Ahora</th><th>Bruto</th><th>Neto</th><th></th></tr></thead><tbody id="pos"></tbody></table></div>
 <div class="box"><b style="color:#38bdf8">📋 REGISTRO MT5</b><table><thead><tr><th>Hora</th><th>Moneda</th><th>Monto</th><th>Bruto</th><th>Neto</th><th>Gan</th></tr></thead><tbody id="hist"></tbody></table></div>
@@ -54,7 +54,7 @@ function cambioBolas(){
     let opt=sel.options[sel.selectedIndex];
     if(modo==="AMBOS" && opt && opt.dataset.l){document.getElementById('bola_det').innerText=`(${opt.dataset.l} LONG + ${opt.dataset.s} SHORT) MT5`; document.getElementById('modo_txt').innerText=`MODO: AMBOS ${opt.dataset.l}+${opt.dataset.s} MT5`;} else {document.getElementById('bola_det').innerText=`(${total} ${modo}) MT5`; document.getElementById('modo_txt').innerText=`MODO: SOLO ${modo} ${total} MT5`;}
     guardar();
-  }catch(e){ console.log(e); }
+  }catch(e){}
 }
 function guardar(){
   try{
@@ -70,8 +70,28 @@ function guardar(){
 }
 function toggleCoin(k){S.coins_activas[k]=!S.coins_activas[k]; renderAll(); guardar();}
 function toggleAutoTrade(){autoTrade=!autoTrade; localStorage.setItem('autoTrade_mt5',autoTrade); let flo=document.getElementById('float_bin'); let txt=document.getElementById('float_txt'); if(autoTrade){flo.classList.remove('off'); txt.innerText='AUTO TRADE ON 🤖 MT5';} else {flo.classList.add('off'); txt.innerText='AUTO TRADE OFF 🔕 MT5';} }
-function toggleAutoTune(){autoTune=document.getElementById('auto_tune').checked; localStorage.setItem('autoTune_mt5',autoTune); document.getElementById('auto_lab').innerText=autoTune?'✅ AUTO-TUNE ON MT5':'⬜ AUTO-TUNE OFF MT5';}
+function toggleAutoTune(){autoTune=document.getElementById('auto_tune').checked; localStorage.setItem('autoTune_mt5',autoTune); document.getElementById('auto_lab').innerText=autoTune?'✅ AUTO-TUNE ON MT5: Ajusta SL/RSI solo':'⬜ AUTO-TUNE OFF MT5: Solo sugiere'; if(autoTune) localStorage.removeItem('last_tune_msg_mt5'); document.getElementById('auto_det').innerText="";}
 
+// --- MOTOR AUTO-TUNE REAL MT5 (IGUAL QUE BINANCE) ---
+function autoTuneReal(){
+  if(!autoTune) return;
+  if(hist.length < 2) return;
+  let ultimos5 = hist.slice(0,5);
+  let slSeguidos = ultimos5.filter(h=> parseFloat(h.porc) < 0).length;
+  let cambios=[];
+  if(slSeguidos >= 2){
+    let slEl = document.getElementById('sl');
+    let rsiCEl = document.getElementById('rsi_c');
+    if(parseFloat(slEl.value) <= -2.0){ slEl.value = -1.5; cambios.push("SL -3% -> -1.5%"); }
+    if(parseFloat(rsiCEl.value) >= 40){ rsiCEl.value = 35; cambios.push("RSI 50 -> 35"); }
+    if(cambios.length>0){
+      guardar();
+      let msg = "🤖 AUTO-TUNE MT5 AJUSTÓ ("+new Date().toLocaleTimeString()+"): " + cambios.join(" | ");
+      localStorage.setItem('last_tune_msg_mt5', msg);
+      document.getElementById('auto_det').innerText = msg;
+    }
+  }
+}
 function renderAll(){
   try{
     document.getElementById('auto_tune').checked=autoTune;
@@ -82,25 +102,19 @@ function renderAll(){
     let slV=parseFloat(document.getElementById('sl').value)||-3;
     let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.5;
     let cierreBruto=cierreNeto+FEE_MT5;
-
     COINS.forEach(k=>{if(!rsiPorMoneda[k]) rsiPorMoneda[k]=28+Math.random()*32; else rsiPorMoneda[k]+=(Math.random()-0.5)*2; if(rsiPorMoneda[k]<12) rsiPorMoneda[k]=12; if(rsiPorMoneda[k]>88) rsiPorMoneda[k]=88;});
     let caida=COINS.filter(k=>rsiPorMoneda[k]<rsiC).length;
-
-    // CEREBRO - LO PINTAMOS PRIMERO SIEMPRE
     let filtro=document.getElementById('ema').value;
     let totalReal=getTotalReal(); let totalBolas=getBolasTotal(); let bolaReal=totalReal/totalBolas;
     let porMoneda=COINS.map(k=>{let r=rsiPorMoneda[k].toFixed(1); let est=parseFloat(r)<rsiC?`Caida RSI | RSI ${r}`:`Espera RSI | RSI ${r}`; return `${k}: ${est}`;}).join('\n');
-    let cerebro=`CAIDA FUERTE ${caida}/8 bajo EMA\nLO MEJOR HOY:\n- SL: ${slV}%\n- RSI Venta: ${rsiV} | Compra: ${rsiC}\n- Filtro: ${filtro}\n- CIERRE: ${cierreNeto.toFixed(2)}% NETO = ${cierreBruto.toFixed(2)}% BRUTO\n- BOLA: $${bolaReal.toFixed(2)} = $${totalReal.toFixed(2)}/${totalBolas}\n\nPor moneda:\n${porMoneda}\n\n${autoTrade?'🤖 AUTO ON MT5':'🔕 OFF MT5'}`;
+    let tuneMsg = localStorage.getItem('last_tune_msg_mt5') || "";
+    let cerebro=`CAIDA FUERTE ${caida}/8 bajo EMA\nLO MEJOR HOY:\n- SL: ${slV}%\n- RSI Venta: ${rsiV} | Compra: ${rsiC}\n- Filtro: ${filtro}\n- CIERRE: ${cierreNeto.toFixed(2)}% NETO = ${cierreBruto.toFixed(2)}% BRUTO\n- BOLA: $${bolaReal.toFixed(2)} = $${totalReal.toFixed(2)}/${totalBolas}\n${tuneMsg? '\n' + tuneMsg + '\n' : ''}\nPor moneda:\n${porMoneda}\n\n${autoTrade?'🤖 AUTO ON MT5':'🔕 OFF MT5'}`;
     document.getElementById('cerebro').innerText=cerebro;
-
-    // GRID
     let act=S.coins_activas||{};
     document.getElementById('grid').innerHTML=COINS.map(k=>{
       let v=act[k]!==false; let rsi=rsiPorMoneda[k].toFixed(1); let precio=(PRECIOS_BASE[k]*(0.999+Math.random()*0.002)).toFixed(2);
       return `<div class=card onclick="toggleCoin('${k}')" style="${!v?'opacity:.4':''}"><div class="on ${!v?'off_b':''}">${v?'ON':'OFF'}</div><div style="font-weight:900">${k}</div><div class=price>$${precio}</div><div class=detail>RSI ${rsi} (lim ${rsiC})<br>${parseFloat(rsi)<rsiC?'CAIDA - COMPRA':'ESPERA'}</div></div>`;
     }).join('');
-
-    // RESTO
     if(autoTrade){
       COINS.forEach(k=>{
         if(S.coins_activas && S.coins_activas[k]===false) return;
@@ -129,7 +143,7 @@ function renderAll(){
     document.getElementById('pos').innerHTML=pos.length? pos.map((p,i)=>`<tr><td>${p.moneda}</td><td>${p.tipo}</td><td>${p.entry.toFixed(2)}</td><td>${p.ahora.toFixed(2)}</td><td style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</td><td style="color:#facc15">${(p.neta-FEE_MT5).toFixed(2)}%</td><td><button onclick="cerrarPos(${i})" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">X</button></td></tr>`).join('') : `<tr><td colspan=7 style="text-align:center;opacity:.4">Sin posiciones MT5</td></tr>`;
     document.getElementById('hist').innerHTML=hist.length? hist.map(h=>`<tr><td>${h.hora}</td><td>${h.moneda} ${h.tipo}</td><td>$${h.monto}</td><td>${h.bruto}%</td><td style="color:${parseFloat(h.porc)>=0?'#22c55e':'#ef4444'}">${h.porc}%</td><td style="color:#22c55e">$${h.gan}</td></tr>`).join('') : `<tr><td colspan=6 style="text-align:center;opacity:.4">Sin historial MT5</td></tr>`;
   }catch(err){
-    document.getElementById('cerebro').innerText = "ERROR: "+err.message+"\nCAIDA FUERTE 0/8\nPor moneda:\nXAUUSD: Espera RSI | RSI 45.0\n...";
+    document.getElementById('cerebro').innerText = "ERROR: "+err.message;
   }
 }
 function cerrarPos(i){pos.splice(i,1); localStorage.setItem('pos_mt5_demo',JSON.stringify(pos)); renderAll();}
@@ -145,5 +159,5 @@ function load(){
   document.getElementById('cerebro').innerText = "CAIDA FUERTE 0/8\nIniciando...\nXAUUSD: Calculando RSI...";
   renderAll();
 }
-load(); setInterval(renderAll,2500);
+load(); setInterval(()=>{ autoTuneReal(); renderAll(); },2500);
 </script></body></html>
