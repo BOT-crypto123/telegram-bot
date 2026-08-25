@@ -1,78 +1,9 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>BOLA V6 TOP4 REAL</title>
-<style>
-*{box-sizing:border-box}body{background:#0a0a0a;color:#fff;font-family:system-ui;margin:0}
-.top{text-align:center;background:#000;padding:8px;border-bottom:2px solid #222;font-size:11px;position:sticky;top:0}
-.wrap{display:flex;max-width:950px;margin:0 auto}
-.col{flex:1;border-right:1px solid #1a1a1a;padding:8px}.col:last-child{border:0}
-.h{padding:10px;text-align:center;font-weight:900;font-size:12px;border-radius:8px;margin-bottom:8px}
-.h.b{background:#1a1600;color:#facc15;border:1px solid #facc15}
-.h.m{background:#0a1620;color:#38bdf8;border:1px solid #38bdf8}
-.circle{width:180px;height:180px;border-radius:50%;border:8px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#1a1600;margin:0 auto 10px}
-.circle.mt5{border-color:#38bdf8;background:#0a1620}
-.big{font-size:28px;font-weight:900}
-.coins{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-.coin{background:#1a1a1a;border-radius:12px;padding:8px;border:1px solid #22c55e;box-shadow:0 0 10px #22c55e22}
-.coin.mt5{border-color:#38bdf8;background:#0f182a}
-.coin h3{margin:0 0 4px 0;font-size:11px;display:flex;justify-content:space-between}
-.up{color:#22c55e}.down{color:#ef4444}
-.lab{font-size:9px;color:#888}
-.flujo{font-size:9px;color:#22c55e;font-weight:800}
-.flujo.m{color:#38bdf8}
-@media(max-width:750px){.wrap{flex-direction:column}}
-</style>
-</head>
-<body>
-<div class="top" id="top">💰 Cargando TOP 4 de tu historial...</div>
-<div class="wrap">
-<div class="col">
-<div class="h b">◆ BINANCE - 4 CON MAS DINAMISMO<br><small>De tu historial real</small></div>
-<div class="circle"><span style="font-size:10px;color:#facc15;font-weight:900">TOTAL BINANCE</span><span class="big" id="totB" style="color:#facc15">$500</span><span id="msgB" class="lab">Calculando...</span></div>
-<div id="coinsB" class="coins"></div>
-</div>
-<div class="col">
-<div class="h m">◫ MT5 - 4 CON MAS FLUJO<br><small>De tu historial MT5</small></div>
-<div class="circle mt5"><span style="font-size:10px;color:#38bdf8;font-weight:900">TOTAL MT5</span><span class="big" id="totM" style="color:#38bdf8">$500</span><span id="msgM" class="lab">Calculando...</span></div>
-<div id="coinsM" class="coins"></div>
-</div>
-</div>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5.5 FINAL</title><style>*{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;min-height:100vh}.col{flex:1;padding:12px;border-right:1px solid #111}.col:last-child{border:0}.badge{font-weight:900;font-size:15px}.sub{font-size:11px;color:#888}.circle{width:180px;height:180px;border-radius:50%;border:8px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;margin:18px auto;background:#1a1600;cursor:pointer;transition:0.2s}.circle:active{transform:scale(0.95)}.circle.mt5{border-color:#38bdf8;background:#0a1620}.big{font-size:36px;font-weight:900}.bola{font-size:14px;color:#facc15;font-weight:900}.bola.m{color:#38bdf8}.mark{color:#facc15;font-weight:900;font-size:13px;margin:14px 0 8px}.mark.m{color:#38bdf8}.coin{background:#111;border-radius:16px;padding:12px;margin:8px 0;display:flex;justify-content:space-between;align-items:center;border:1px solid #22c55e}.coin.mt5{border-color:#38bdf8}.price{font-weight:900;font-size:15px}.chg{font-size:11px;padding:4px 8px;border-radius:20px;font-weight:900}.up{background:#052e16;color:#22c55e}.down{background:#450a0a;color:#ef4444}@media(max-width:700px){body{flex-direction:column}}</style></head><body>
+<div class="col"><div class="badge" style="color:#facc15">◆ BINANCE - CRYPTO</div><div class="sub" id="subB">Crypto Trading • Live</div><div class="circle" onclick="location.href='/detail'"><span style="font-size:11px;color:#facc15">TOTAL BINANCE</span><span class="big" id="capB">$500</span><span style="font-size:11px">bola</span><span class="bola" id="bolaB">$62.5</span></div><div class="mark">🔥 TOP 4 CON MAS DINAMISMO AHORA</div><div id="listB"></div></div>
+<div class="col" style="background:#050a14"><div class="badge" style="color:#38bdf8">◫ MT5 SIN MT5</div><div class="sub">Oro Plata Petroleo Indice</div><div class="circle mt5" onclick="location.href='/detail?mt5=1'"><span style="font-size:11px;color:#38bdf8">TOTAL MT5</span><span class="big" id="capM">$500</span><span style="font-size:11px">bola</span><span class="bola m" id="bolaM">$62.5</span></div><div class="mark m">📈 TOP 4 CON MAS FLUJO AHORA</div><div id="listM"></div></div>
 <script>
+const FALLBACK_B=['BTC','ETH','SOL','BNB']; const FALLBACK_M=['XAUUSD','XAGUSD','USOIL','SPX500'];
+async function bPrice(s){try{let r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol='+s+'USDT');let j=await r.json();return{price:parseFloat(j.lastPrice),chg:parseFloat(j.priceChangePercent)}}catch(e){return{price:63400,chg:1.2}}}
 async function load(){
-try{
-let st=await fetch('/api/state').then(r=>r.json());
-let pr=await fetch('/api/prices').then(r=>r.json()).catch(()=>({}));
-let prM=await fetch('/api/prices_mt5').then(r=>r.json()).catch(()=>({XAUUSD:{price:2341,rsi:45},XAGUSD:{price:28.1,rsi:52},USOIL:{price:76.4,rsi:48},SPX500:{price:5432,rsi:55},EURUSD:{price:1.08,rsi:50}}));
-document.getElementById('totB').innerText='$'+(st.capital_binance||st.capital||500).toFixed(0);
-document.getElementById('totM').innerText='$'+(st.capital_mt5||500).toFixed(0);
-// TOP 4 BINANCE DE TU HISTORIAL
-let hB=st.historial||[];let cntB={};
-hB.forEach(t=>{let s=(t.sym||'').replace('USDT','');if(s)cntB[s]=(cntB[s]||0)+1});
-let topB=Object.entries(cntB).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>x[0]);
-if(topB.length<4){topB=Object.keys(pr).map(k=>k.replace('USDT','')).slice(0,4);if(topB.length==0)topB=['BTC','ETH','SOL','BNB'];}
-document.getElementById('msgB').innerText='TOP: '+topB.join(' | ')+' ('+hB.length+' trades)';
-document.getElementById('top').innerText='💰 TOP 4 DINAMICO REAL | '+topB.join(' ')+' | '+new Date().toLocaleTimeString();
-let cB=document.getElementById('coinsB');cB.innerHTML='';
-topB.forEach(sym=>{
-let v=pr[sym+'USDT']||pr[sym]||{price:0,rsi:50};let ch=(Math.random()*3-1.5).toFixed(2);
-cB.innerHTML+=`<div class="coin"><h3>${sym} <span class="${ch>=0?'up':'down'}">${ch>=0?'▲':'▼'}${ch}%</span></h3><div class="lab">$${(v.price||0).toFixed(2)} RSI ${v.rsi||50}</div><div class="flujo">${(cntB[sym]||0)} entradas • FLUJO ALTO 🔥</div></div>`;
-});
-// TOP 4 MT5
-let hM=st.historial_mt5||[];let cntM={};
-hM.forEach(t=>{let s=t.activo||t.sym||'';if(s)cntM[s]=(cntM[s]||0)+1});
-let topM=Object.entries(cntM).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>x[0]);
-if(topM.length<4)topM=['XAUUSD','XAGUSD','USOIL','SPX500'];
-document.getElementById('msgM').innerText='TOP: '+topM.join(' | ')+' ('+hM.length+' trades)';
-let cM=document.getElementById('coinsM');cM.innerHTML='';
-topM.forEach(sym=>{
-let v=prM[sym]||{price:0,rsi:50};let ch=(Math.random()*2-1).toFixed(2);
-cM.innerHTML+=`<div class="coin mt5"><h3>${sym} <span class="${ch>=0?'up':'down'}">${ch>=0?'▲':'▼'}${ch}%</span></h3><div class="lab">$${(v.price||0).toFixed(2)} RSI ${v.rsi||50}</div><div class="flujo m">${(cntM[sym]||0)} entradas • VIVO MT5</div></div>`;
-});
-}catch(e){console.log(e)}}
-load();setInterval(load,3000);
-</script>
-</body>
-</html>
+ try{
+  let st={}; try{st=await fetch('/api/state').then(r=>r.json())}catch{st={capital_binance:500,capital_mt5:500,h
