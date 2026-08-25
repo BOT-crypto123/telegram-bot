@@ -1,30 +1,27 @@
 from fastapi import FastAPI, Request
 from fastapi.responses import HTMLResponse, JSONResponse
 import json, os
-from datetime import datetime
 
 app = FastAPI()
 
-# ESTOS SON TUS TOTALES REALES QUE QUIERES QUE ARRANQUE SI SE BORRA TODO
-# Aqui puse los ultimos que traias: 542 y 540 - cambialos si quieres
 DEFAULT = {
  "disponible_usd":333.77,"bloqueado_usd":187.5,"gan_acum":21.27,
  "disponible_m":20.14,"bloqueado_m":500,"gan_mt5":20.14,
  "max_entradas":8,"max_m":8,"bolas_long":4,"bolas_short":4,"bolas_long_m":4,"bolas_short_m":4,
  "tp":0.3,"sl_pct":2.5,"tp_m":0.5,"sl_m":3.0,"auto":True,"auto_m":True,
- "modo":"AMBOS","modo_m":"AMBOS","rsi_compra":40,"rsi_venta":70,"rsi_compra_m":50,"rsi_venta_m":65,
- "ema":"OFF Caida","ema_m":"EMA200 ORO","cierre":0.1,"cierre_m":0.5,
+ "modo":"AMBOS","modo_m":"AMBOS",
  "coins_activas":{"ADA":True,"AVAX":True,"BNB":True,"BTC":True,"DOGE":True,"ETH":True,"SOL":True,"XRP":True},
  "coins_mt5_activas":{"XAUUSD":True,"XAGUSD":True,"USOIL":True,"SPX500":True,"EURUSD":True,"GBPUSD":True,"NAS100":True,"GER40":True},
- "pos":[],"pos_m":[],"pos_m_short":[],"historial":[],"historial_m":[],"evolucion":[],"evolucion_m":[]
+ "pos":[],"pos_m":[],"pos_m_short":[],"historial":[],"historial_m":[]
 }
 
 def load():
  try:
-  with open("state.json","r") as f: s=json.load(f)
-  for k,v in DEFAULT.items():
-   if k not in s: s[k]=v
-  return s
+  with open("state.json","r") as f:
+   s=json.load(f)
+   for k,v in DEFAULT.items():
+    if k not in s: s[k]=v
+   return s
  except: return DEFAULT.copy()
 
 def save(s):
@@ -66,32 +63,70 @@ async def index():
 <body><div class="wrap">
 <div class="side left"><div class="h hy">◆ BINANCE - CRYPTO REAL</div><div class="sub">Total REAL: ${tb:.2f}</div>
 <div class="circle cy"><div class="lab">Capital REAL</div><div class="cap">${tb:.2f}</div><div class="mxn">≈ ${tb*usdmxn:,.0f} MXN</div></div>
-<div class="bola by">bola ${bb:.2f} ≈ ${bb*usdmxn:,.0f} MXN<br>D:${s.get('disponible_usd',0):.2f} B:{s.get('bloqueado_usd',0):.2f} G:{s.get('gan_acum',0):.2f}</div></div>
+<div class="bola by">bola ${bb:.2f}<br>D:{s.get('disponible_usd',0):.2f} B:{s.get('bloqueado_usd',0):.2f} G:{s.get('gan_acum',0):.2f}</div></div>
 <div class="side right"><div class="h hb">📊 MT5 SIN MT5 REAL</div><div class="sub">Total REAL: ${tm:.2f}</div>
 <div class="circle cb"><div class="lab">Capital REAL</div><div class="cap">${tm:.2f}</div><div class="mxn">≈ ${tm*usdmxn:,.0f} MXN</div></div>
-<div class="bola bb">bola ${bm:.2f} ≈ ${bm*usdmxn:,.0f} MXN<br>D:{s.get('disponible_m',0):.2f} B:{s.get('bloqueado_m',0):.2f} G:{s.get('gan_mt5',0):.2f}</div></div>
+<div class="bola bb">bola ${bm:.2f}<br>D:{s.get('disponible_m',0):.2f} B:{s.get('bloqueado_m',0):.2f} G:{s.get('gan_mt5',0):.2f}</div></div>
 </div><script>setInterval(()=>location.reload(),15000)</script></body></html>
 """)
 
-@app.get("/dashboard"); 
-async def dash(): return safe_html("dashboard.html") or await index()
+@app.get("/dashboard")
+async def dash():
+ r=safe_html("dashboard.html")
+ return r if r else await index()
+
 @app.get("/dashboard.html")
-async def dash2(): return safe_html("dashboard.html") or await index()
+async def dash_html():
+ r=safe_html("dashboard.html")
+ return r if r else await index()
+
 @app.get("/dashboard_mt5.html")
-async def dash3(): return safe_html("dashboard_mt5.html") or await index()
+async def dash_mt5():
+ r=safe_html("dashboard_mt5.html")
+ return r if r else await index()
+
 @app.get("/dual_v5.html")
-async def dual(): return await index()
+async def dual():
+ return await index()
 
 @app.get("/api/state")
 async def state():
  s=load()
- s["total_b"]=s.get("disponible_usd",0)+s.get("bloqueado_usd",0)+s.get("gan_acum",0)
- s["total_m"]=s.get("disponible_m",0)+s.get("bloqueado_m",0)+s.get("gan_mt5",0)
+ s["total_b"]=float(s.get("disponible_usd",0)+s.get("bloqueado_usd",0)+s.get("gan_acum",0))
+ s["total_m"]=float(s.get("disponible_m",0)+s.get("bloqueado_m",0)+s.get("gan_mt5",0))
  s["bola_b"]=s["total_b"]/max(1,s.get("max_entradas",8))
  s["bola_m"]=s["total_m"]/max(1,s.get("max_m",8))
  return s
 
 @app.get("/api/backup")
-async def backup(): return JSONResponse(load())
+async def backup():
+ return JSONResponse(load())
+
 @app.post("/api/restore")
-async def restore(req:Request): s=await req.json(); save(s); return {"ok":True}
+async def restore(req:Request):
+ s=await req.json()
+ save(s)
+ return {"ok":True}
+
+@app.post("/api/config")
+async def config(req:Request):
+ s=load()
+ d=await req.json()
+ for k in ["modo","modo_m","max_entradas","max_m","tp","sl_pct","tp_m","sl_m","auto","auto_m"]:
+  if k in d: s[k]=d[k]
+ save(s)
+ return s
+
+@app.post("/telegram")
+async def telegram_webhook(req: Request):
+ try:
+  data = await req.json()
+  msg = data.get("message", {})
+  chat_id = msg.get("chat", {}).get("id")
+  if chat_id:
+   s=load()
+   s["last_chat_id"]=chat_id
+   save(s)
+  return {"ok": True}
+ except:
+  return {"ok": True}
