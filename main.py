@@ -30,8 +30,6 @@ def load():
   with open("state.json","r") as f: s=json.load(f)
   for k,v in DEFAULT.items():
    if k not in s: s[k]=v
-  if not s.get("coins_activas"): s["coins_activas"]=DEFAULT["coins_activas"]
-  if not s.get("coins_mt5_activas"): s["coins_mt5_activas"]=DEFAULT["coins_mt5_activas"]
   return s
  except:
   return DEFAULT.copy()
@@ -67,7 +65,6 @@ async def dash_mt5(): return safe_html("dashboard_mt5.html")
 @app.get("/api/state")
 async def state():
     s = load()
-    # TOTAL REAL VIVO - FIX DEL BUG DE $500 FIJO
     s["total_b"] = float(s.get("disponible_usd",0) + s.get("bloqueado_usd",0) + s.get("gan_acum",0))
     s["total_m"] = float(s.get("disponible_m",0) + s.get("bloqueado_m",0) + s.get("gan_mt5",0))
     if s["total_b"] == 0: s["total_b"] = 500
@@ -81,39 +78,18 @@ async def config(req:Request):
  s=load(); d=await req.json()
  if "toggle_coin" in d: s["coins_activas"][d["toggle_coin"]] = not s["coins_activas"].get(d["toggle_coin"],False)
  if "toggle_coin_mt5" in d: s["coins_mt5_activas"][d["toggle_coin_mt5"]] = not s["coins_mt5_activas"].get(d["toggle_coin_mt5"],False)
- if "modo" in d: s["modo"]=d["modo"]
+ for k in ["modo","modo_m","max_entradas","max_m","tp","sl_pct","tp_m","sl_m","rsi_compra","rsi_venta","rsi_compra_m","rsi_venta_m","cierre","cierre_m","ema","ema_m","auto","auto_m"]:
+  if k in d: s[k]=d[k]
  if "bolas" in d:
   total=int(d["bolas"]); s["max_entradas"]=total
   if s["modo"]=="AMBOS": s["bolas_long"]=total//2; s["bolas_short"]=total//2
   elif s["modo"]=="LONG": s["bolas_long"]=total; s["bolas_short"]=0
   else: s["bolas_long"]=0; s["bolas_short"]=total
- if "cierre" in d: s["cierre"]=float(d["cierre"]); s["tp"]=float(d["cierre"])
- if "tp" in d: s["tp"]=float(d["tp"]); s["cierre"]=float(d["tp"])
- if "sl" in d: s["sl_pct"]=abs(float(d["sl"]))
- if "sl_pct" in d: s["sl_pct"]=abs(float(d["sl_pct"]))
- if "rsi_venta" in d: s["rsi_venta"]=int(d["rsi_venta"])
- if "rsi_compra" in d: s["rsi_compra"]=int(d["rsi_compra"])
- if "rsi_venta_m" in d: s["rsi_venta_m"]=int(d["rsi_venta_m"])
- if "rsi_compra_m" in d: s["rsi_compra_m"]=int(d["rsi_compra_m"])
- if "modo_m" in d: s["modo_m"]=d["modo_m"]
  if "bolas_m" in d:
   total=int(d["bolas_m"]); s["max_m"]=total
   if s.get("modo_m")=="AMBOS": s["bolas_long_m"]=total//2; s["bolas_short_m"]=total//2
   elif s.get("modo_m")=="LONG": s["bolas_long_m"]=total; s["bolas_short_m"]=0
   else: s["bolas_long_m"]=0; s["bolas_short_m"]=total
- if "cierre_m" in d: s["cierre_m"]=float(d["cierre_m"]); s["tp_m"]=float(d["cierre_m"])
- if "tp_m" in d: s["tp_m"]=float(d["tp_m"]); s["cierre_m"]=float(d["tp_m"])
- if "sl_m" in d: s["sl_m"]=abs(float(d["sl_m"]))
- if "rsi_v_m" in d: s["rsi_venta_m"]=int(d["rsi_v_m"])
- if "rsi_c_m" in d: s["rsi_compra_m"]=int(d["rsi_c_m"])
- if "ema" in d: s["ema"]=d["ema"]
- if "ema_m" in d: s["ema_m"]=d["ema_m"]
- if "auto_tune" in d: s["auto"]=bool(d["auto_tune"])
- if "auto" in d: s["auto"]=bool(d["auto"])
- if "auto_m" in d: s["auto_m"]=bool(d["auto_m"])
- if "auto_tune_m" in d: s["auto_m"]=bool(d["auto_tune_m"])
- for k in ["max_entradas","max_m","tp","sl_pct","tp_m","sl_m","modo","modo_m","rsi_compra","rsi_venta","rsi_compra_m","rsi_venta_m"]:
-  if k in d: s[k]=d[k]
  save(s); return s
 
 @app.post("/api/toggle")
@@ -128,9 +104,7 @@ async def buy(sym:str, req:Request):
  s=load(); data={}
  try: data=await req.json()
  except: pass
- if not s.get("auto",True):
-  tg_send(f"🔔 ALERTA ENTRADA BINANCE OFF: {sym}")
-  return {"ok":True}
+ if not s.get("auto",True): return {"ok":True}
  total = s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"]
  bola = total / s.get("max_entradas",8) if total>0 else 62.5
  if s["disponible_usd"]>=bola:
@@ -157,7 +131,7 @@ async def buy_mt5(sym:str, req:Request):
 
 @app.post("/api/sell/{sym}")
 async def sell(sym:str, req:Request=None):
- s=load(); data={}
+ s=load()
  try:
   if req: data=await req.json()
  except: pass
@@ -171,10 +145,7 @@ async def sell(sym:str, req:Request=None):
 
 @app.post("/api/sell_mt5/{sym}")
 async def sell_mt5(sym:str, req:Request=None):
- s=load(); data={}
- try:
-  if req: data=await req.json()
- except: pass
+ s=load()
  for p in s["pos_m"]+s["pos_m_short"]:
   if p["sym"]==sym:
    gan = p["size"]*(s.get("tp_m",0.5)/100)
