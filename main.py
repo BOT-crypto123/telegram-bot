@@ -4,7 +4,6 @@ import json, os, requests
 from datetime import datetime
 
 app = FastAPI()
-
 BOT_TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or ""
 RENDER_URL = os.getenv("RENDER_EXTERNAL_URL") or "https://telegram-bot-cijp.onrender.com"
 
@@ -37,13 +36,6 @@ def load():
 def save(s):
  with open("state.json","w") as f: json.dump(s,f)
 
-def tg_send(text):
- s=load()
- chat_id=s.get("last_chat_id")
- if not BOT_TOKEN or not chat_id: return
- try: requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": text}, timeout=5)
- except: pass
-
 def safe_html(filename):
     try:
         if os.path.exists(filename):
@@ -65,12 +57,13 @@ async def dash_mt5(): return safe_html("dashboard_mt5.html")
 @app.get("/api/state")
 async def state():
     s = load()
+    # TOTAL REAL VIVO - FIX DEFINITIVO
     s["total_b"] = float(s.get("disponible_usd",0) + s.get("bloqueado_usd",0) + s.get("gan_acum",0))
     s["total_m"] = float(s.get("disponible_m",0) + s.get("bloqueado_m",0) + s.get("gan_mt5",0))
-    if s["total_b"] == 0: s["total_b"] = 500
-    if s["total_m"] == 0: s["total_m"] = 500
-    s["bola_b"] = s["total_b"] / s.get("max_entradas",8)
-    s["bola_m"] = s["total_m"] / s.get("max_m",8)
+    if s["total_b"] < 1: s["total_b"] = 500
+    if s["total_m"] < 1: s["total_m"] = 500
+    s["bola_b"] = s["total_b"] / max(1,s.get("max_entradas",8))
+    s["bola_m"] = s["total_m"] / max(1,s.get("max_m",8))
     return s
 
 @app.post("/api/config")
@@ -132,9 +125,6 @@ async def buy_mt5(sym:str, req:Request):
 @app.post("/api/sell/{sym}")
 async def sell(sym:str, req:Request=None):
  s=load()
- try:
-  if req: data=await req.json()
- except: pass
  for p in s["pos"]:
   if p["sym"]==sym:
    gan = p["size"]*(s.get("tp",0.3)/100)
@@ -169,6 +159,7 @@ async def telegram_webhook(req: Request):
   if not chat_id: return {"ok": True}
   s=load(); s["last_chat_id"]=chat_id; save(s)
   if BOT_TOKEN:
-   requests.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": f"{RENDER_URL}/"}, timeout=5)
+   import requests as rq
+   rq.post(f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage", json={"chat_id": chat_id, "text": f"{RENDER_URL}/"}, timeout=5)
   return {"ok": True}
  except: return {"ok": True}
