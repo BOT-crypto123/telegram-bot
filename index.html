@@ -1,51 +1,44 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 GAN - TOP4</title><style>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 GAN FINAL</title><style>
 *{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;min-height:100vh}
-.col{flex:1;padding:10px;display:flex;flex-direction:column;align-items:center}.col.binance{background:#050505;border-right:1px solid #111}.col.mt5{background:#070f1e}
-.top{font-weight:900;font-size:13px;margin-top:8px;letter-spacing:0.5px}.top.b{color:#facc15}.top.m{color:#5aa8ff}
-.circle{width:205px;height:205px;border-radius:50%;border:7px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;margin:14px auto;background:#000;box-shadow:0 0 30px #facc1520;cursor:pointer}
-.circle.mt5{border-color:#3b82f6;box-shadow:0 0 30px #3b82f620}
-.cap{font-size:38px;font-weight:900;letter-spacing:-1px}.mxn{font-size:12px;color:#888;margin-top:2px;font-weight:600}
-.gan-lab{font-size:10px;color:#666;margin-top:22px;letter-spacing:1px}.gan{font-size:21px;font-weight:900;color:#22c55e;line-height:1}.gan-usd{font-size:12px;color:#666;margin-top:2px}.det{font-size:10px;color:#333;margin-top:4px}
-.list{width:100%;margin-top:10px}.card{background:#151515;border-radius:14px;padding:9px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;border:1px solid #222;width:100%}
-.card.top{border-color:#22c55e}.card.mt5{background:#111b30;border-color:#1e2a4a}
-.sym{font-weight:900;font-size:12px}.price{font-weight:900;font-size:13px}.chg{font-size:10px;padding:3px 6px;border-radius:12px;font-weight:900}.up{background:#052e16;color:#22c55e}.down{background:#2e0a0a;color:#ef4444}
-@media(max-width:700px){body{flex-direction:column}.circle{width:180px;height:180px}.cap{font-size:32px}}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;padding-top:28px}.col.binance{background:#000;border-right:1px solid #0f0f0f}.col.mt5{background:#080f1e}
+.label{font-weight:900;font-size:13px;letter-spacing:0.5px;margin-bottom:8px}.label.b{color:#facc15}.label.m{color:#5aa8ff}
+.circle{width:210px;height:210px;border-radius:50%;border:6px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#000;cursor:pointer;transition:0.15s}
+.circle:active{transform:scale(0.96);box-shadow:0 0 30px #facc15aa}
+.circle.mt5{border-color:#3b82f6}.circle.mt5:active{box-shadow:0 0 30px #3b82f6aa}
+.cap{font-size:38px;font-weight:900;line-height:1}.mxn{font-size:11px;color:#888;margin-top:6px;font-weight:700}
+.gan-lab{font-size:10px;color:#555;margin-top:38px;letter-spacing:0.8px}.gan{font-size:20px;font-weight:900;color:#22c55e;line-height:1.1}.gan-usd{font-size:12px;color:#666;margin-top:3px}.det{font-size:10px;color:#333;margin-top:4px}
+@media(max-width:700px){.circle{width:165px;height:165px}.cap{font-size:30px}.gan{font-size:17px}}
 </style></head><body>
 <div class="col binance">
-<div class="top b">◆ BINANCE</div>
+<div class="label b">◆ BINANCE</div>
 <div class="circle" onclick="location.href='/detail'"><span class="cap" id="capB">$506.93</span><span class="mxn" id="mxnB">$8592.54 MXN</span></div>
 <div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganB">+$117.54 MXN</div><div class="gan-usd" id="ganUsdB">+$6.93 USD</div><div class="det" id="detB">D:$314 B:$193 | $16.95</div>
-<div class="list" id="listB"></div>
 </div>
 <div class="col mt5">
-<div class="top m">📊 MT5</div>
+<div class="label m">📊 MT5</div>
 <div class="circle mt5" onclick="location.href='/detail?mt5=1'"><span class="cap" id="capM">$507.81</span><span class="mxn" id="mxnM">$8607.42 MXN</span></div>
 <div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganM">+$132.42 MXN</div><div class="gan-usd" id="ganUsdM">+$7.81 USD</div><div class="det" id="detM">D:$189 B:$319 | $16.95</div>
-<div class="list" id="listM"></div>
 </div>
 <script>
-const MXN=16.95; const FALLBACK_B=['BTC','ETH','SOL','BNB']; const FALLBACK_M=['XAUUSD','XAGUSD','USOIL','SPX500'];
-async function bPrice(s){try{let r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol='+s+'USDT');let j=await r.json();return{price:parseFloat(j.lastPrice),chg:parseFloat(j.priceChangePercent)}}catch(e){return{price:0,chg:0}}}
+const MXN=16.95;
 async function load(){
  try{
-  let st={}; try{st=await fetch('/api/state').then(r=>r.json())}catch{st={capital_binance:506.93,capital_mt5:507.81,ganancia_binance:6.93,ganancia_mt5:7.81,historial:[]}}
-  let capB=st.capital_binance||506.93, capM=st.capital_mt5||507.81;
-  let ganB=st.ganancia_binance||st.ganancia||6.93, ganM=st.ganancia_mt5||7.81;
-  document.getElementById('capB').innerText='$'+capB.toFixed(2); document.getElementById('mxnB').innerText='$'+(capB*MXN).toFixed(2)+' MXN';
-  document.getElementById('capM').innerText='$'+capM.toFixed(2); document.getElementById('mxnM').innerText='$'+(capM*MXN).toFixed(2)+' MXN';
-  document.getElementById('ganB').innerText='+$'+(ganB*MXN).toFixed(2)+' MXN'; document.getElementById('ganUsdB').innerText='+$'+ganB.toFixed(2)+' USD';
-  document.getElementById('ganM').innerText='+$'+(ganM*MXN).toFixed(2)+' MXN'; document.getElementById('ganUsdM').innerText='+$'+ganM.toFixed(2)+' USD';
-  // TOP 4 BINANCE DINAMICO REAL
-  let hB=st.historial||[],cnt={}; hB.forEach(t=>{let s=(t.sym||'').toUpperCase().replace('USDT',''); if(s.length>=2&&s.length<=10&&!['DETAIL','INDEX'].includes(s)) cnt[s]=(cnt[s]||0)+1});
-  let topB=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>x[0]); if(topB.length<4) topB=FALLBACK_B;
-  let lb=document.getElementById('listB'); lb.innerHTML='';
-  for(let sym of topB){let d=await bPrice(sym); if(d.price==0) continue; lb.innerHTML+=`<div class="card top"><div><div class="sym">${sym} • ${cnt[sym]||0} trades 🔥</div><div style="font-size:10px;color:#666">FLUJO ALTO VIVO</div></div><div style="text-align:right"><div class="price">$${d.price.toLocaleString()}</div><div class="chg ${d.chg>=0?'up':'down'}">${d.chg>=0?'+':''}${d.chg.toFixed(2)}%</div></div></div>`;}
-  // TOP 4 MT5
-  let hM=st.historial_mt5||[],cntM={}; hM.forEach(t=>{let s=(t.activo||'').toUpperCase(); if(s) cntM[s]=(cntM[s]||0)+1});
-  let topM=Object.entries(cntM).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>x[0]); if(topM.length<4) topM=FALLBACK_M;
-  let lm=document.getElementById('listM'); lm.innerHTML='';
-  topM.forEach(s=>{lm.innerHTML+=`<div class="card mt5 top"><div class="sym">${s} • ${cntM[s]||0} entradas</div><div class="chg up">VIVO</div></div>`;});
+  let s=await fetch('/api/state').then(r=>r.json());
+  let capB=s.capital_binance||s.capital||506.93;
+  let capM=s.capital_mt5||507.81;
+  let ganB=s.ganancia_binance||s.ganancia||6.93;
+  let ganM=s.ganancia_mt5||7.81;
+  document.getElementById('capB').innerText='$'+capB.toFixed(2);
+  document.getElementById('capM').innerText='$'+capM.toFixed(2);
+  document.getElementById('mxnB').innerText='$'+(capB*MXN).toFixed(2)+' MXN';
+  document.getElementById('mxnM').innerText='$'+(capM*MXN).toFixed(2)+' MXN';
+  document.getElementById('ganB').innerText='+$'+(ganB*MXN).toFixed(2)+' MXN';
+  document.getElementById('ganM').innerText='+$'+(ganM*MXN).toFixed(2)+' MXN';
+  document.getElementById('ganUsdB').innerText='+$'+ganB.toFixed(2)+' USD';
+  document.getElementById('ganUsdM').innerText='+$'+ganM.toFixed(2)+' USD';
+  document.getElementById('detB').innerText=`D:$${s.deposito_binance||314} B:$${s.bonos_binance||193} | $${MXN}`;
+  document.getElementById('detM').innerText=`D:$${s.deposito_mt5||189} B:$${s.bonos_mt5||319} | $${MXN}`;
  }catch(e){}
 }
-load(); setInterval(load,5000);
+load(); setInterval(load,4000);
 </script></body></html>
