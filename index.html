@@ -1,57 +1,51 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 - TOP4 DINAMICO</title><style>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 GAN - TOP4</title><style>
 *{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;min-height:100vh}
-.col{flex:1;padding:12px}.col.binance{background:#0a0a0a;border-right:1px solid #111}.col.mt5{background:#080f1f}
-.head{font-weight:900;font-size:14px;display:flex;align-items:center;gap:6px}.head.mt5{color:#5aa8ff}
-.sub{font-size:11px;color:#666;margin-bottom:10px}
-.circle{width:185px;height:185px;border-radius:50%;border:6px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;margin:20px auto;background:#000;box-shadow:0 0 25px #facc1533;cursor:pointer}
-.circle.mt5{border-color:#3b82f6;box-shadow:0 0 25px #3b82f633}
-.circle.lab{font-size:12px;color:#888}.circle.cap{font-size:38px;font-weight:900;line-height:1}.circle.bola-lab{font-size:12px;color:#888;margin-top:4px}.circle.bola{font-size:22px;font-weight:900;color:#facc15}.circle.mt5.bola{color:#3b82f6}
-.mark{font-weight:900;font-size:12px;color:#facc15;margin:18px 0 8px;display:flex;align-items:center;gap:5px}.mark.mt5{color:#5aa8ff}
-.card{background:#151515;border-radius:16px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;border:1px solid #222}
-.card.mt5{background:#111a2e;border-color:#1e2a4a}
-.card.top4{border-color:#22c55e;box-shadow:0 0 10px #22c55e20}
-.left{display:flex;gap:10px;align-items:center}.ico{width:36px;height:36px;border-radius:50%;display:flex;justify-content:center;align-items:center;font-weight:900;font-size:16px}
-.ico.btc{background:#f7931a;color:#fff}.ico.eth{background:#627eea;color:#fff}.ico.sol{background:#222;color:#fff;border:1px solid #444}
-.ico.gold{background:#d4af37;color:#000}.ico.silver{background:#aaa;color:#000}.ico.oil{background:#1e3a5f;color:#5aa8ff}
-.sym{font-weight:900;font-size:13px}.name{font-size:11px;color:#666}.price{font-weight:900;font-size:14px}.chg{font-size:11px;padding:4px 8px;border-radius:20px;font-weight:900;margin-top:3px;display:inline-block}.up{background:#0a2e15;color:#22c55e}.down{background:#2e0a0a;color:#ef4444}
-.open{background:#1a1600;border-radius:14px;padding:10px;margin-top:14px;border:1px solid #332a00}.open.tit{font-size:12px;font-weight:900;color:#facc15}
-@media(max-width:700px){body{flex-direction:column}}
+.col{flex:1;padding:10px;display:flex;flex-direction:column;align-items:center}.col.binance{background:#050505;border-right:1px solid #111}.col.mt5{background:#070f1e}
+.top{font-weight:900;font-size:13px;margin-top:8px;letter-spacing:0.5px}.top.b{color:#facc15}.top.m{color:#5aa8ff}
+.circle{width:205px;height:205px;border-radius:50%;border:7px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;margin:14px auto;background:#000;box-shadow:0 0 30px #facc1520;cursor:pointer}
+.circle.mt5{border-color:#3b82f6;box-shadow:0 0 30px #3b82f620}
+.cap{font-size:38px;font-weight:900;letter-spacing:-1px}.mxn{font-size:12px;color:#888;margin-top:2px;font-weight:600}
+.gan-lab{font-size:10px;color:#666;margin-top:22px;letter-spacing:1px}.gan{font-size:21px;font-weight:900;color:#22c55e;line-height:1}.gan-usd{font-size:12px;color:#666;margin-top:2px}.det{font-size:10px;color:#333;margin-top:4px}
+.list{width:100%;margin-top:10px}.card{background:#151515;border-radius:14px;padding:9px 10px;margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;border:1px solid #222;width:100%}
+.card.top{border-color:#22c55e}.card.mt5{background:#111b30;border-color:#1e2a4a}
+.sym{font-weight:900;font-size:12px}.price{font-weight:900;font-size:13px}.chg{font-size:10px;padding:3px 6px;border-radius:12px;font-weight:900}.up{background:#052e16;color:#22c55e}.down{background:#2e0a0a;color:#ef4444}
+@media(max-width:700px){body{flex-direction:column}.circle{width:180px;height:180px}.cap{font-size:32px}}
 </style></head><body>
 <div class="col binance">
-<div class="head">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
-<div class="circle" onclick="location.href='/detail'"><span class="lab">Capital</span><span class="cap" id="capB">$500</span><span class="bola-lab">bola</span><span class="bola" id="bolaB">$62.5</span></div>
-<div class="mark" id="markB">🔥 MARKETS - TOP 4 MAS DINAMICAS</div><div id="listB"></div>
-<div class="open"><div class="tit">📦 OPEN POSITIONS</div><div style="display:flex;justify-content:space-between;font-size:11px;color:#666;margin-top:6px"><span>Asset</span><span>Size</span><span>PnL</span></div><div style="text-align:center;color:#555;font-size:12px;margin-top:8px">Sin posiciones</div></div>
-<div style="font-size:11px;color:#333;margin-top:8px">● Portfolio Trade History all</div>
+<div class="top b">◆ BINANCE</div>
+<div class="circle" onclick="location.href='/detail'"><span class="cap" id="capB">$506.93</span><span class="mxn" id="mxnB">$8592.54 MXN</span></div>
+<div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganB">+$117.54 MXN</div><div class="gan-usd" id="ganUsdB">+$6.93 USD</div><div class="det" id="detB">D:$314 B:$193 | $16.95</div>
+<div class="list" id="listB"></div>
 </div>
 <div class="col mt5">
-<div class="head mt5">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
-<div class="circle mt5" onclick="location.href='/detail?mt5=1'"><span class="lab">Capital</span><span class="cap" id="capM">$500</span><span class="bola-lab">bola</span><span class="bola" id="bolaM">$62.5</span></div>
-<div class="mark mt5" id="markM">📈 MARKETS - TOP 4 MAS FLUJO</div><div id="listM"></div>
+<div class="top m">📊 MT5</div>
+<div class="circle mt5" onclick="location.href='/detail?mt5=1'"><span class="cap" id="capM">$507.81</span><span class="mxn" id="mxnM">$8607.42 MXN</span></div>
+<div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganM">+$132.42 MXN</div><div class="gan-usd" id="ganUsdM">+$7.81 USD</div><div class="det" id="detM">D:$189 B:$319 | $16.95</div>
+<div class="list" id="listM"></div>
 </div>
 <script>
-const FALLBACK_B=['BTC','ETH','SOL','BNB']; const FALLBACK_M=['XAUUSD','XAGUSD','USOIL','SPX500'];
-async function bPrice(s){try{let r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol='+s+'USDT');let j=await r.json();return{price:parseFloat(j.lastPrice),chg:parseFloat(j.priceChangePercent)}}catch(e){return{price:63421.5,chg:1.24}}}
+const MXN=16.95; const FALLBACK_B=['BTC','ETH','SOL','BNB']; const FALLBACK_M=['XAUUSD','XAGUSD','USOIL','SPX500'];
+async function bPrice(s){try{let r=await fetch('https://api.binance.com/api/v3/ticker/24hr?symbol='+s+'USDT');let j=await r.json();return{price:parseFloat(j.lastPrice),chg:parseFloat(j.priceChangePercent)}}catch(e){return{price:0,chg:0}}}
 async function load(){
  try{
-  let st={}; try{st=await fetch('/api/state').then(r=>r.json())}catch{st={capital_binance:500,capital_mt5:500,historial:[],historial_mt5:[]}}
-  let capB=st.capital_binance||st.capital||500; let capM=st.capital_mt5||500;
-  document.getElementById('capB').innerText='$'+capB.toFixed(0); document.getElementById('capM').innerText='$'+capM.toFixed(0);
-  document.getElementById('bolaB').innerText='$'+(capB/8).toFixed(1); document.getElementById('bolaM').innerText='$'+(capM/8).toFixed(1);
-  // BINANCE TOP 4 DINAMICO
-  let hB=st.historial||[],cnt={}; hB.forEach(t=>{let s=(t.sym||'').toUpperCase().replace('USDT','').replace('/',''); if(s.length>=2&&s.length<=10&&!['DETAIL','INDEX','API','HTML'].includes(s)) cnt[s]=(cnt[s]||0)+1});
+  let st={}; try{st=await fetch('/api/state').then(r=>r.json())}catch{st={capital_binance:506.93,capital_mt5:507.81,ganancia_binance:6.93,ganancia_mt5:7.81,historial:[]}}
+  let capB=st.capital_binance||506.93, capM=st.capital_mt5||507.81;
+  let ganB=st.ganancia_binance||st.ganancia||6.93, ganM=st.ganancia_mt5||7.81;
+  document.getElementById('capB').innerText='$'+capB.toFixed(2); document.getElementById('mxnB').innerText='$'+(capB*MXN).toFixed(2)+' MXN';
+  document.getElementById('capM').innerText='$'+capM.toFixed(2); document.getElementById('mxnM').innerText='$'+(capM*MXN).toFixed(2)+' MXN';
+  document.getElementById('ganB').innerText='+$'+(ganB*MXN).toFixed(2)+' MXN'; document.getElementById('ganUsdB').innerText='+$'+ganB.toFixed(2)+' USD';
+  document.getElementById('ganM').innerText='+$'+(ganM*MXN).toFixed(2)+' MXN'; document.getElementById('ganUsdM').innerText='+$'+ganM.toFixed(2)+' USD';
+  // TOP 4 BINANCE DINAMICO REAL
+  let hB=st.historial||[],cnt={}; hB.forEach(t=>{let s=(t.sym||'').toUpperCase().replace('USDT',''); if(s.length>=2&&s.length<=10&&!['DETAIL','INDEX'].includes(s)) cnt[s]=(cnt[s]||0)+1});
   let topB=Object.entries(cnt).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>x[0]); if(topB.length<4) topB=FALLBACK_B;
-  document.getElementById('markB').innerText='🔥 MARKETS - TOP: '+topB.join(' | ')+' ('+hB.length+' trades)';
-  let icons={BTC:'₿',ETH:'♦',SOL:'◎',BNB:'⬢'}; let cls={BTC:'btc',ETH:'eth',SOL:'sol',BNB:'sol'};
   let lb=document.getElementById('listB'); lb.innerHTML='';
-  for(let sym of topB){let d=await bPrice(sym); let ic=icons[sym]||'◎'; let cl=cls[sym]||'sol'; lb.innerHTML+=`<div class="card top4"><div class="left"><div class="ico ${cl}">${ic}</div><div><div class="sym">${sym}</div><div class="name">${sym=='BTC'?'Bitcoin':sym=='ETH'?'Ethereum':sym=='SOL'?'Solana':sym} • ${cnt[sym]||0} entradas • FLUJO ALTO 🔥</div></div></div><div style="text-align:right"><div class="price">$${d.price.toLocaleString()}</div><div class="chg ${d.chg>=0?'up':'down'}">${d.chg>=0?'+':''}${d.chg.toFixed(2)}% ${d.chg>=0?'↑':'↓'}</div></div></div>`;}
-  // MT5 TOP 4
-  let hM=st.historial_mt5||[],cntM={}; hM.forEach(t=>{let s=(t.activo||t.sym||'').toUpperCase(); if(s) cntM[s]=(cntM[s]||0)+1});
+  for(let sym of topB){let d=await bPrice(sym); if(d.price==0) continue; lb.innerHTML+=`<div class="card top"><div><div class="sym">${sym} • ${cnt[sym]||0} trades 🔥</div><div style="font-size:10px;color:#666">FLUJO ALTO VIVO</div></div><div style="text-align:right"><div class="price">$${d.price.toLocaleString()}</div><div class="chg ${d.chg>=0?'up':'down'}">${d.chg>=0?'+':''}${d.chg.toFixed(2)}%</div></div></div>`;}
+  // TOP 4 MT5
+  let hM=st.historial_mt5||[],cntM={}; hM.forEach(t=>{let s=(t.activo||'').toUpperCase(); if(s) cntM[s]=(cntM[s]||0)+1});
   let topM=Object.entries(cntM).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>x[0]); if(topM.length<4) topM=FALLBACK_M;
-  let mPrices={XAUUSD:2341.2,XAGUSD:28.15,USOIL:78.4,SPX500:5435, EURUSD:1.08};
   let lm=document.getElementById('listM'); lm.innerHTML='';
-  topM.forEach(sym=>{let p=mPrices[sym]||2341; let ch=(Math.random()*1.5-0.75).toFixed(2); let isGold=sym.includes('XAU'), isSil=sym.includes('XAG'), isOil=sym.includes('OIL'); lm.innerHTML+=`<div class="card mt5 top4"><div class="left"><div class="ico ${isGold?'gold':isSil?'silver':'oil'}">${isGold?'◉':isSil?'◉':'🛢️'}</div><div><div class="sym">${sym} ${isGold?'GOLD':isSil?'SILVER':''}</div><div class="name">${isGold?'Gold Spot':isSil?'Silver Spot':isOil?'Crude Oil WTI':sym} • ${cntM[sym]||0} entradas</div></div></div><div style="text-align:right"><div class="price">$${p}</div><div class="chg ${ch>=0?'up':'down'}">${ch>=0?'+':''}${ch}% ${ch>=0?'↑':'↓'}</div></div></div>`;});
- }catch(e){console.log(e)}
+  topM.forEach(s=>{lm.innerHTML+=`<div class="card mt5 top"><div class="sym">${s} • ${cntM[s]||0} entradas</div><div class="chg up">VIVO</div></div>`;});
+ }catch(e){}
 }
-load(); setInterval(load,6000);
+load(); setInterval(load,5000);
 </script></body></html>
