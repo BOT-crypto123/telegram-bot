@@ -25,18 +25,18 @@
 <div class="side left">
 <div class="h hy">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
 <div class="circle cy" onclick="location.href='/dashboard.html'">
-<div class="lab">Capital</div><div class="cap" id="cap_b">$500.00</div>
-<div class="mxn-in" id="mxn_in_b">≈ $8,459 MXN</div>
+<div class="lab">Capital</div><div class="cap" id="cap_b">$0.00</div>
+<div class="mxn-in" id="mxn_in_b">≈ $0 MXN</div>
 </div>
-<div class="bola-out by" id="bola_out_b">bola $62.50 ≈ $1,057 MXN</div>
+<div class="bola-out by" id="bola_out_b">bola $0</div>
 </div>
 <div class="side right">
 <div class="h hb">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
 <div class="circle cb" onclick="location.href='/dashboard_mt5.html'">
-<div class="lab">Capital</div><div class="cap" id="cap_m">$500.00</div>
-<div class="mxn-in" id="mxn_in_m">≈ $8,459 MXN</div>
+<div class="lab">Capital</div><div class="cap" id="cap_m">$0.00</div>
+<div class="mxn-in" id="mxn_in_m">≈ $0 MXN</div>
 </div>
-<div class="bola-out bb" id="bola_out_m">bola $62.50 ≈ $1,057 MXN</div>
+<div class="bola-out bb" id="bola_out_m">bola $0</div>
 </div>
 </div>
 <script>
@@ -46,12 +46,14 @@ async function getDolar(){
 }
 async function live(){
  try{
-  let r=await fetch('/api/state?t='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache','Pragma':'no-cache'}});
+  let r=await fetch('/api/state?t='+Date.now(),{cache:'no-store'});
   let s=await r.json();
-  let tb = s.total_b || (s.disponible_usd + s.bloqueado_usd + s.gan_acum);
-  let tm = s.total_m || (s.disponible_m + s.bloqueado_m + s.gan_mt5);
-  let bb = s.bola_b || tb/(s.max_entradas||8);
-  let bm = s.bola_m || tm/(s.max_m||8);
+  let tb = (s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0);
+  let tm = (s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0);
+  if(tb<10) tb=s.total_b||500;
+  if(tm<10) tm=s.total_m||500;
+  let bb = tb/(s.max_entradas||8);
+  let bm = tm/(s.max_m||8);
   document.getElementById('cap_b').innerText='$'+tb.toFixed(2);
   document.getElementById('cap_m').innerText='$'+tm.toFixed(2);
   document.getElementById('mxn_in_b').innerText='≈ $'+(tb*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
@@ -60,9 +62,7 @@ async function live(){
   document.getElementById('bola_out_m').innerText='bola $'+bm.toFixed(2)+' ≈ $'+(bm*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
  }catch{}
 }
-getDolar(); live();
-setInterval(live,1000);
-setInterval(getDolar,20000);
+getDolar(); live(); setInterval(live,1000);
 </script>
 </body>
 </html>
