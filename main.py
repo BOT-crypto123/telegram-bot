@@ -1,53 +1,73 @@
-from flask import Flask, send_from_directory, jsonify, request
-import os
+import os, json, requests
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse, JSONResponse
 
-app = Flask(__name__, static_folder='.', static_url_path='')
+app = FastAPI()
+FILE = "state.json"
+TOKEN = os.getenv("BOT_TOKEN") or os.getenv("TELEGRAM_TOKEN") or ""
+URL = f"https://api.telegram.org/bot{TOKEN}/sendMessage" if TOKEN else ""
 
-# --- RUTAS PRINCIPALES V6 REAL ---
-@app.route('/')
-def index():
-    return send_from_directory(app.static_folder, 'index.html')
+def load():
+    try:
+        with open(FILE,"r") as f: return json.load(f)
+    except:
+        return {"disponible_usd":500.0,"bloqueado_usd":0.0,"gan_acum":0.0,"disponible_m":500.0,"bloqueado_m":0.0,"gan_mt5":0.0,"max_entradas":8,"max_m":8}
 
-@app.route('/dashboard')
-@app.route('/dashboard.html')
-def dash_binance():
-    return send_from_directory(app.static_folder, 'dashboard.html')
+def save(s):
+    with open(FILE,"w") as f: json.dump(s,f)
 
-@app.route('/dashboard_mt5')
-@app.route('/dashboard_mt5.html')
-def dash_mt5():
-    return send_from_directory(app.static_folder, 'dashboard_mt5.html')
+def send(chat_id,text):
+    if not TOKEN: return
+    try: requests.post(URL, json={"chat_id":chat_id,"text":text,"parse_mode":"Markdown"}, timeout=5)
+    except: pass
 
-# Sirve cualquier otro archivo (css, js, etc)
-@app.route('/<path:filename>')
-def serve_any(filename):
-    file_path = os.path.join(app.static_folder, filename)
-    if os.path.isfile(file_path):
-        return send_from_directory(app.static_folder, filename)
-    # Si no existe, regresa index para no mostrar "no html" blanco
-    if filename.endswith('.html'):
-        return f"<h3 style='font-family:system-ui'>No se encontró {filename} - revisa GitHub que sí esté subido</h3>", 404
-    return send_from_directory(app.static_folder, 'index.html')
+@app.get("/")
+async def root():
+    try:
+        with open("index.html","r",encoding="utf-8") as f: return HTMLResponse(f.read())
+    except: return HTMLResponse("no index")
 
-# --- API QUE LEE TU BOT DE TELEGRAM V6 ---
-@app.route('/api/state')
-def state():
-    # V6 REAL - lee en cero, es lo que manda a Telegram
-    return jsonify({
-        "version": "DUAL V6 REAL",
-        "capital_binance": 500.00,
-        "capital_mt5": 500.00,
-        "ganancia_binance": 0.00,
-        "ganancia_mt5": 0.00,
-        "bola_binance": 62.50,
-        "bola_mt5": 62.50,
-        "status": "LIVE REAL SIN MERMA - BTC+ETH ONLY"
-    })
+@app.get("/{name}.html")
+async def html(name:str):
+    try:
+        with open(f"{name}.html","r",encoding="utf-8") as f: return HTMLResponse(f.read())
+    except: return HTMLResponse("no html", status_code=404)
 
-@app.route('/api/ping')
-def ping():
-    return "V6 REAL LIVE", 200
+@app.get("/api/state")
+async def get_state():
+    s=load()
+    return s
 
-if __name__ == '__main__':
-    port = int(os.environ.get("PORT", 10000))
-    app.run(host='0.0.0.0', port=port)
+@app.post("/api/state")
+async def post_state(req:Request):
+    s=load()
+    try:
+        data=await req.json()
+        for k,v in data.items():
+            if k in s:
+                try: s[k]=float(v)
+                except: s[k]=v
+        save(s)
+    except: pass
+    return s
+
+# ESTA ES LA RUTA QUE BORRASTE Y CAUSA 404
+@app.post("/telegram")
+@app.post("/telegram/")
+async def telegram(req:Request):
+    s=load()
+    tb = s.get("disponible_usd",0)+s.get("bloqueado_usd",0)+s.get("gan_acum",0)
+    tm = s.get("disponible_m",0)+s.get("bloqueado_m",0)+s.get("gan_mt5",0)
+    try:
+        data=await req.json()
+        msg=data.get("message",{}) or data.get("edited_message",{})
+        chat_id=msg.get("chat",{}).get("id")
+        text=(msg.get("text","") or "").upper()
+        if not chat_id: return JSONResponse({"ok":True})
+        
+        if "DASHBOARD" in text or "/START" in text or "START" in text:
+            txt=f"DUAL V5 LIVE\nBINANCE: ${tb:.2f}\nMT5: ${tm:.2f}\n\nD:BINANCE ${s.get('disponible_usd',0):.2f} B:${s.get('bloqueado_usd',0):.2f} G:${s.get('gan_acum',0):.2f}\nD:MT5 ${s.get('disponible_m',0):.2f} B:${s.get('bloqueado_m',0):.2f} G:${s.get('gan_mt5',0):.2f}\n\nEntra: https://telegram-bot-cijp.onrender.com/"
+            send(chat_id,txt)
+    except Exception as e:
+        print("tel err",e)
+    return JSONResponse({"ok":True})
