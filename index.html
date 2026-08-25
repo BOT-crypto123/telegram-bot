@@ -1,3 +1,37 @@
-<div class="col binance" onclick="location.href='dashboard.html'">
-...
-<div class="col mt5" onclick="location.href='dashboard_mt5.html'">
+<!DOCTYPE html>
+<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>DUAL V6 REAL</title>
+<style>
+body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;min-height:100vh}
+.col{flex:1;padding:20px;text-align:center}
+.left{border-right:1px solid #222}
+h2{font-size:16px}
+.box{background:#111;border:1px solid #222;border-radius:20px;padding:20px;margin:20px auto;max-width:300px}
+.cap{font-size:40px;font-weight:900}
+.by{color:#facc15;font-weight:900}
+.bm{color:#3b82f6;font-weight:900}
+</style>
+</head><body>
+<div class="col left">
+<h2 style="color:#facc15">BINANCE V6 REAL</h2>
+<div class="box"><div>Capital</div><div class="cap" id="capB">$500.00</div><div>bola <span class="by" id="bolaB">$62.50</span></div><div id="ganB" style="color:#22c55e">+$0.00</div></div>
+</div>
+<div class="col">
+<h2 style="color:#3b82f6">MT5 V6 REAL</h2>
+<div class="box"><div>Capital</div><div class="cap" id="capM">$500.00</div><div>bola <span class="bm" id="bolaM">$62.50</span></div><div id="ganM" style="color:#22c55e">+$0.00</div></div>
+</div>
+<script>
+async function load(){
+ try{
+  let s=await fetch('/api/state').then(r=>r.json());
+  let tb=(s.disponible_usd||500)+(s.bloqueado_usd||0)+(s.gan_acum||0);
+  let tm=(s.disponible_m||500)+(s.bloqueado_m||0)+(s.gan_mt5||0);
+  document.getElementById('capB').innerText='$'+tb.toFixed(2);
+  document.getElementById('bolaB').innerText='$'+(tb/8).toFixed(2);
+  document.getElementById('capM').innerText='$'+tm.toFixed(2);
+  document.getElementById('bolaM').innerText='$'+(tm/8).toFixed(2);
+ }catch(e){}
+}
+load();
+</script>
+</body></html>
