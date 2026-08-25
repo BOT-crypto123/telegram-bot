@@ -1,37 +1,27 @@
-
-<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>DUAL V5 GAN MXN</title><style>body{margin:0;background:#000;color:#fff;display:flex;min-height:100vh;font-family:system-ui} .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050505;border-right:1px solid #222} .m{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020a14} .cir{width:230px;height:230px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;text-align:center} .bin{border:10px solid #facc15} .mt5{border:10px solid #3b82f6} .usd{font-size:42px;line-height:1} .mxn{font-size:13px;margin-top:6px;opacity:.8;font-weight:700} .ganBox{margin-top:16px;text-align:center} .ganLabel{font-size:11px;opacity:.5} .ganVal{font-size:22px;font-weight:900} .green{color:#22c55e} .red{color:#ef4444} small{opacity:.4;margin-top:6px;font-size:10px}</style></head><body>
-<div class="b" onclick="location.href='/dashboard.html'"><div style="color:#facc15;font-weight:900">◆ BINANCE</div><div class="cir bin"><div id="tb_usd" class="usd">$0</div><div id="tb_mxn" class="mxn">$0 MXN</div></div><div class="ganBox"><div class="ganLabel">GANANCIA REAL</div><div id="gb_mxn" class="ganVal green">$0 MXN</div><div id="gb_usd" style="font-size:12px;opacity:.6">$0 USD</div><small id="db"></small></div></div>
-
-<div class="m" onclick="location.href='/dashboard_mt5.html'"><div style="color:#60a5fa;font-weight:900">📊 MT5</div><div class="cir mt5"><div id="tm_usd" class="usd">$0</div><div id="tm_mxn" class="mxn">$0 MXN</div></div><div class="ganBox"><div class="ganLabel">GANANCIA REAL</div><div id="gm_mxn" class="ganVal green">$0 MXN</div><div id="gm_usd" style="font-size:12px;opacity:.6">$0 USD</div><small id="dm"></small></div></div>
-
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>DUAL V5 GAN FINAL</title><style>body{margin:0;background:#000;color:#fff;display:flex;min-height:100vh;font-family:system-ui} .b{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#050505;border-right:1px solid #222} .m{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;background:#020a14} .cir{width:230px;height:230px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;font-weight:900;text-align:center} .bin{border:10px solid #facc15} .mt5{border:10px solid #3b82f6} .usd{font-size:46px} .mxn{font-size:13px;margin-top:6px;opacity:.7} .ganBox{margin-top:18px;text-align:center} .ganVal{font-size:22px;font-weight:900} .green{color:#22c55e} .red{color:#ef4444}</style></head><body>
+<div class="b" onclick="location.href='/dashboard.html'"><div style="color:#facc15;font-weight:900">◆ BINANCE</div><div class="cir bin"><div id="tb_usd" class="usd">$0</div><div id="tb_mxn" class="mxn">$0 MXN</div></div><div class="ganBox"><div style="font-size:11px;opacity:.5">GANANCIA REAL</div><div id="gb_mxn" class="ganVal green">$0 MXN</div><div id="gb_usd" style="font-size:12px;opacity:.5">$0 USD</div><div id="db" style="font-size:10px;opacity:.3;margin-top:6px"></div></div></div>
+<div class="m" onclick="location.href='/dashboard_mt5.html'"><div style="color:#60a5fa;font-weight:900">📊 MT5</div><div class="cir mt5"><div id="tm_usd" class="usd">$0</div><div id="tm_mxn" class="mxn">$0 MXN</div></div><div class="ganBox"><div style="font-size:11px;opacity:.5">GANANCIA REAL</div><div id="gm_mxn" class="ganVal green">$0 MXN</div><div id="gm_usd" style="font-size:12px;opacity:.5">$0 USD</div><div id="dm" style="font-size:10px;opacity:.3;margin-top:6px"></div></div></div>
 <script>
-let USDMXN = 17.00;
-async function getRate(){
-  try{ let r=await fetch('https://api.exchangerate-api.com/v4/latest/USD').then(x=>x.json()); if(r.rates.MXN) USDMXN=r.rates.MXN; }catch(e){}
-}
+let USDMXN=16.95;
+async function getRate(){try{let r=await fetch('https://api.exchangerate-api.com/v4/latest/USD').then(x=>x.json()); if(r.rates.MXN) USDMXN=r.rates.MXN;}catch(e){}}
 getRate(); setInterval(getRate,60000);
 async function load(){
-  try{
-    let s=await fetch('/api/state').then(r=>r.json());
-    let d_b=s.disponible_usd||0, b_b=s.bloqueado_usd||0, g_b=s.gan_acum||0;
-    let d_m=s.disponible_m||0, b_m=s.bloqueado_m||0, g_m=s.gan_mt5||0;
-    let tot_b = d_b + b_b; let tot_m = d_m + b_m;
-    document.getElementById('tb_usd').innerText='$'+tot_b.toFixed(2);
-    document.getElementById('tm_usd').innerText='$'+tot_m.toFixed(2);
-    document.getElementById('tb_mxn').innerText='$'+(tot_b*USDMXN).toLocaleString('es-MX',{minimumFractionDigits:2})+' MXN';
-    document.getElementById('tm_mxn').innerText='$'+(tot_m*USDMXN).toLocaleString('es-MX',{minimumFractionDigits:2})+' MXN';
-    
-    let gb_mxn = g_b * USDMXN; let gm_mxn = g_m * USDMXN;
-    let el_b = document.getElementById('gb_mxn'); let el_m = document.getElementById('gm_mxn');
-    el_b.innerText=(gb_mxn>=0?'+':'')+'$'+gb_mxn.toLocaleString('es-MX',{minimumFractionDigits:2})+' MXN';
-    el_m.innerText=(gm_mxn>=0?'+':'')+'$'+gm_mxn.toLocaleString('es-MX',{minimumFractionDigits:2})+' MXN';
-    el_b.className='ganVal '+(gb_mxn>=0?'green':'red');
-    el_m.className='ganVal '+(gm_mxn>=0?'green':'red');
-    document.getElementById('gb_usd').innerText=(g_b>=0?'+':'')+'$'+g_b.toFixed(2)+' USD';
-    document.getElementById('gm_usd').innerText=(g_m>=0?'+':'')+'$'+g_m.toFixed(2)+' USD';
-    document.getElementById('db').innerText=`D:$${d_b.toFixed(0)} B:$${b_b.toFixed(0)} | $${USDMXN.toFixed(2)}`;
-    document.getElementById('dm').innerText=`D:$${d_m.toFixed(0)} B:$${b_m.toFixed(0)} | $${USDMXN.toFixed(2)}`;
-  }catch(e){}
+  let s=await fetch('/api/state').then(r=>r.json());
+  let d_b=s.disponible_usd||0,b_b=s.bloqueado_usd||0,g_b=s.gan_acum||0;
+  let d_m=s.disponible_m||0,b_m=s.bloqueado_m||0,g_m=s.gan_mt5||0;
+  let tot_b=d_b+b_b, tot_m=d_m+b_m;
+  document.getElementById('tb_usd').innerText='$'+tot_b.toFixed(2);
+  document.getElementById('tm_usd').innerText='$'+tot_m.toFixed(2);
+  document.getElementById('tb_mxn').innerText='$'+(tot_b*USDMXN).toFixed(2)+' MXN';
+  document.getElementById('tm_mxn').innerText='$'+(tot_m*USDMXN).toFixed(2)+' MXN';
+  document.getElementById('gb_mxn').innerText=(g_b>=0?'+':'')+'$'+(g_b*USDMXN).toFixed(2)+' MXN';
+  document.getElementById('gm_mxn').innerText=(g_m>=0?'+':'')+'$'+(g_m*USDMXN).toFixed(2)+' MXN';
+  document.getElementById('gb_usd').innerText=(g_b>=0?'+':'')+'$'+g_b.toFixed(2)+' USD';
+  document.getElementById('gm_usd').innerText=(g_m>=0?'+':'')+'$'+g_m.toFixed(2)+' USD';
+  document.getElementById('db').innerText=`D:$${d_b.toFixed(0)} B:$${b_b.toFixed(0)} | $${USDMXN.toFixed(2)}`;
+  document.getElementById('dm').innerText=`D:$${d_m.toFixed(0)} B:$${b_m.toFixed(0)} | $${USDMXN.toFixed(2)}`;
+  document.getElementById('gb_mxn').className='ganVal '+(g_b>=0?'green':'red');
+  document.getElementById('gm_mxn').className='ganVal '+(g_m>=0?'green':'red');
 }
 setInterval(load,2000); load();
 </script></body></html>
