@@ -1,47 +1,43 @@
 <!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5</title><style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:system-ui}
 body{background:#000;color:#fff;display:flex;min-height:100vh}
-.col{flex:1;padding:12px;cursor:pointer}
+.col{flex:1;padding:14px;cursor:pointer}
 .col.binance{background:#070707;border-right:1px solid #1a1a1a}.col.mt5{background:#0a1426}
-.head{font-weight:900;font-size:14px}.head.b{color:#facc15}.head.m{color:#4a8af4}.sub{font-size:11px;color:#666;margin-bottom:14px}
-.circle{width:190px;height:190px;border-radius:50%;margin:0 auto 10px;display:flex;flex-direction:column;justify-content:center;align-items:center}
-.circle.b{border:6px solid #facc15;background:#000;box-shadow:0 0 20px #facc1540}.circle.m{border:6px solid #3b82f6;background:#0a1426;box-shadow:0 0 20px #3b82f640}
-.cap-lab{font-size:12px;color:#888}.cap{font-size:36px;font-weight:900}.bola{font-size:12px;color:#888;margin-top:4px}.bola b{font-size:18px;font-weight:900}.by{color:#facc15}.bm{color:#3b82f6}.mxn{font-size:11px;color:#666;margin-top:2px}
-.gan-verde{text-align:center;font-size:12px;font-weight:900;color:#22c55e;background:#0a2214;border:1px solid #143a22;border-radius:10px;padding:7px;margin-bottom:14px}
-.sec{font-weight:900;font-size:13px;margin:14px 0 8px}.sec.by{color:#facc15}.sec.bm{color:#4a8af4}
-.card{background:#111214;border:1px solid #222;border-radius:16px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.head{font-weight:900;font-size:14px}.head.b{color:#facc15}.head.m{color:#4a8af4}.sub{font-size:11px;color:#666;margin-bottom:16px}
+.circle{width:200px;height:200px;border-radius:50%;margin:0 auto 10px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.circle.b{border:6px solid #facc15;background:#000;box-shadow:0 0 22px #facc1540}.circle.m{border:6px solid #3b82f6;background:#0a1426;box-shadow:0 0 22px #3b82f640}
+.cap-lab{font-size:12px;color:#888}.cap{font-size:38px;font-weight:900}.bola{font-size:12px;color:#888;margin-top:4px}.bola b{font-size:19px;font-weight:900}.by{color:#facc15}.bm{color:#3b82f6}.mxn{font-size:11px;color:#666;margin-top:3px}
+.gan-verde{text-align:center;font-size:13px;font-weight:900;color:#22c55e;background:#0a2214;border:1px solid #143a22;border-radius:12px;padding:9px;margin-bottom:18px}
+.sec{font-weight:900;font-size:13px;margin:16px 0 10px}.sec.by{color:#facc15}.sec.bm{color:#4a8af4}
+.card{background:#111214;border:1px solid #222;border-radius:18px;padding:12px 14px;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
 .col.mt5 .card{background:#111c33;border-color:#1a2a4a}
-.icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px}
-.badge{font-size:11px;font-weight:900;padding:5px 8px;border-radius:8px}.up{background:#0a2212;color:#22c55e}.down{background:#2a0f0f;color:#ef4444}.price{font-weight:900;font-size:15px;margin-top:2px}
+.icon{width:40px;height:40px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:20px}
+.badge{font-size:11px;font-weight:900;padding:6px 10px;border-radius:10px}.up{background:#0a2212;color:#22c55e}.down{background:#2a0f0f;color:#ef4444}.price{font-weight:900;font-size:16px;margin-top:3px}
 </style></head><body>
 <div class="col binance" onclick="location.href='dashboard.html'">
 <div class="head b">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
 <div class="circle b"><span class="cap-lab">Capital</span><span class="cap" id="capB">$500.00</span><span class="bola">bola <b class="by" id="bolaB">$62.50</b></span><div class="mxn" id="mxnB">$8475 MXN</div></div>
-<div class="gan-verde" id="ganB">+$0.00 MXN (+$0.00 USD)</div>
-<div class="sec by">🔥 MARKETS</div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#0033ad;color:#fff">₳</div><div><div style="font-weight:900;font-size:13px">ADA</div><div style="font-size:11px;color:#666">Cardano</div><div class="price">$0.4529</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#e84142;color:#fff">AVAX</div><div><div style="font-weight:900;font-size:13px">AVAX</div><div style="font-size:11px;color:#666">Avalanche</div><div class="price">$22.49</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#f3ba2f;color:#000">B</div><div><div style="font-weight:900;font-size:13px">BNB</div><div style="font-size:11px;color:#666">Binance</div><div class="price">$579.04</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#f7931a;color:#000">₿</div><div><div style="font-weight:900;font-size:13px">BTC</div><div style="font-size:11px;color:#666">Bitcoin</div><div class="price">$66,625.02</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#c2a633">Ð</div><div><div style="font-weight:900;font-size:13px">DOGE</div><div style="font-size:11px;color:#666">Dogecoin</div><div class="price">$0.1396</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#627eea;color:#fff">♦</div><div><div style="font-weight:900;font-size:13px">ETH</div><div style="font-size:11px;color:#666">Ethereum</div><div class="price">$2,507.94</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#9945ff;color:#fff">S</div><div><div style="font-weight:900;font-size:13px">SOL</div><div style="font-size:11px;color:#666">Solana</div><div class="price">$143.99</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#23292f;color:#fff">✕</div><div><div style="font-weight:900;font-size:13px">XRP</div><div style="font-size:11px;color:#666">Ripple</div><div class="price">$0.5229</div></div></div><span class="badge up">ON</span></div>
+<div class="gan-verde" id="ganB">↑ +$0.00 MXN (+$0.00 USD)</div>
+<div class="sec by">🔥 MARKETS TOP 5</div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#f7931a;color:#000">₿</div><div><div style="font-weight:900">BTC</div><div style="font-size:11px;color:#666">Bitcoin</div><div class="price">$66,625.02</div></div></div><span class="badge up">+1.24%</span></div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#627eea;color:#fff">♦</div><div><div style="font-weight:900">ETH</div><div style="font-size:11px;color:#666">Ethereum</div><div class="price">$2,507.94</div></div></div><span class="badge up">+0.87%</span></div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#f3ba2f;color:#000">B</div><div><div style="font-weight:900">BNB</div><div style="font-size:11px;color:#666">Binance Coin</div><div class="price">$579.04</div></div></div><span class="badge up">ON</span></div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#9945ff;color:#fff">◎</div><div><div style="font-weight:900">SOL</div><div style="font-size:11px;color:#666">Solana</div><div class="price">$143.99</div></div></div><span class="badge up">ON</span></div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#23292f">✕</div><div><div style="font-weight:900">XRP</div><div style="font-size:11px;color:#666">Ripple</div><div class="price">$0.5229</div></div></div><span class="badge up">ON</span></div>
 </div>
+
 <div class="col mt5" onclick="location.href='dashboard_mt5.html'">
 <div class="head m">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
 <div class="circle m"><span class="cap-lab">Capital</span><span class="cap" id="capM">$500.00</span><span class="bola">bola <b class="bm" id="bolaM">$62.50</b></span><div class="mxn" id="mxnM">$8475 MXN</div></div>
-<div class="gan-verde" id="ganM">+$0.00 MXN (+$0.00 USD)</div>
-<div class="sec bm">📈 MARKETS</div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#facc15;color:#000">◉</div><div><div style="font-weight:900;font-size:13px">XAUUSD</div><div style="font-weight:900">GOLD</div><div style="font-size:11px;color:#888">Gold Spot</div><div class="price">$3,385.17</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#aaa">◉</div><div><div style="font-weight:900;font-size:13px">XAGUSD</div><div style="font-weight:900">SILVER</div><div style="font-size:11px;color:#888">Silver Spot</div><div class="price">$31.13</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#1e3a5a">🛢️</div><div><div style="font-weight:900;font-size:13px">USOIL</div><div style="font-size:11px;color:#888">Crude Oil WTI</div><div class="price">$78.48</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#0a3a1a">SPX</div><div><div style="font-weight:900;font-size:13px">SPX500</div><div style="font-size:11px;color:#888">S&P 500</div><div class="price">$5,417.50</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#1a1a6a">N100</div><div><div style="font-weight:900;font-size:13px">NAS100</div><div style="font-size:11px;color:#888">Nasdaq</div><div class="price">$18,518.20</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#6a0000">G40</div><div><div style="font-weight:900;font-size:13px">GER40</div><div style="font-size:11px;color:#888">DAX Germany</div><div class="price">$18,199.81</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#0a4da1">€$</div><div><div style="font-weight:900;font-size:13px">EURUSD</div><div style="font-size:11px;color:#888">Euro / Dollar</div><div class="price">1.09</div></div></div><span class="badge up">ON</span></div>
-<div class="card"><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#a12a2a">£$</div><div><div style="font-weight:900;font-size:13px">GBPUSD</div><div style="font-size:11px;color:#888">Pound / Dollar</div><div class="price">1.28</div></div></div><span class="badge up">ON</span></div>
+<div class="gan-verde" id="ganM">↑ +$0.00 MXN (+$0.00 USD)</div>
+<div class="sec bm">📈 MARKETS TOP 5</div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#facc15;color:#000">◉</div><div><div style="font-weight:900">XAUUSD GOLD</div><div style="font-size:11px;color:#888">Gold Spot</div><div class="price">$3,385.17</div></div></div><span class="badge up">+0.64%</span></div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#1e3a5a">🛢️</div><div><div style="font-weight:900">USOIL</div><div style="font-size:11px;color:#888">Crude Oil WTI</div><div class="price">$78.48</div></div></div><span class="badge up">+0.31%</span></div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#0a4da1">€$</div><div><div style="font-weight:900">EURUSD</div><div style="font-size:11px;color:#888">Euro / Dollar</div><div class="price">1.0905</div></div></div><span class="badge up">+0.12%</span></div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#a12a2a">£$</div><div><div style="font-weight:900">GBPUSD</div><div style="font-size:11px;color:#888">Pound / Dollar</div><div class="price">1.2834</div></div></div><span class="badge down">-0.08%</span></div>
+<div class="card"><div style="display:flex;gap:10px;align-items:center"><div class="icon" style="background:#1a1a6a">N100</div><div><div style="font-weight:900">NAS100</div><div style="font-size:11px;color:#888">Nasdaq 100</div><div class="price">$18,518.20</div></div></div><span class="badge up">+0.45%</span></div>
 </div>
+
 <script>
 const MXN=16.95;
 async function load(){
