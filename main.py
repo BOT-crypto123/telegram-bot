@@ -47,7 +47,6 @@ def tg_send(text):
  except: pass
 
 def safe_html(filename):
-    # Si no existe, regresa index.html para no crashear
     try:
         if os.path.exists(filename):
             with open(filename,"r", encoding="utf-8") as f: return HTMLResponse(f.read())
@@ -57,26 +56,31 @@ def safe_html(filename):
 @app.get("/")
 async def index():
  return safe_html("index.html")
-
 @app.get("/dual_v5.html")
 async def dual_v5_page():
- # YA NO TRUENA SI LO BORRASTE, REDIRIGE A INDEX VIVA
  return safe_html("index.html")
-
 @app.get("/dashboard")
 async def dash():
  return safe_html("dashboard.html")
-
 @app.get("/dashboard.html")
 async def dash_html():
  return safe_html("dashboard.html")
-
 @app.get("/dashboard_mt5.html")
 async def dash_mt5():
  return safe_html("dashboard_mt5.html")
 
 @app.get("/api/state")
-async def state(): return load()
+async def state():
+    s = load()
+    # CALCULADO VIVO - ESTO ES LO QUE LE FALTABA
+    s["total_b"] = (s.get("disponible_usd",0) + s.get("bloqueado_usd",0) + s.get("gan_acum",0))
+    s["total_m"] = (s.get("disponible_m",0) + s.get("bloqueado_m",0) + s.get("gan_mt5",0))
+    # Si es primera vez sin trades, asegura 500
+    if s["total_b"] == 0: s["total_b"] = 500
+    if s["total_m"] == 0: s["total_m"] = 500
+    s["bola_b"] = s["total_b"] / s.get("max_entradas",8)
+    s["bola_m"] = s["total_m"] / s.get("max_m",8)
+    return s
 
 @app.post("/api/config")
 async def config(req:Request):
@@ -131,7 +135,7 @@ async def buy(sym:str, req:Request):
  try: data=await req.json()
  except: pass
  if not s.get("auto",True):
-  tg_send(f"🔔 ALERTA ENTRADA BINANCE OFF: {sym} {data.get('tipo','LONG')} RSI {data.get('rsi','?')} Precio {data.get('price',0)} - AUTO OFF no compro, solo aviso")
+  tg_send(f"🔔 ALERTA ENTRADA BINANCE OFF: {sym} {data.get('tipo','LONG')} RSI {data.get('rsi','?')} Precio {data.get('price',0)}")
   return {"ok":True,"alerta":"AUTO OFF BINANCE"}
  total = s["disponible_usd"]+s["bloqueado_usd"]+s["gan_acum"]
  bola = total / s.get("max_entradas",8) if total>0 else 62.5
@@ -148,7 +152,7 @@ async def buy_mt5(sym:str, req:Request):
  try: data=await req.json()
  except: pass
  if not s.get("auto_m",True):
-  tg_send(f"🔔 ALERTA ENTRADA MT5 OFF: {sym} {data.get('tipo','LONG')} RSI {data.get('rsi','?')} Precio {data.get('price',0)} - AUTO OFF MT5 no compro, solo aviso")
+  tg_send(f"🔔 ALERTA ENTRADA MT5 OFF: {sym} {data.get('tipo','LONG')} RSI {data.get('rsi','?')} Precio {data.get('price',0)}")
   return {"ok":True,"alerta":"AUTO OFF MT5"}
  total = s["disponible_m"]+s["bloqueado_m"]+s["gan_mt5"]
  bola = total / s.get("max_m",8) if total>0 else 62.5
@@ -168,7 +172,7 @@ async def sell(sym:str, req:Request=None):
   if req: data=await req.json()
  except: pass
  if not s.get("auto",True):
-  tg_send(f"🔔 ALERTA SALIDA BINANCE OFF: {sym} - Gan estimada {data.get('gan',0)} - AUTO OFF no vendo, solo aviso")
+  tg_send(f"🔔 ALERTA SALIDA BINANCE OFF: {sym} - Gan estimada {data.get('gan',0)}")
   return {"ok":True,"alerta":"AUTO OFF BINANCE"}
  for p in s["pos"]:
   if p["sym"]==sym:
@@ -187,7 +191,7 @@ async def sell_mt5(sym:str, req:Request=None):
   if req: data=await req.json()
  except: pass
  if not s.get("auto_m",True):
-  tg_send(f"🔔 ALERTA SALIDA MT5 OFF: {sym} - AUTO OFF no vendo, solo aviso")
+  tg_send(f"🔔 ALERTA SALIDA MT5 OFF: {sym}")
   return {"ok":True,"alerta":"AUTO OFF MT5"}
  for p in s["pos_m"]+s["pos_m_short"]:
   if p["sym"]==sym:
@@ -201,7 +205,6 @@ async def sell_mt5(sym:str, req:Request=None):
 
 @app.get("/api/backup")
 async def backup(): return JSONResponse(load())
-
 @app.post("/api/restore")
 async def restore(req:Request):
  s=await req.json(); save(s); return {"ok":True}
@@ -216,7 +219,6 @@ async def telegram_webhook(req: Request):
   if not chat_id: return {"ok": True}
   s=load(); s["last_chat_id"]=chat_id; save(s)
   if "DASHBOARD" in text:
-   # AHORA APUNTA A INDEX VIVA, NO A DUAL_V5.HTML QUE BORRASTE
    reply = f"{RENDER_URL}/"
   else:
    reply = "Comandos: DASHBOARD"
