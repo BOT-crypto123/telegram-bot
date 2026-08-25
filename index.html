@@ -1,24 +1,24 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 GAN</title><style>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 FINAL</title><style>
 *{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;min-height:100vh}
-.col{flex:1;display:flex;flex-direction:column;align-items:center;padding-top:30px;cursor:pointer}.col.binance{background:#000;border-right:1px solid #111}.col.mt5{background:#080f1e}
+.col{flex:1;display:flex;flex-direction:column;align-items:center;padding-top:30px;cursor:pointer}.col.binance{background:#000;border-right:2px solid #222}.col.mt5{background:#080f1e}
 .label{font-weight:900;font-size:13px;margin-bottom:10px}.label.b{color:#facc15}.label.m{color:#3b82f6}
 .circle{width:210px;height:210px;border-radius:50%;border:6px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#000}
 .circle.mt5{border-color:#3b82f6}
-.cap{font-size:38px;font-weight:900}.mxn{font-size:11px;color:#888;margin-top:6px;font-weight:700}
+.cap{font-size:36px;font-weight:900}.mxn{font-size:11px;color:#888;margin-top:6px;font-weight:700}
 .gan-lab{font-size:10px;color:#555;margin-top:32px;letter-spacing:1px}.gan{font-size:20px;font-weight:900;color:#22c55e}.gan-usd{font-size:12px;color:#666;margin-top:3px}
 </style></head><body>
-<div class="col binance" onclick="location.href='dashboard.html'">
-<div class="label b">◆ BINANCE</div>
-<div class="circle"><span class="cap" id="capB">$506.93</span><span class="mxn" id="mxnB">$8592.54 MXN</span></div>
-<div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganB">+$117.54 MXN</div><div class="gan-usd" id="ganUsdB">+$6.93 USD</div>
-</div>
-<div class="col mt5" onclick="location.href='dashboard_mt5.html'">
-<div class="label m">📊 MT5</div>
-<div class="circle mt5"><span class="cap" id="capM">$507.81</span><span class="mxn" id="mxnM">$8607.42 MXN</span></div>
-<div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganM">+$132.42 MXN</div><div class="gan-usd" id="ganUsdM">+$7.81 USD</div>
-</div>
+<div class="col binance" onclick="location.href='dashboard.html'"><div class="label b">◆ BINANCE</div><div class="circle"><span class="cap" id="capB">$500.00</span><span class="mxn" id="mxnB">$0 MXN</span></div><div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganB">+$0 MXN</div><div class="gan-usd" id="ganUsdB">+$0 USD</div></div>
+<div class="col mt5" onclick="location.href='dashboard_mt5.html'"><div class="label m">📊 MT5</div><div class="circle mt5"><span class="cap" id="capM">$500.00</span><span class="mxn" id="mxnM">$0 MXN</span></div><div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganM">+$0 MXN</div><div class="gan-usd" id="ganUsdM">+$0 USD</div></div>
 <script>
 const MXN=16.95;
-async function load(){try{let s=await fetch('/api/state').then(r=>r.json());document.getElementById('capB').innerText='$'+(s.capital_binance||506.93).toFixed(2);document.getElementById('capM').innerText='$'+(s.capital_mt5||507.81).toFixed(2);document.getElementById('mxnB').innerText='$'+((s.capital_binance||506.93)*MXN).toFixed(2)+' MXN';document.getElementById('mxnM').innerText='$'+((s.capital_mt5||507.81)*MXN).toFixed(2)+' MXN';document.getElementById('ganB').innerText='+$'+((s.ganancia_binance||6.93)*MXN).toFixed(2)+' MXN';document.getElementById('ganUsdB').innerText='+$'+(s.ganancia_binance||6.93).toFixed(2)+' USD';document.getElementById('ganM').innerText='+$'+((s.ganancia_mt5||7.81)*MXN).toFixed(2)+' MXN';document.getElementById('ganUsdM').innerText='+$'+(s.ganancia_mt5||7.81).toFixed(2)+' USD';}catch(e){}}
-load();
+async function load(){try{let s=await fetch('/api/state').then(r=>r.json());
+let capB = s.capital_binance || ( (s.disponible_binance||500) + (s.bloqueado_binance||0) );
+let capM = s.capital_mt5 || ( (s.disponible_mt5||500) + (s.bloqueado_mt5||0) );
+let ganB = s.ganancia_binance || s.gan_acum || 0;
+let ganM = s.ganancia_mt5 || 0;
+document.getElementById('capB').innerText='$'+capB.toFixed(2); document.getElementById('mxnB').innerText='$'+(capB*MXN).toFixed(2)+' MXN';
+document.getElementById('capM').innerText='$'+capM.toFixed(2); document.getElementById('mxnM').innerText='$'+(capM*MXN).toFixed(2)+' MXN';
+document.getElementById('ganB').innerText='+$'+(ganB*MXN).toFixed(2)+' MXN'; document.getElementById('ganUsdB').innerText='+$'+ganB.toFixed(2)+' USD';
+document.getElementById('ganM').innerText='+$'+(ganM*MXN).toFixed(2)+' MXN'; document.getElementById('ganUsdM').innerText='+$'+ganM.toFixed(2)+' USD';
+}catch(e){}}load(); setInterval(load,3000);
 </script></body></html>
