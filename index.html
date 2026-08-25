@@ -9,18 +9,18 @@
 .side{width:50%;padding:8px}
 .left{background:#080808;border-right:1px solid #1a1a1a}
 .right{background:#0b1326}
-.h{font-weight:900;font-size:12px} .hy{color:#facc15} .hb{color:#60a5fa}
+.h{font-weight:900;font-size:12px}.hy{color:#facc15}.hb{color:#60a5fa}
 .sub{font-size:9px;opacity:.5;margin-bottom:10px}
 .circle{width:155px;height:155px;border-radius:50%;margin:12px auto 6px;display:flex;flex-direction:column;justify-content:center;align-items:center;cursor:pointer}
-.cy{border:7px solid #facc15;background:radial-gradient(circle,#1a1600,#000);box-shadow:0 0 25px rgba(250,204,21,.4)} 
+.cy{border:7px solid #facc15;background:radial-gradient(circle,#1a1600,#000);box-shadow:0 0 25px rgba(250,204,21,.4)}
 .cb{border:7px solid #3b82f6;background:radial-gradient(circle,#0e1a35,#0a1226);box-shadow:0 0 25px rgba(59,130,246,.4)}
-.cap{font-size:34px;font-weight:900;line-height:1} .lab{font-size:11px;opacity:.6}
+.cap{font-size:34px;font-weight:900;line-height:1}.lab{font-size:11px;opacity:.6}
 .mxn-in{font-size:12px;font-weight:900;margin-top:6px;color:#22c55e;background:rgba(34,197,94,.18);padding:3px 9px;border-radius:12px;border:1px solid rgba(34,197,94,.35)}
 .bola-out{font-size:11px;font-weight:800;text-align:center;margin-top:6px}
-.by{color:#facc15} .bb{color:#60a5fa}
+.by{color:#facc15}.bb{color:#60a5fa}
 .mt{font-weight:900;font-size:11px;margin:12px 0 6px}
 .card{background:#181818;border:1px solid #2a2a2a;border-radius:14px;padding:9px;margin:4px 0;display:flex;justify-content:space-between;align-items:center;font-size:12px}
-.right .card{background:#162040;border-color:#1e2f5a}
+.right.card{background:#162040;border-color:#1e2f5a}
 </style>
 </head>
 <body>
@@ -28,39 +28,39 @@
 <div class="side left">
 <div class="h hy">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
 <div class="circle cy" onclick="location.href='/dashboard.html'">
-<div class="lab">Capital</div><div class="cap" id="cap_b">$500</div>
-<div class="mxn-in" id="mxn_in_b">≈ $8,575 MXN</div>
+<div class="lab">Capital</div><div class="cap" id="cap_b">$500.00</div>
+<div class="mxn-in" id="mxn_in_b">≈ $8,459 MXN</div>
 </div>
-<div class="bola-out by" id="bola_out_b">bola $62.5 ≈ $1,071 MXN</div>
+<div class="bola-out by" id="bola_out_b">bola $62.50 ≈ $1,057 MXN</div>
 <div class="mt hy">🔥 MARKETS</div><div id="mk_b"></div>
 </div>
 <div class="side right">
 <div class="h hb">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
 <div class="circle cb" onclick="location.href='/dashboard_mt5.html'">
-<div class="lab">Capital</div><div class="cap" id="cap_m">$500</div>
-<div class="mxn-in" id="mxn_in_m">≈ $8,575 MXN</div>
+<div class="lab">Capital</div><div class="cap" id="cap_m">$500.00</div>
+<div class="mxn-in" id="mxn_in_m">≈ $8,459 MXN</div>
 </div>
-<div class="bola-out bb" id="bola_out_m">bola $62.5 ≈ $1,071 MXN</div>
+<div class="bola-out bb" id="bola_out_m">bola $62.50 ≈ $1,057 MXN</div>
 <div class="mt hb">📈 MARKETS</div><div id="mk_m"></div>
 </div>
 </div>
 <script>
-let USDMXN=17.15;
+let USDMXN=16.91;
 async function getDolar(){
  try{let r=await fetch('https://open.er-api.com/v6/latest/USD',{cache:'no-store'});let j=await r.json();USDMXN=j.rates.MXN;}catch{}
 }
 async function live(){
  try{
-  let r=await fetch('/api/state?t='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache'}});
+  let r=await fetch('/api/state?t='+Date.now(),{cache:'no-store',headers:{'Cache-Control':'no-cache','Pragma':'no-cache'}});
   let s=await r.json();
-  let tb=(s.disponible_usd||0)+(s.bloqueado_usd||0)+(s.gan_acum||0)||500;
-  let tm=(s.disponible_m||0)+(s.bloqueado_m||0)+(s.gan_mt5||0)||500;
+  let tb = s.total_b || (s.disponible_usd + s.bloqueado_usd + s.gan_acum);
+  let tm = s.total_m || (s.disponible_m + s.bloqueado_m + s.gan_mt5);
   let bb=tb/(s.max_entradas||8); let bm=tm/(s.max_m||8);
   document.getElementById('cap_b').innerText='$'+tb.toFixed(2);
-  document.getElementById('mxn_in_b').innerText='≈ $'+(tb*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
-  document.getElementById('bola_out_b').innerText='bola $'+bb.toFixed(2)+' ≈ $'+(bb*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
   document.getElementById('cap_m').innerText='$'+tm.toFixed(2);
+  document.getElementById('mxn_in_b').innerText='≈ $'+(tb*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
   document.getElementById('mxn_in_m').innerText='≈ $'+(tm*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
+  document.getElementById('bola_out_b').innerText='bola $'+bb.toFixed(2)+' ≈ $'+(bb*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
   document.getElementById('bola_out_m').innerText='bola $'+bm.toFixed(2)+' ≈ $'+(bm*USDMXN).toLocaleString('es-MX',{maximumFractionDigits:0})+' MXN';
  }catch{}
 }
