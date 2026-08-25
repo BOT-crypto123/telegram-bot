@@ -1,25 +1,46 @@
 <!DOCTYPE html>
-<html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>DUAL V6 REAL</title>
 <style>
-body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;min-height:100vh}
-.col{flex:1;padding:20px;text-align:center}
+body{margin:0;background:#000;color:#fff;font-family:system-ui}
+.header{padding:15px;text-align:center;border-bottom:1px solid #222;font-weight:900;letter-spacing:2px}
+.grid{display:flex;min-height:35vh}
+.col{flex:1;padding:15px;cursor:pointer}
+.col:hover{background:#0a0a0a}
 .left{border-right:1px solid #222}
-h2{font-size:16px}
-.box{background:#111;border:1px solid #222;border-radius:20px;padding:20px;margin:20px auto;max-width:300px}
-.cap{font-size:40px;font-weight:900}
-.by{color:#facc15;font-weight:900}
-.bm{color:#3b82f6;font-weight:900}
+.box{background:#111;border:1px solid #222;border-radius:20px;padding:20px;text-align:center;margin:10px auto;max-width:340px}
+.cap{font-size:38px;font-weight:900}
+.bola{font-weight:900}
+.y{color:#facc15}.b{color:#3b82f6}
+.gan{color:#22c55e;font-weight:700}
+.section{padding:15px}
+.card{background:#0e0e0e;border:1px solid #222;border-radius:12px;padding:12px;margin-bottom:10px;display:flex;justify-content:space-between}
+.small{font-size:12px;color:#888}
+.live{width:8px;height:8px;background:#22c55e;border-radius:50%;display:inline-block;animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.3}}
 </style>
 </head><body>
-<div class="col left">
-<h2 style="color:#facc15">BINANCE V6 REAL</h2>
-<div class="box"><div>Capital</div><div class="cap" id="capB">$500.00</div><div>bola <span class="by" id="bolaB">$62.50</span></div><div id="ganB" style="color:#22c55e">+$0.00</div></div>
+<div class="header">DUAL V6 REAL LIVE <span class="live"></span></div>
+
+<div class="grid">
+<div class="col left" onclick="location.href='/dashboard.html'">
+<h3 style="color:#facc15;text-align:center">BINANCE V6 REAL</h3>
+<div class="box"><div class="small">Capital Total</div><div class="cap" id="capB">$500.00</div><div>bola <span class="bola y" id="bolaB">$62.50</span></div><div class="gan" id="ganB">+$0.00</div><div class="small" style="margin-top:10px">Toca para ver detalle -></div></div>
 </div>
-<div class="col">
-<h2 style="color:#3b82f6">MT5 V6 REAL</h2>
-<div class="box"><div>Capital</div><div class="cap" id="capM">$500.00</div><div>bola <span class="bm" id="bolaM">$62.50</span></div><div id="ganM" style="color:#22c55e">+$0.00</div></div>
+<div class="col" onclick="location.href='/dashboard_mt5.html'">
+<h3 style="color:#3b82f6;text-align:center">MT5 V6 REAL</h3>
+<div class="box"><div class="small">Capital Total</div><div class="cap" id="capM">$500.00</div><div>bola <span class="bola b" id="bolaM">$62.50</span></div><div class="gan" id="ganM">+$0.00</div><div class="small" style="margin-top:10px">Toca para ver detalle -></div></div>
 </div>
+</div>
+
+<div class="section">
+<h4 style="color:#facc15">BINANCE - Solo BTC + ETH (Sin Merma)</h4>
+<div id="listB"><div class="card"><span>BTC/USDT</span><span class="small">Esperando entrada</span></div><div class="card"><span>ETH/USDT</span><span class="small">Esperando entrada</span></div></div>
+
+<h4 style="color:#3b82f6;margin-top:25px">MT5 - Divisas</h4>
+<div id="listM"><div class="card"><span>EURUSD</span><span class="small">Esperando entrada</span></div><div class="card"><span>GBPUSD</span><span class="small">Esperando entrada</span></div><div class="card"><span>XAUUSD</span><span class="small">Esperando entrada</span></div></div>
+</div>
+
 <script>
 async function load(){
  try{
@@ -28,10 +49,12 @@ async function load(){
   let tm=(s.disponible_m||500)+(s.bloqueado_m||0)+(s.gan_mt5||0);
   document.getElementById('capB').innerText='$'+tb.toFixed(2);
   document.getElementById('bolaB').innerText='$'+(tb/8).toFixed(2);
+  document.getElementById('ganB').innerText='+$'+(s.gan_acum||0).toFixed(2);
   document.getElementById('capM').innerText='$'+tm.toFixed(2);
   document.getElementById('bolaM').innerText='$'+(tm/8).toFixed(2);
+  document.getElementById('ganM').innerText='+$'+(s.gan_mt5||0).toFixed(2);
  }catch(e){}
 }
-load();
+load();setInterval(load,3000);
 </script>
 </body></html>
