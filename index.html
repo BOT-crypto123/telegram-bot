@@ -1,43 +1,68 @@
-<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5 FINAL</title><style>
-*{box-sizing:border-box}body{margin:0;background:#000;color:#fff;font-family:system-ui;display:flex;min-height:100vh}
-.col{flex:1;display:flex;flex-direction:column;align-items:center;padding-top:30px;cursor:pointer}.col.binance{background:#000;border-right:2px solid #222}.col.mt5{background:#080f1e}
-.label{font-weight:900;font-size:13px;margin-bottom:10px}.label.b{color:#facc15}.label.m{color:#3b82f6}
-.circle{width:210px;height:210px;border-radius:50%;border:6px solid #facc15;display:flex;flex-direction:column;justify-content:center;align-items:center;background:#000}
-.circle.mt5{border-color:#3b82f6}.cap{font-size:30px;font-weight:900}.mxn{font-size:11px;color:#888;margin-top:6px;font-weight:700}
-.gan-lab{font-size:10px;color:#555;margin-top:32px}.gan{font-size:20px;font-weight:900;color:#22c55e}.gan-usd{font-size:12px;color:#666;margin-top:3px}
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>DUAL V5</title><style>
+*{box-sizing:border-box;margin:0;padding:0;font-family:system-ui}
+body{background:#000;color:#fff;display:flex;min-height:100vh}
+.col{flex:1;padding:12px;cursor:pointer}
+.col.binance{background:#070707;border-right:1px solid #1a1a1a}
+.col.mt5{background:#0a1426}
+.head{font-weight:900;font-size:14px;letter-spacing:.3px}
+.head.b{color:#facc15}.head.m{color:#4a8af4}
+.sub{font-size:11px;color:#666;margin-bottom:14px}
+.circle{width:190px;height:190px;border-radius:50%;margin:0 auto 18px;display:flex;flex-direction:column;justify-content:center;align-items:center;box-shadow:0 0 25px #000}
+.circle.b{border:6px solid #facc15;background:#000;box-shadow:0 0 20px #facc1540}
+.circle.m{border:6px solid #3b82f6;background:#0a1426;box-shadow:0 0 20px #3b82f640}
+.cap-lab{font-size:12px;color:#888}.cap{font-size:38px;font-weight:900;line-height:1}.bola{font-size:12px;color:#888;margin-top:4px}.bola b{font-size:18px;font-weight:900}.bola b.by{color:#facc15}.bola b.bm{color:#3b82f6}
+.sec{font-weight:900;font-size:13px;margin:14px 0 8px}.sec.by{color:#facc15}.sec.bm{color:#4a8af4}
+.card{background:#111214;border:1px solid #222;border-radius:16px;padding:10px 12px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center}
+.col.mt5 .card{background:#111c33;border-color:#1a2a4a}
+.icon{width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:18px}
+.badge{font-size:11px;font-weight:900;padding:5px 8px;border-radius:8px}
+.up{background:#0a2212;color:#22c55e}.down{background:#2a0f0f;color:#ef4444}
+.price{font-weight:900;font-size:15px;margin-top:2px}
+.open{margin-top:14px;background:#18150a;border:1px solid #2a2410;border-radius:14px;padding:10px}
+.open .t{color:#facc15;font-weight:900;font-size:13px}
+.row{font-size:11px;color:#666;display:flex;justify-content:space-between;margin-top:6px}
+.mxn{font-size:10px;color:#666;text-align:center;margin-top:4px}
+.gan{font-size:11px;color:#22c55e;text-align:center;font-weight:900;margin-top:10px}
 </style></head><body>
-<div class="col binance" onclick="location.href='dashboard.html'"><div class="label b">◆ BINANCE</div><div class="circle"><span class="cap" id="capB">$500.00</span><span class="mxn" id="mxnB">$8475.00 MXN</span></div><div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganB">+$0.00 MXN</div><div class="gan-usd" id="ganUsdB">+$0.00 USD</div></div>
-<div class="col mt5" onclick="location.href='dashboard_mt5.html'"><div class="label m">📊 MT5</div><div class="circle mt5"><span class="cap" id="capM">$500.00</span><span class="mxn" id="mxnM">$8475.00 MXN</span></div><div class="gan-lab">GANANCIA REAL</div><div class="gan" id="ganM">+$0.00 MXN</div><div class="gan-usd" id="ganUsdM">+$0.00 USD</div></div>
+<div class="col binance" onclick="location.href='dashboard.html'">
+  <div class="head b">◆ BINANCE - CRYPTO</div><div class="sub">Crypto Trading • Live</div>
+  <div class="circle b"><span class="cap-lab">Capital</span><span class="cap" id="capB">$500</span><span class="bola">bola <b class="by" id="bolaB">$62.5</b></span><div class="mxn" id="mxnB">$8475 MXN</div></div>
+  <div class="sec by">🔥 MARKETS</div>
+  <div class="card"><div><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#f7931a;color:#000">₿</div><div><div style="font-weight:900;font-size:13px">BTC</div><div style="font-size:11px;color:#666">Bitcoin</div><div class="price">$63,421.5</div></div></div></div><span class="badge up">+1.24% ↑</span></div>
+  <div class="card"><div><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#627eea;color:#fff">♦</div><div><div style="font-weight:900;font-size:13px">ETH</div><div style="font-size:11px;color:#666">Ethereum</div><div class="price">$3,210.88</div></div></div></div><span class="badge up">+0.87% ↑</span></div>
+  <div class="card"><div><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#111;border:1px solid #333">◉</div><div><div style="font-weight:900;font-size:13px">SOL</div><div style="font-size:11px;color:#666">Solana</div><div class="price">$145.32</div></div></div></div><span class="badge down">-0.52% ↓</span></div>
+  <div class="open"><div class="t">📦 OPEN POSITIONS</div><div class="row"><span>Asset</span><span>Size</span><span>PnL</span></div><div style="text-align:center;color:#666;font-size:12px;margin:8px 0" id="posB">Sin posiciones</div><div class="gan" id="ganB">+$0.00 MXN (+$0.00 USD)</div></div>
+</div>
+
+<div class="col mt5" onclick="location.href='dashboard_mt5.html'">
+  <div class="head m">📊 MT5 SIN MT5</div><div class="sub">Forex • Commodities • Indices • Live</div>
+  <div class="circle m"><span class="cap-lab">Capital</span><span class="cap" id="capM">$500</span><span class="bola">bola <b class="bm" id="bolaM">$62.5</b></span><div class="mxn" id="mxnM">$8475 MXN</div></div>
+  <div class="sec bm">📈 MARKETS</div>
+  <div class="card"><div><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#facc15;color:#000">◉</div><div><div style="font-weight:900;font-size:13px">XAUUSD</div><div style="font-weight:900">GOLD</div><div style="font-size:11px;color:#888">Gold Spot</div><div class="price">$2,341.2</div></div></div></div><span class="badge up">+0.64% ↑</span></div>
+  <div class="card"><div><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#aaa">◉</div><div><div style="font-weight:900;font-size:13px">XAGUSD</div><div style="font-weight:900">SILVER</div><div style="font-size:11px;color:#888">Silver Spot</div><div class="price">$28.15</div></div></div></div><span class="badge down">-0.31% ↓</span></div>
+  <div class="card"><div><div style="display:flex;gap:8px;align-items:center"><div class="icon" style="background:#1e3a5a">🛢️</div><div><div style="font-weight:900;font-size:13px">USOIL</div><div style="font-size:11px;color:#888">Crude Oil WTI</div><div class="price">$78.4</div></div></div></div><span class="badge up">+0.64% ↑</span></div>
+  <div class="gan" id="ganM" style="margin-top:14px">+$0.00 MXN (+$0.00 USD)</div>
+</div>
+
 <script>
 const MXN=16.95;
 async function load(){
-  let api={};
-  try{api=await fetch('/api/state').then(r=>r.json());}catch(e){}
-  
-  // LEE LOCALSTORAGE COMO RESPALDO SI EL SERVER ESTA EN 0
-  let ganB_local = parseFloat(localStorage.getItem('gan_binance_demo')||'0');
-  let ganM_local = parseFloat(localStorage.getItem('gan_mt5_demo')||'0');
-
-  let ganB = api.ganancia_binance ?? api.gan_acum ?? 0;
-  if(ganB==0) ganB = ganB_local;
-  let ganM = api.ganancia_mt5 ?? api.gan_mt5 ?? 0;
-  if(ganM==0) ganM = ganM_local;
-
-  let capB = api.capital_binance || (500 + ganB);
-  let capM = api.capital_mt5 || (500 + ganM);
-  
-  // Si el API no trae nada, usa el local
-  if((api.capital_binance||0)==0 && ganB_local>0) capB = 500 + ganB_local;
-  if((api.capital_mt5||0)==0 && ganM_local>0) capM = 500 + ganM_local;
-
-  document.getElementById('capB').innerText='$'+capB.toFixed(2);
-  document.getElementById('mxnB').innerText='$'+(capB*MXN).toFixed(2)+' MXN';
-  document.getElementById('capM').innerText='$'+capM.toFixed(2);
-  document.getElementById('mxnM').innerText='$'+(capM*MXN).toFixed(2)+' MXN';
-  document.getElementById('ganB').innerText='+$'+(ganB*MXN).toFixed(2)+' MXN';
-  document.getElementById('ganUsdB').innerText='+$'+ganB.toFixed(2)+' USD';
-  document.getElementById('ganM').innerText='+$'+(ganM*MXN).toFixed(2)+' MXN';
-  document.getElementById('ganUsdM').innerText='+$'+ganM.toFixed(2)+' USD';
+  let api={}; try{api=await fetch('/api/state').then(r=>r.json());}catch(e){}
+  let ganB_local=parseFloat(localStorage.getItem('gan_binance_demo')||'0');
+  let ganM_local=parseFloat(localStorage.getItem('gan_mt5_demo')||'0');
+  let ganB=api.ganancia_binance ?? api.gan_acum ?? 0; if(ganB==0) ganB=ganB_local;
+  let ganM=api.ganancia_mt5 ?? api.gan_mt5 ?? 0; if(ganM==0) ganM=ganM_local;
+  let capB=500+ganB; let capM=500+ganM;
+  if(api.capital_binance) capB=api.capital_binance;
+  if(api.capital_mt5) capM=api.capital_mt5;
+  document.getElementById('capB').innerText='$'+capB.toFixed(0);
+  document.getElementById('bolaB').innerText='$'+(capB/8).toFixed(1);
+  document.getElementById('mxnB').innerText='$'+(capB*MXN).toFixed(0)+' MXN';
+  document.getElementById('capM').innerText='$'+capM.toFixed(0);
+  document.getElementById('bolaM').innerText='$'+(capM/8).toFixed(1);
+  document.getElementById('mxnM').innerText='$'+(capM*MXN).toFixed(0)+' MXN';
+  document.getElementById('ganB').innerText='+$'+(ganB*MXN).toFixed(2)+' MXN (+$'+ganB.toFixed(2)+' USD)';
+  document.getElementById('ganM').innerText='+$'+(ganM*MXN).toFixed(2)+' MXN (+$'+ganM.toFixed(2)+' USD)';
 }
-load(); setInterval(load,2000);
+load(); setInterval(load,2500);
 </script></body></html>
