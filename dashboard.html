@@ -1,100 +1,125 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>MÁQUINA BOLA - BINANCE NETO</title>
-<style>
-body{margin:0;background:#000;color:#fff;font-family:system-ui}
-.wrap{max-width:520px;margin:0 auto;border-left:3px solid #facc15;border-right:3px solid #facc15;min-height:100vh;background:#050505;padding-bottom:90px}
-.circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center}
-.c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}
-.c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)}
-.c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}
-.val{font-size:48px;font-weight:900}
-.box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}
-.box-bola{background:#0a1a0a;border:1.5px solid #22c55e}
-.sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}
-.inp{width:100%;background:#000;color:#fff;border:1px solid #facc15;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}
-.btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}
-.card{background:#111;border:1.5px solid #22c55e;border-radius:16px;padding:12px;position:relative;cursor:pointer}
-.on{position:absolute;top:10px;right:10px;background:#22c55e;color:#000;font-weight:900;padding:4px 14px;border-radius:20px}
-.off_b{background:#222!important;color:#666!important}
-.price{font-size:20px;font-weight:900;margin:6px 0}
-.detail{font-size:11px;opacity:.7}
-#float_bin{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:12px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #22c55e;cursor:pointer}
-#float_bin.off{border-color:#ef4444;background:#1a0a0a;color:#fff}
-table{width:100%;font-size:11px;border-collapse:collapse}
-th{opacity:.5;text-align:left;padding:6px}
-td{padding:6px;border-top:1px solid #222}
-</style>
-</head>
-<body>
-<div class="wrap">
-<div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💰 MÁQUINA BOLA - BINANCE<br><span style="font-size:12px;opacity:.5">BOLA NIEVE REAL + NETO</span></div>
+<!DOCTYPE html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>MÁQUINA BOLA</title>
+<style>body{margin:0;background:#000;color:#fff;font-family:system-ui}.wrap{max-width:520px;margin:0 auto;border-left:3px solid #facc15;border-right:3px solid #facc15;min-height:100vh;background:#050505;padding-bottom:90px}.circle{width:340px;height:340px;border-radius:50%;margin:20px auto;display:flex;flex-direction:column;justify-content:center;align-items:center}.c1{border:10px solid #facc15;background:radial-gradient(circle,#1a1500,#000)}.c2{border:10px solid #22c55e;background:radial-gradient(circle,#0a1a0a,#000)}.c3{border:10px solid #38bdf8;background:radial-gradient(circle,#0a1520,#000)}.val{font-size:48px;font-weight:900}.box{margin:10px;border-radius:16px;padding:12px;background:#101010;border:1px solid #222}.box-bola{background:#0a1a0a;border:1.5px solid #22c55e}.sel{width:100%;background:#000;color:#fff;border:1px solid #333;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.inp{width:100%;background:#000;color:#fff;border:1px solid #facc15;border-radius:12px;padding:14px;margin:6px 0;font-size:15px}.btn-set{background:#facc15;color:#000;font-weight:900;border:0;border-radius:8px;padding:8px 18px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:10px}.card{background:#111;border:1.5px solid #22c55e;border-radius:16px;padding:12px;position:relative;cursor:pointer}.on{position:absolute;top:10px;right:10px;background:#22c55e;color:#000;font-weight:900;padding:4px 14px;border-radius:20px}.off_b{background:#222!important;color:#666!important}.price{font-size:20px;font-weight:900;margin:6px 0}.detail{font-size:11px;opacity:.7}#float_bin{position:fixed;bottom:12px;right:12px;background:#fff;color:#000;padding:12px 18px;border-radius:22px;font-weight:900;font-size:12px;z-index:99;border:2px solid #22c55e;box-shadow:0 0 15px #22c55e80;cursor:pointer}#float_bin.off{border-color:#ef4444;background:#1a0a0a;color:#fff;box-shadow:0 0 15px #ef444480} table{width:100%;font-size:11px;border-collapse:collapse} th{opacity:.5;text-align:left;padding:6px} td{padding:6px;border-top:1px solid #222}
+</style></head><body><div class="wrap">
+<div style="text-align:center;padding:10px;font-weight:900;font-size:18px;border-bottom:1px solid #222">💰 MÁQUINA BOLA DE NIEVE - BINANCE<br><span style="font-size:12px;opacity:.5">BOLA NIEVE REAL + NETO</span></div>
 <div class="circle c1"><div style="color:#facc15;font-weight:900">DISPONIBLE</div><div class="val" id="disp">$500.00</div><div id="bloq" style="color:#22c55e;font-size:13px">Bloq: $0</div></div>
 <div class="circle c2"><div style="font-weight:900">GANANCIA</div><div class="val" id="gan">$0.00</div></div>
 <div class="circle c3"><div style="color:#38bdf8;font-weight:900">TOTAL REAL</div><div class="val" id="total">$500</div></div>
-<div class="box box-bola"><div>🎯 BOLA:</div><b id="bola_info">$62.50 (8 bolas) = $500.00 / 8</b><div id="bola_det" style="color:#facc15;font-size:13px">(4 LONG + 4 SHORT)</div><div style="font-size:12px;opacity:.7"><span id="cierre_txt">0.10% NETO (0.20% bruto)</span> / <span id="modo_txt" style="color:#38bdf8">MODO: AMBOS</span></div></div>
+<div class="box box-bola"><div>🎯 BOLA:</div><b id="bola_info">$62.50 (8 bolas) = $500.00 / 8</b><div id="bola_det" style="color:#facc15;font-size:13px">(4 LONG + 4 SHORT)</div><div style="font-size:12px;opacity:.7">USD/MXN $16.95 / <span id="cierre_txt">0.10% NETO (0.20% bruto)</span> / <span id="modo_txt" style="color:#38bdf8">MODO: AMBOS</span></div></div>
 <div class="box"><div style="display:flex;gap:8px"><div style="flex:1">🎮 Modo:<select id="modo" class="sel" onchange="cambioModo()"><option value="AMBOS" selected>AMBOS 4+4</option><option value="LONG">SOLO LONG</option><option value="SHORT">SOLO SHORT</option></select></div><div style="flex:1">💰 Cierre NETO:<div style="display:flex;gap:4px"><input type="number" id="cierre" class="inp" style="margin:0" value="0.1" step="0.05"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">🛑 SL:<div style="display:flex;gap:4px"><input type="number" id="sl" class="inp" style="margin:0" value="-2.5" step="0.1"><button class="btn-set" onclick="guardar()">SET</button></div></div><div style="flex:1">📤 RSI Venta:<div style="display:flex;gap:4px"><input type="number" id="rsi_v" class="inp" style="margin:0" value="70" step="1"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
 <div style="display:flex;gap:8px;margin-top:8px"><div style="flex:1">📈 P>EMA:<select id="ema" class="sel" onchange="guardar()"><option selected>OFF Caida</option><option>ON</option></select></div><div style="flex:1">📉 RSI Compra:<div style="display:flex;gap:4px"><input type="number" id="rsi_c" class="inp" style="margin:0" value="40" step="1"><button class="btn-set" onclick="guardar()">SET</button></div></div></div>
-<div style="margin-top:10px;background:#0a1a0a;border:1.5px solid #facc15;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div id="auto_lab" style="color:#facc15;font-weight:900">✅ AUTO-TUNE ON</div></div><input type="checkbox" id="auto_tune" checked onchange="toggleAutoTune()" style="width:22px;height:22px"></div>
+<div style="margin-top:10px;background:#0a1a0a;border:1.5px solid #facc15;border-radius:12px;padding:10px;display:flex;justify-content:space-between;align-items:center"><div><div id="auto_lab" style="color:#facc15;font-weight:900">✅ AUTO-TUNE ON: Ajusta SL/RSI solo</div><div style="font-size:11px;opacity:.6">ON: Mueve SL -1/-2/-3 y RSI 40/50 solo<br>OFF: Solo sugiere, tu das SET</div></div><input type="checkbox" id="auto_tune" checked onchange="toggleAutoTune()" style="width:22px;height:22px"></div>
 <div style="margin-top:8px">🎯 Bolas Totales:<select id="bolas" class="sel" onchange="cambioBolas()"><option value="8" selected>4+4 = 8</option><option value="6">3+3 = 6</option><option value="4">2+2 = 4</option><option value="2">1+1 = 2</option></select></div>
 </div>
-<div class="box" style="border-color:#22c55e"><b>🤖 CEREBRO BINANCE</b><div id="cerebro" style="font-size:13px;white-space:pre-line;margin-top:8px">Cargando...</div></div>
+<div class="box" style="border-color:#22c55e"><b>🤖 CEREBRO BINANCE - 2 MODOS SEPARADOS</b><div id="cerebro" style="font-size:13px;white-space:pre-line;margin-top:8px">Cargando...</div></div>
 <div class="grid" id="grid"></div>
-<div class="box"><b style="color:#facc15">📊 POSICIONES ABIERTAS</b><table><thead><tr><th>Moneda</th><th>Tipo</th><th>Entry</th><th>Ahora</th><th>Bruto</th><th>Neto</th><th></th></tr></thead><tbody id="pos"></tbody></table></div>
-<div class="box"><b style="color:#22c55e">📋 REGISTRO</b><table><thead><tr><th>Hora</th><th>Moneda</th><th>Monto</th><th>Bruto</th><th>Neto</th><th>Gan</th></tr></thead><tbody id="hist"></tbody></table></div>
+<div class="box"><b style="color:#facc15">📊 POSICIONES ABIERTAS BINANCE</b><table><thead><tr><th>Moneda</th><th>Tipo</th><th>Entry</th><th>Ahora</th><th>Bruto</th><th>Neto</th><th></th></tr></thead><tbody id="pos"></tbody></table></div>
+<div class="box"><b style="color:#22c55e">📋 REGISTRO COMPLETO BINANCE</b><table><thead><tr><th>Hora</th><th>Moneda</th><th>Monto</th><th>Bruto</th><th>Neto</th><th>Gan</th></tr></thead><tbody id="hist"></tbody></table></div>
+<div class="box"><b style="color:#facc15">📈 EVOLUCIÓN CAPITAL</b><canvas id="ch" height="120" style="width:100%;background:#000;border-radius:10px;margin-top:10px"></canvas></div>
+<div style="margin:10px;border:2px dashed #facc15;border-radius:16px;padding:12px;text-align:center;background:#0a0a0a"><b style="color:#facc15">💾 RESPALDO BINANCE</b><button style="width:100%;margin:8px 0;padding:14px;background:#facc15;color:#000;font-weight:900;border:0;border-radius:10px" onclick="backup()">💾 DESCARGAR RESPALDO BINANCE</button><button style="width:100%;padding:14px;background:#22c55e;color:#000;font-weight:900;border:0;border-radius:10px" onclick="document.getElementById('res').click()">📤 RESTAURAR</button><input type="file" id="res" hidden onchange="restore(this)"></div>
 </div>
 <div id="float_bin" onclick="toggleAutoTrade()"><span id="float_txt">AUTO TRADE ON 🤖 BINANCE</span></div>
 <script>
 const COINS=["ADA","AVAX","BNB","BTC","DOGE","ETH","SOL","XRP"];
 const PRECIOS_BASE={"ADA":0.45,"AVAX":22.5,"BNB":580,"BTC":67000,"DOGE":0.14,"ETH":2500,"SOL":145,"XRP":0.52};
 const FEE_BINANCE=0.10;
-let S={};
-let autoTrade=localStorage.getItem('autoTrade_binance')!=='false';
-let autoTune=localStorage.getItem('autoTune_binance')!=='false';
+let capital=500; let S={};
+let autoTrade = localStorage.getItem('autoTrade_binance')!=='false';
+let autoTune = localStorage.getItem('autoTune_binance')!=='false';
 let pos=JSON.parse(localStorage.getItem('pos_binance_demo')||'[]');
 let hist=JSON.parse(localStorage.getItem('hist_binance_demo')||'[]');
 let ganAcum=parseFloat(localStorage.getItem('gan_binance_demo')||'0');
-function getTotalReal(){return 500+ganAcum;}
-function getBolasTotal(){let sel=document.getElementById('bolas');return sel.options.length?parseInt(sel.options[sel.selectedIndex].value):8;}
-function llenarBolas(){let modo=document.getElementById('modo').value;let sel=document.getElementById('bolas');let cur=sel.value;sel.innerHTML="";if(modo==="AMBOS"){[[4,4],[3,3],[2,2],[1,1]].forEach(p=>{let t=p[0]+p[1];let o=document.createElement('option');o.value=t;o.dataset.l=p[0];o.dataset.s=p[1];o.text=`${p[0]}+${p[1]} = ${t}`;if(t==8)o.selected=true;sel.appendChild(o);});}else{for(let i=1;i<=8;i++){let o=document.createElement('option');o.value=i;o.text=`${i} ${modo}`;if(i==8)o.selected=true;sel.appendChild(o);}}if(cur)sel.value=cur;cambioBolas();}
-function cambioModo(){llenarBolas();}
-function cambioBolas(){let total=getBolasTotal();let totalReal=getTotalReal();let bola=totalReal/total;let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.1;let cierreBruto=cierreNeto+FEE_BINANCE;document.getElementById('bola_info').innerText=`$${bola.toFixed(2)} (${total} bolas) = $${totalReal.toFixed(2)} / ${total}`;document.getElementById('cierre_txt').innerText=`${cierreNeto.toFixed(2)}% NETO (${cierreBruto.toFixed(2)}% bruto)`;guardar();}
-function guardar(){let total=getBolasTotal();let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.1;let cierreBruto=cierreNeto+FEE_BINANCE;document.getElementById('cierre_txt').innerText=`${cierreNeto.toFixed(2)}% NETO (${cierreBruto.toFixed(2)}% bruto)`;let data={modo:document.getElementById('modo').value,bolas:total,cierre:cierreNeto,cierre_bruto:cierreBruto,sl:parseFloat(document.getElementById('sl').value)};fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});}
-function toggleCoin(k){S.coins_activas=S.coins_activas||{};S.coins_activas[k]=!S.coins_activas[k];renderAll();guardar();}
-function toggleAutoTrade(){autoTrade=!autoTrade;localStorage.setItem('autoTrade_binance',autoTrade);let flo=document.getElementById('float_bin');let txt=document.getElementById('float_txt');if(autoTrade){flo.classList.remove('off');txt.innerText='AUTO TRADE ON 🤖 BINANCE';}else{flo.classList.add('off');txt.innerText='AUTO TRADE OFF 🔕';}guardar();}
-function toggleAutoTune(){autoTune=document.getElementById('auto_tune').checked;localStorage.setItem('autoTune_binance',autoTune);}
-function cerrarPos(i){let p=pos[i];let neto=p.neta-FEE_BINANCE;let g=p.monto*(neto/100);if(p.neta<0)g=p.monto*(p.neta/100);ganAcum+=g;hist.unshift({hora:new Date().toLocaleTimeString(),moneda:p.moneda,monto:p.monto.toFixed(2),bruto:p.neta.toFixed(2),porc:neto.toFixed(2),gan:g.toFixed(2),tipo:p.tipo});pos.splice(i,1);localStorage.setItem('pos_binance_demo',JSON.stringify(pos));localStorage.setItem('hist_binance_demo',JSON.stringify(hist));localStorage.setItem('gan_binance_demo',ganAcum.toString());renderAll();}
+function getTotalReal(){ return 500 + ganAcum; }
+function getBolasTotal(){ let sel=document.getElementById('bolas'); return sel.options.length? parseInt(sel.options[sel.selectedIndex].value):8; }
+function llenarBolas(){let modo=document.getElementById('modo').value; let sel=document.getElementById('bolas'); sel.innerHTML=""; if(modo==="AMBOS"){[[4,4],[3,3],[2,2],[1,1]].forEach(p=>{let t=p[0]+p[1]; let o=document.createElement('option'); o.value=t; o.dataset.l=p[0]; o.dataset.s=p[1]; o.text=`${p[0]}+${p[1]} = ${t} (${p[0]} LONG + ${p[1]} SHORT)`; if(t==8) o.selected=true; sel.appendChild(o);});} else {for(let i=1;i<=8;i++){let o=document.createElement('option'); o.value=i; o.text=`${i} ${modo}`; if(i==8) o.selected=true; sel.appendChild(o);}}}
+function cambioModo(){llenarBolas();cambioBolas();}
+function cambioBolas(){
+  let total=getBolasTotal();
+  let totalReal=getTotalReal();
+  let bola=(totalReal/total);
+  let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.1;
+  let cierreBruto=cierreNeto+FEE_BINANCE;
+  document.getElementById('bola_info').innerText=`$${bola.toFixed(2)} (${total} bolas) = $${totalReal.toFixed(2)} / ${total}`;
+  document.getElementById('cierre_txt').innerText=`${cierreNeto.toFixed(2)}% NETO (${cierreBruto.toFixed(2)}% bruto)`;
+  let modo=document.getElementById('modo').value;
+  let sel=document.getElementById('bolas');
+  if(modo==="AMBOS" && sel.options[sel.selectedIndex] && sel.options[sel.selectedIndex].dataset.l){document.getElementById('bola_det').innerText=`(${sel.options[sel.selectedIndex].dataset.l} LONG + ${sel.options[sel.selectedIndex].dataset.s} SHORT)`; document.getElementById('modo_txt').innerText=`MODO: AMBOS ${sel.options[sel.selectedIndex].dataset.l}+${sel.options[sel.selectedIndex].dataset.s}`;} else {document.getElementById('bola_det').innerText=`(${total} ${modo})`; document.getElementById('modo_txt').innerText=`MODO: SOLO ${modo} ${total}`;}
+  guardar();
+}
+function guardar(){let total=getBolasTotal(); let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.1; let cierreBruto=cierreNeto+FEE_BINANCE; document.getElementById('cierre_txt').innerText=`${cierreNeto.toFixed(2)}% NETO (${cierreBruto.toFixed(2)}% bruto)`; let data={modo:document.getElementById('modo').value,bolas:total,cierre:cierreNeto,cierre_bruto:cierreBruto,sl:parseFloat(document.getElementById('sl').value),rsi_venta:parseInt(document.getElementById('rsi_v').value),rsi_compra:parseInt(document.getElementById('rsi_c').value),ema:document.getElementById('ema').value,auto_tune:autoTune}; fetch('/api/config',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}).catch(()=>{});}
+function toggleCoin(k){S.coins_activas=S.coins_activas||{}; S.coins_activas[k]=!S.coins_activas[k]; renderAll(); guardar();}
+function toggleAutoTrade(){autoTrade=!autoTrade; localStorage.setItem('autoTrade_binance',autoTrade); let flo=document.getElementById('float_bin'); let txt=document.getElementById('float_txt'); if(autoTrade){flo.classList.remove('off'); txt.innerText='AUTO TRADE ON 🤖 BINANCE';} else {flo.classList.add('off'); txt.innerText='AUTO TRADE OFF 🔕 - SOLO AVISA';} guardar();}
+function toggleAutoTune(){autoTune=document.getElementById('auto_tune').checked; localStorage.setItem('autoTune_binance',autoTune); document.getElementById('auto_lab').innerText=autoTune?'✅ AUTO-TUNE ON: Ajusta SL/RSI solo':'⬜ AUTO-TUNE OFF: Solo sugiere';}
+function cerrarPos(i){let p=pos[i]; let neto=p.neta-FEE_BINANCE; let g=p.monto*(neto/100); if(p.neta<0) g=p.monto*(p.neta/100); ganAcum+=g; hist.unshift({hora:new Date().toLocaleTimeString(), moneda:p.moneda, monto:p.monto.toFixed(2), bruto:p.neta.toFixed(2), porc:neto.toFixed(2), gan:g.toFixed(2), tipo:p.tipo}); pos.splice(i,1); localStorage.setItem('pos_binance_demo',JSON.stringify(pos)); localStorage.setItem('hist_binance_demo',JSON.stringify(hist)); localStorage.setItem('gan_binance_demo',ganAcum.toString()); renderAll();}
+function backup(){let data={pos,hist,ganAcum,autoTrade,autoTune}; let b=new Blob([JSON.stringify(data)],{type:'application/json'}); let a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='respaldo_binance.json'; a.click();}
+function restore(inp){let f=inp.files[0]; if(!f) return; let r=new FileReader(); r.onload=e=>{let d=JSON.parse(e.target.result); pos=d.pos||[]; hist=d.hist||[]; ganAcum=d.ganAcum||0; localStorage.setItem('pos_binance_demo',JSON.stringify(pos)); localStorage.setItem('hist_binance_demo',JSON.stringify(hist)); localStorage.setItem('gan_binance_demo',ganAcum.toString()); renderAll(); alert('Restaurado BINANCE');}; r.readAsText(f);}
 function renderAll(){
-let act=S.coins_activas||{};if(Object.keys(act).length==0){COINS.forEach(k=>act[k]=true);S.coins_activas=act;}
-document.getElementById('grid').innerHTML=COINS.map(k=>{let v=act[k]!==false;let rsi=(30+Math.random()*30).toFixed(1);let precio=(PRECIOS_BASE[k]*(0.99+Math.random()*0.02)).toFixed(4);return `<div class=card onclick="toggleCoin('${k}')" style="${!v?'opacity:.4':''}"><div class="on ${!v?'off_b':''}">${v?'ON':'OFF'}</div><div style="font-weight:900">${k}</div><div class=price>$${precio}</div><div class=detail>RSI ${rsi}</div></div>`;}).join('');
-let totalReal=getTotalReal();let totalBolas=getBolasTotal();let bolaReal=totalReal/totalBolas;
-let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.1;let cierreBruto=cierreNeto+FEE_BINANCE;
-if(autoTrade){
-COINS.forEach(k=>{
-if(S.coins_activas[k]===false)return;
-if(pos.filter(p=>p.moneda===k).length>=1)return;
-if(pos.length>=totalBolas)return;
-if(Math.random()>0.65){
-let rsi=30+Math.random()*25;
-if(rsi<parseFloat(document.getElementById('rsi_c').value)){
-let modo=document.getElementById('modo').value;let tipo=modo==="AMBOS"?(Math.random()>0.5?'LONG':'SHORT'):modo;
-let entry=PRECIOS_BASE[k]*(0.99+Math.random()*0.02);
-pos.push({moneda:k,tipo:tipo,entry:entry,ahora:entry,monto:bolaReal,neta:0});
-}
-}
-});
-}
-pos.forEach(p=>{let vari=(Math.random()-0.48)*0.015;if(p.tipo==='SHORT')vari*=-1;p.ahora*=1+vari;p.neta=p.tipo==='LONG'?(p.ahora-p.entry)/p.entry*100:(p.entry-p.ahora)/p.entry*100;});
-let quedan=[];pos.forEach(p=>{
-let sl=parseFloat(document.getElementById('sl').value);
-if(p.neta>=cierreBruto||p.neta<=sl){
-let neto=p.neta-FEE_BINANCE;let g=p.monto*neto/100;if(p.neta<=sl)g=p.monto*p.neta/100;if(p.neta>=cierreBruto)g=p.monto*cierreNeto/100;
-ganAcum+=g;hist.unshift({hora:new Date().toLocaleTimeString(),moneda:p.moneda,monto:p.monto.toFixed(2),bruto:p.neta.toFixed(2),porc:neto.toFixed(2),gan:g.toFixed(2),tipo:p.tipo});if(hist.length>50)hist.pop();
-}else quedan.push(p);
-});pos=quedan;
-localStorage.setItem('pos_binance_demo',JSON.stringify(pos));localStorage.setItem('hist_binance_demo',JSON
+  document.getElementById('auto_tune').checked=autoTune;
+  document.getElementById('auto_lab').innerText=autoTune?'✅ AUTO-TUNE ON: Ajusta SL/RSI solo':'⬜ AUTO-TUNE OFF: Solo sugiere';
+  let flo=document.getElementById('float_bin'); let txt=document.getElementById('float_txt');
+  if(autoTrade){flo.classList.remove('off'); txt.innerText='AUTO TRADE ON 🤖 BINANCE';} else {flo.classList.add('off'); txt.innerText='AUTO TRADE OFF 🔕 - SOLO AVISA';}
+  let rsiProm=32+Math.random()*15; let caida=COINS.filter(()=>Math.random()>0.6).length;
+  let sugiereSL=rsiProm<35? -1.5 : -2.5; let sugiereRsiC=rsiProm<35? 35 : 40; let sugiereRsiV=rsiProm>60? 65 : 70;
+  if(autoTune){ document.getElementById('sl').value=sugiereSL; document.getElementById('rsi_c').value=sugiereRsiC; document.getElementById('rsi_v').value=sugiereRsiV; }
+  let act=S.coins_activas||{}; if(Object.keys(act).length==0){ COINS.forEach(k=>act[k]=true); S.coins_activas=act; }
+  document.getElementById('grid').innerHTML=COINS.map(k=>{
+    let v=act[k]!==false; let rsi=(30+Math.random()*30).toFixed(1); let precio=(PRECIOS_BASE[k]*(0.99+Math.random()*0.02)).toFixed(4);
+    return `<div class=card onclick="toggleCoin('${k}')" style="${!v?'opacity:.4':''}"><div class="on ${!v?'off_b':''}">${v?'ON':'OFF'}</div><div style="font-weight:900">${k}</div><div class=price>$${precio}</div><div class=detail>RSI ${rsi} (lim ${document.getElementById('rsi_c').value})<br>${rsi<40?'CAIDA - COMPRA':'ESPERA'}</div><div style="color:#22c55e;font-weight:900">🤖 ${v?'ON':'OFF'}</div></div>`;
+  }).join('');
+  let totalReal=getTotalReal();
+  let totalBolas=getBolasTotal();
+  let bolaReal=totalReal/totalBolas;
+  let cierreNeto=parseFloat(document.getElementById('cierre').value)||0.1;
+  let cierreBruto=cierreNeto+FEE_BINANCE;
+  let aviso="";
+  if(autoTrade){
+    COINS.forEach(k=>{
+      if(S.coins_activas && S.coins_activas[k]===false) return;
+      if(pos.filter(p=>p.moneda===k).length>=1) return;
+      if(pos.length>= totalBolas) return;
+      if(Math.random()>0.65){
+        let rsi=30+Math.random()*25;
+        if(rsi < parseFloat(document.getElementById('rsi_c').value)){
+          let modo=document.getElementById('modo').value; let tipo=modo==="AMBOS"? (Math.random()>0.5?'LONG':'SHORT'):modo;
+          let entry=PRECIOS_BASE[k]*(0.99+Math.random()*0.02);
+          pos.push({moneda:k, tipo:tipo, entry:entry, ahora:entry, monto:bolaReal, neta:0});
+        }
+      }
+    });
+  } else {
+    COINS.forEach(k=>{
+      let rsi=30+Math.random()*25;
+      if(rsi < parseFloat(document.getElementById('rsi_c').value) && (!S.coins_activas || S.coins_activas[k]!==false)){
+        aviso+=`⚠️ ${k} RSI ${rsi.toFixed(1)} - HAY ENTRADA (Trade OFF, no compró)\n`;
+      }
+    });
+  }
+  pos.forEach(p=>{let vari=(Math.random()-0.48)*0.015; if(p.tipo==='SHORT') vari*=-1; p.ahora*=1+vari; p.neta=p.tipo==='LONG'? (p.ahora-p.entry)/p.entry*100 : (p.entry-p.ahora)/p.entry*100;});
+  let quedan=[]; 
+  pos.forEach(p=>{ 
+    let slVal=parseFloat(document.getElementById('sl').value);
+    if(p.neta>=cierreBruto || p.neta<=slVal){ 
+      let neto=p.neta-FEE_BINANCE;
+      let g=p.monto*neto/100;
+      if(p.neta<=slVal) g=p.monto*p.neta/100;
+      if(p.neta>=cierreBruto) g=p.monto*cierreNeto/100;
+      ganAcum+=g; 
+      hist.unshift({hora:new Date().toLocaleTimeString(), moneda:p.moneda, monto:p.monto.toFixed(2), bruto:p.neta.toFixed(2), porc:neto.toFixed(2), gan:g.toFixed(2), tipo:p.tipo}); 
+      if(hist.length>50) hist.pop(); 
+    } else quedan.push(p); 
+  }); 
+  pos=quedan;
+  localStorage.setItem('pos_binance_demo',JSON.stringify(pos)); localStorage.setItem('hist_binance_demo',JSON.stringify(hist)); localStorage.setItem('gan_binance_demo',ganAcum.toString());
+  let bloqueado=pos.reduce((s,p)=>s+p.monto,0);
+  let disp_val = getTotalReal() - bloqueado;
+  totalReal=getTotalReal(); bolaReal=totalReal/totalBolas;
+  document.getElementById('disp').innerText='$'+disp_val.toFixed(2);
+  document.getElementById('bloq').innerText=`Bloq: $${bloqueado.toFixed(2)}`;
+  document.getElementById('gan').innerText='$'+ganAcum.toFixed(2);
+  document.getElementById('total').innerText='$'+totalReal.toFixed(2);
+  document.getElementById('bola_info').innerText=`$${bolaReal.toFixed(2)} (${totalBolas} bolas) = $${totalReal.toFixed(2)} / ${totalBolas}`;
+  document.getElementById('cierre_txt').innerText=`${cierreNeto.toFixed(2)}% NETO (${cierreBruto.toFixed(2)}% bruto)`;
+  try{fetch('/api/state',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({disponible_binance:disp_val,bloqueado_binance:bloqueado,ganancia_binance:ganAcum,capital_binance:totalReal})}).catch(()=>{});}catch(e){}
+  document.getElementById('pos').innerHTML=pos.length? pos.map((p,i)=>`<tr><td>${p.moneda}</td><td>${p.tipo}</td><td>${p.entry.toFixed(4)}</td><td>${p.ahora.toFixed(4)}</td><td style="color:${p.neta>=0?'#22c55e':'#ef4444'}">${p.neta.toFixed(2)}%</td><td style="color:#facc15">${(p.neta-FEE_BINANCE).toFixed(2)}%</td><td><button onclick="cerrarPos(${i})" style="background:#ef4444;color:#fff;border:0;border-radius:6px;padding:4px 8px">X</button></td></tr>`).join('') : `<tr><td colspan=7 style="text-align:center;opacity:.4">Sin posiciones BINANCE - buscando entrada</td></tr>`;
+  document.getElementById('hist').innerHTML=hist.length? hist.map(h=>`<tr><td>${h.hora}</td><td>${h.moneda} ${h.tipo}</
